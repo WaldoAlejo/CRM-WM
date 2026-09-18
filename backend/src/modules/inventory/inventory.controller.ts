@@ -2,9 +2,10 @@ import { Request, Response } from "express";
 import {
   createAdjustmentSchema,
   listMovementsQuerySchema,
+  stockByLocationQuerySchema,
   stockSummaryQuerySchema,
 } from "./inventory.schemas";
-import { createAdjustment, getStockSummary, listMovements } from "./inventory.service";
+import { createAdjustment, getStockByLocation, getStockSummary, listMovements } from "./inventory.service";
 
 export async function createAdjustmentController(req: Request, res: Response) {
   const data = createAdjustmentSchema.parse(req.body);
@@ -20,4 +21,9 @@ export async function listMovementsController(req: Request, res: Response) {
 export async function getStockSummaryController(req: Request, res: Response) {
   const query = stockSummaryQuerySchema.parse(req.query);
   res.json(await getStockSummary(query));
+}
+
+export async function getStockByLocationController(req: Request, res: Response) {
+  const query = stockByLocationQuerySchema.parse(req.query);
+  res.json(await getStockByLocation(query));
 }

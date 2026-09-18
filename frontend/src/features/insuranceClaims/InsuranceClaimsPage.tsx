@@ -1,6 +1,6 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { DataTable } from "@/components/crud/DataTable";
 import type { CrudColumn } from "@/components/crud/types";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,14 @@ const columns: CrudColumn<InsuranceClaim>[] = [
 // ADMIN-only: gateado en el router (RequireRole), espejo de
 // requireRole(Role.ADMIN) real en insuranceClaims.routes.ts.
 export function InsuranceClaimsPage() {
-  const [filters, setFilters] = useState<InsuranceClaimFilters>({});
+  // Lectura de UNA sola vez al montar (no bidireccional como el rango de
+  // fechas de Reportes): alcanza para que el link del Dashboard
+  // ("/insurance-claims?open=true") llegue con el filtro ya aplicado, sin
+  // necesidad de mantener sincronizada la URL con cada cambio de filtro acá.
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<InsuranceClaimFilters>({
+    open: searchParams.get("open") === "true" || undefined,
+  });
   const { page, setPage, query } = useInsuranceClaims(filters);
   const { data: couriers } = useCourierOptions();
   const [resolveTarget, setResolveTarget] = useState<string | null>(null);
@@ -122,6 +129,16 @@ export function InsuranceClaimsPage() {
             <SelectItem value="REEMBOLSO">Reembolso</SelectItem>
           </SelectContent>
         </Select>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4"
+            checked={filters.open ?? false}
+            onChange={(e) => updateFilter("open", e.target.checked || undefined)}
+          />
+          Solo en proceso
+        </label>
 
         <label className="flex items-center gap-2 text-sm">
           <input

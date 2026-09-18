@@ -16,6 +16,8 @@ export const dispatchOrderItemSchema = z.object({
   unitPrice: z.coerce.number().nonnegative("El precio no puede ser negativo"),
   discountPct: optionalNumber(z.number().min(0).max(100, "Debe estar entre 0 y 100")),
   availableStockAtAdd: z.number(),
+  // Ubicación de origen (opcional): de dónde sale físicamente este ítem.
+  locationId: optionalString(z.string().min(1)),
 });
 
 export type DispatchOrderItemFormValues = z.infer<typeof dispatchOrderItemSchema>;

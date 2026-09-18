@@ -65,12 +65,18 @@ export async function rejectShipment(
 
     // El producto vuelve físicamente a bodega: DEVOLUCION en signo positivo,
     // por cada ítem de la orden (mismo patrón que la SALIDA original).
+    // Reutiliza automáticamente item.locationId (la ubicación de origen
+    // elegida al crear la orden) como destino: es la ubicación de la que
+    // salió físicamente, así que es la mejor suposición de a dónde vuelve sin
+    // pedirle al operador que la elija de nuevo. Si más adelante se necesita
+    // que vuelva a OTRA ubicación, se puede corregir después con un AJUSTE.
     for (const item of shipment.dispatchOrder.items) {
       await applyMovement(tx, {
         variantId: item.variantId,
         type: MovementType.DEVOLUCION,
         quantity: item.quantity,
         dispatchOrderItemId: item.id,
+        locationId: item.locationId ?? undefined,
         createdById: userId,
       });
     }

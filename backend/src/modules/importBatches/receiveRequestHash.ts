@@ -5,6 +5,7 @@ interface ReceiveLine {
   quantity: number;
   unitCost: number;
   notes?: string;
+  locationId?: string;
 }
 
 // Hash determinístico del body de /receive: el mismo conjunto de líneas debe
@@ -19,6 +20,7 @@ function canonicalizeLine(line: ReceiveLine): string {
     quantity: line.quantity,
     unitCost: line.unitCost,
     notes: line.notes ?? null,
+    locationId: line.locationId ?? null,
   });
 }
 

@@ -11,6 +11,10 @@ export interface InsuranceClaimFilters {
   status?: ClaimStatus;
   customerResolution?: CustomerResolution;
   overdue?: boolean;
+  // "En proceso" = ni aprobado, ni pagado, ni rechazado (OPEN_STATUSES en
+  // el backend) — a diferencia de `overdue`, no exige que ya esté vencido.
+  // Lo usa el link del Dashboard.
+  open?: boolean;
   // Para el link directo desde ShipmentSection ("orden → su reclamo") — no
   // hay GET /insurance-claims/:id, así que esto aísla el único resultado vía
   // Shipment.id (InsuranceClaim.shipmentId es @unique).
@@ -23,6 +27,7 @@ function buildQuery(page: number, filters: InsuranceClaimFilters): string {
   if (filters.status) params.set("status", filters.status);
   if (filters.customerResolution) params.set("customerResolution", filters.customerResolution);
   if (filters.overdue) params.set("overdue", "true");
+  if (filters.open) params.set("open", "true");
   if (filters.shipmentId) params.set("shipmentId", filters.shipmentId);
   return params.toString();
 }

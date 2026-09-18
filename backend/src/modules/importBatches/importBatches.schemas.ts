@@ -18,6 +18,8 @@ export const receiveStockSchema = z.object({
         quantity: z.number().int().positive("La cantidad de un ingreso debe ser mayor a 0"),
         unitCost: z.number().nonnegative("El costo unitario no puede ser negativo"),
         notes: z.string().max(500).optional(),
+        // Ubicación de destino donde queda físicamente la mercadería recibida.
+        locationId: z.string().min(1).optional(),
       })
     )
     .min(1, "Debes incluir al menos una línea"),

@@ -8,19 +8,23 @@ import { authRouter } from "./modules/auth/auth.routes";
 import { brandsRouter } from "./modules/brands/brands.routes";
 import { categoriesRouter } from "./modules/categories/categories.routes";
 import { couriersRouter } from "./modules/couriers/couriers.routes";
+import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 import { accountsReceivableRouter, dispatchOrdersRouter } from "./modules/dispatchOrders/dispatchOrders.routes";
 import { finalCustomersRouter } from "./modules/finalCustomers/finalCustomers.routes";
 import { imagesRouter } from "./modules/images/images.routes";
 import { importBatchesRouter } from "./modules/importBatches/importBatches.routes";
 import { insuranceClaimsRouter } from "./modules/insuranceClaims/insuranceClaims.routes";
 import { inventoryRouter } from "./modules/inventory/inventory.routes";
+import { locationsRouter } from "./modules/locations/locations.routes";
 import { productsRouter } from "./modules/products/products.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
 import { searchRouter } from "./modules/search/search.routes";
 import { shipmentsRouter } from "./modules/shipments/shipments.routes";
 import { subcategoriesRouter } from "./modules/subcategories/subcategories.routes";
 import { suppliersRouter } from "./modules/suppliers/suppliers.routes";
+import { usersRouter } from "./modules/users/users.routes";
 import { variantsRouter } from "./modules/variants/variants.routes";
+import { warehousesRouter } from "./modules/warehouses/warehouses.routes";
 import { wholesalersRouter } from "./modules/wholesalers/wholesalers.routes";
 
 export function createApp() {
@@ -42,12 +46,16 @@ export function createApp() {
   app.use("/uploads", express.static(UPLOADS_ROOT));
 
   app.use("/api/auth", authRouter);
+  app.use("/api/dashboard", dashboardRouter);
+  app.use("/api/users", usersRouter);
   app.use("/api/categories", categoriesRouter);
   app.use("/api/subcategories", subcategoriesRouter);
   app.use("/api/wholesalers", wholesalersRouter);
   app.use("/api/suppliers", suppliersRouter);
   app.use("/api/brands", brandsRouter);
   app.use("/api/couriers", couriersRouter);
+  app.use("/api/warehouses", warehousesRouter);
+  app.use("/api/locations", locationsRouter);
   app.use("/api/final-customers", finalCustomersRouter);
   app.use("/api/products", productsRouter);
   app.use("/api/variants", variantsRouter);

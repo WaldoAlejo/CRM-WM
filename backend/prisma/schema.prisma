@@ -93,6 +93,60 @@ model Subcategory {
 }
 
 // ----------------------------------------------------------------------------
+// BODEGAS Y UBICACIONES
+//
+// Warehouse usa `isActive` (no `deletedAt`) como su soft delete, igual que
+// Courier: no hay ningún otro modelo que referencie a Warehouse directamente
+// (solo a Location), así que no hace falta el patrón deletedAt+índice parcial
+// que sí necesitan Category/Supplier/Brand (donde @unique convive con
+// múltiples filas eliminadas del mismo nombre). Location es igual: pertenece
+// a un Warehouse y también usa `isActive`.
+//
+// `code` es el identificador libre y editable de una ubicación (ej: "A-3-2"
+// o "Recepción"), lo único obligatorio — es lo que se ve en selectores y
+// reportes. `aisle`/`shelf`/`level` son estructurados pero OPCIONALES: hoy
+// hay una sola bodega y no hace falta forzar esa estructura, pero quedan
+// listos para cuando el catálogo crezca y se quiera filtrar/reportar por
+// pasillo sin otra migración.
+// ----------------------------------------------------------------------------
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locations Location[]
+
+  @@index([isActive])
+}
+
+model Location {
+  id          String    @id @default(cuid())
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  code  String // Ej: "A-3-2" o "Recepción". Único dentro de la misma bodega.
+  aisle String? // Pasillo (opcional).
+  shelf String? // Estante (opcional).
+  level String? // Nivel (opcional).
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movementsFrom InventoryMovement[] @relation("MovementFromLocation")
+  movementsTo   InventoryMovement[] @relation("MovementToLocation")
+  dispatchItems DispatchOrderItem[]
+
+  @@unique([warehouseId, code])
+  @@index([warehouseId])
+  @@index([isActive])
+}
+
+// ----------------------------------------------------------------------------
 // PROVEEDORES (para lotes de importación) y COMPRADORES (para órdenes de despacho)
 //
 // Se modelan como tablas propias (en vez de un simple campo de texto) para que
@@ -203,7 +257,7 @@ model FinalCustomer {
 // y no un campo de texto en Product porque hoy ya conviven varias líneas
 // propias, y mañana podría venderse marca de terceros sin rediseñar nada.
 model Brand {
-  id String @id @default(cuid())
+  id          String    @id @default(cuid())
   // Único solo entre las NO eliminadas (índice único parcial agregado a mano
   // en la migración, ver comentario de Supplier.name).
   name        String
@@ -507,6 +561,24 @@ model InventoryMovement {
   importBatchId String? // Solo se llena si type = INGRESO.
   importBatch   ImportBatch? @relation(fields: [importBatchId], references: [id])
 
+  // Ubicación de origen y/o destino del movimiento. Ambas nullable a
+  // propósito: todo movimiento histórico anterior a esta migración queda con
+  // las dos en NULL sin romper nada (el stock total ya no depende de esto,
+  // solo "stock por ubicación" sí). En la práctica hoy applyMovement() llena
+  // como mucho UNA de las dos por movimiento — la decide el signo de
+  // `quantity` (positivo → toLocationId, negativo → fromLocationId), igual
+  // que ya decide sumar/restar del stock total. Quedan las dos columnas (no
+  // una sola "locationId") para no tener que rediseñar esto el día que exista
+  // un movimiento de TRANSFERENCIA entre ubicaciones/bodegas — aunque ESE
+  // caso, para no romper el signo único de `quantity` en una sola fila,
+  // necesitará dos filas de ledger (una SALIDA en el origen, un INGRESO en el
+  // destino), mismo patrón append-only que ya usan DEVOLUCION/SINIESTRO en
+  // vez de mutar la SALIDA original.
+  fromLocationId String?
+  fromLocation   Location? @relation("MovementFromLocation", fields: [fromLocationId], references: [id], onDelete: Restrict)
+  toLocationId   String?
+  toLocation     Location? @relation("MovementToLocation", fields: [toLocationId], references: [id], onDelete: Restrict)
+
   // Ya NO es @unique: un mismo ítem de despacho puede generar más de un
   // movimiento a lo largo del tiempo (la SALIDA al confirmarse, y más
   // adelante una DEVOLUCION si el courier lo trae de vuelta, o un SINIESTRO
@@ -522,6 +594,8 @@ model InventoryMovement {
   @@index([type])
   @@index([createdAt])
   @@index([dispatchOrderItemId])
+  @@index([fromLocationId])
+  @@index([toLocationId])
 }
 
 // ----------------------------------------------------------------------------
@@ -659,6 +733,14 @@ model DispatchOrderItem {
   variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
   quantity        Int
 
+  // Ubicación de origen elegida al crear la orden (opcional). Se usa como
+  // `locationId` de la SALIDA al confirmar la orden (ver
+  // confirmDispatchOrder), y se reutiliza automáticamente como destino de la
+  // DEVOLUCION si el courier rechaza el envío — el operador no tiene que
+  // volver a elegirla.
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
   priceType   PriceType // Mayorista o PVP: define qué lista de precios se cotizó.
   unitPrice   Decimal   @db.Decimal(10, 2) // Precio real cobrado (ya con descuento aplicado, si hubo).
   discountPct Decimal?  @db.Decimal(5, 2) // % de descuento aplicado sobre el precio de lista, si aplicó.
@@ -690,6 +772,7 @@ model DispatchOrderItem {
 
   @@index([dispatchOrderId])
   @@index([variantId])
+  @@index([locationId])
 }
 
 // ----------------------------------------------------------------------------

@@ -4,6 +4,7 @@ import { createApp } from "../src/app";
 import {
   createCategoryFixture,
   createImportBatchFixture,
+  createLocationFixture,
   createProductFixture,
   createSupplierFixture,
   createTestUser,
@@ -292,6 +293,37 @@ describe("POST /api/import-batches/:id/receive", () => {
       const movements = await prisma.inventoryMovement.count({ where: { importBatchId: batch.id } });
       expect(movements).toBe(2); // no 4
     });
+  });
+});
+
+describe("Ubicación de destino en /receive", () => {
+  it("guarda locationId como toLocationId del INGRESO", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { variant } = await setupProductWithVariant();
+    const batch = await createImportBatchFixture();
+    const location = await createLocationFixture();
+
+    const res = await request(app)
+      .post(`/api/import-batches/${batch.id}/receive`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ lines: [{ variantId: variant.id, quantity: 10, unitCost: 15, locationId: location.id }] });
+
+    expect(res.status).toBe(201);
+    expect(res.body.movements[0].toLocationId).toBe(location.id);
+    expect(res.body.movements[0].fromLocationId).toBeNull();
+  });
+
+  it("404 si la ubicación indicada no existe", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { variant } = await setupProductWithVariant();
+    const batch = await createImportBatchFixture();
+
+    const res = await request(app)
+      .post(`/api/import-batches/${batch.id}/receive`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ lines: [{ variantId: variant.id, quantity: 10, unitCost: 15, locationId: "id-inexistente" }] });
+
+    expect(res.status).toBe(400);
   });
 });
 

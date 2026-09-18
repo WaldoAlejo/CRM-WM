@@ -9,7 +9,8 @@
 // existiera; para esas, el costo usado es solo unitCostSnapshot (el "extra"
 // de flete/aduana se trata como 0), en vez de romper el reporte o intentar
 // "rellenarlo" con un cálculo en vivo.
-import { DispatchStatus, Prisma, ShipmentStatus, ClaimStatus } from "@prisma/client";
+import { DispatchStatus, Prisma } from "@prisma/client";
+import { classifySaleByShipment } from "../../lib/dispatchSaleClassification";
 import { prisma } from "../../lib/prisma";
 
 const { Decimal } = Prisma;
@@ -139,7 +140,8 @@ async function fetchClassifiedItems(
 
   for (const item of items) {
     const shipment = item.dispatchOrder.shipment;
-    if (shipment?.status === ShipmentStatus.RECHAZADO) continue;
+    const classification = classifySaleByShipment(shipment);
+    if (classification === "EXCLUDED") continue;
 
     // totalRevenue = Σ(unitPrice × quantity). unitPrice ya viene NETO (con
     // descuento aplicado, según la definición original del campo) — NO se
@@ -167,9 +169,7 @@ async function fetchClassifiedItems(
       totalCost,
     };
 
-    const isLostOrDamaged =
-      shipment?.status === ShipmentStatus.PERDIDO || shipment?.status === ShipmentStatus.DANADO;
-    if (isLostOrDamaged && shipment?.claim?.status !== ClaimStatus.PAGADO) {
+    if (classification === "PENDING_CLAIM") {
       pendingClaim.push(line);
     } else {
       sold.push(line);

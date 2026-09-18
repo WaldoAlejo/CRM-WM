@@ -6,6 +6,7 @@ import { FormControl, FormField, FormItem, FormMessage } from "@/components/ui/f
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useWarehouseOptions } from "@/features/warehouses/useWarehouseOptions";
 import type { DispatchOrderFormValues } from "../dispatchOrders.schema";
 
 interface OrderItemsTableProps {
@@ -29,6 +30,13 @@ function lineSubtotal(unitPrice: number, quantity: number, discountPct: number |
 // lectura".
 export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsTableProps) {
   const items = useWatch({ control, name: "items" }) ?? [];
+  const { data: warehouses } = useWarehouseOptions();
+  // Selector plano de ubicaciones activas, con el nombre de la bodega
+  // delante (ej. "Bodega Central · A-3-2") — hoy hay una sola bodega, pero
+  // esto ya soporta que haya varias sin cambiar el selector.
+  const locationOptions = (warehouses ?? []).flatMap((w) =>
+    w.locations.map((l) => ({ id: l.id, label: `${w.name} · ${l.code}` }))
+  );
 
   // Mismo chequeo defensivo que AttributesFieldArray: el error de "agregá al
   // menos un ítem" (.min(1) del array completo) puede quedar en .root o
@@ -60,6 +68,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
             <TableHead className="w-28">Tipo</TableHead>
             <TableHead className="w-28">P. Unit.</TableHead>
             <TableHead className="w-24">Desc. %</TableHead>
+            <TableHead className="w-40">Ubicación</TableHead>
             <TableHead className="w-28">Subtotal</TableHead>
             <TableHead className="w-32">Stock</TableHead>
             <TableHead className="w-12" />
@@ -134,6 +143,35 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                         <FormControl>
                           <Input type="number" min={0} max={100} step="any" {...f} value={f.value ?? ""} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TableCell>
+                <TableCell>
+                  <FormField
+                    control={control}
+                    name={`items.${index}.locationId`}
+                    render={({ field: f }) => (
+                      <FormItem>
+                        <Select
+                          value={f.value ?? "none"}
+                          onValueChange={(value) => f.onChange(value === "none" ? undefined : value)}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sin especificar" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Sin especificar</SelectItem>
+                            {locationOptions.map((loc) => (
+                              <SelectItem key={loc.id} value={loc.id}>
+                                {loc.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

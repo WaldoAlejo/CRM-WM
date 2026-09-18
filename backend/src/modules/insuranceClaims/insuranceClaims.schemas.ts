@@ -30,6 +30,10 @@ export const listInsuranceClaimsQuerySchema = z.object({
   status: z.nativeEnum(ClaimStatus).optional(),
   customerResolution: z.enum(["PENDIENTE", "REEMPLAZO", "REEMBOLSO"]).optional(),
   overdue: z.coerce.boolean().optional(),
+  // "En proceso" = ni aprobado, ni pagado, ni rechazado (ver OPEN_STATUSES en
+  // insuranceClaims.service.ts) — a diferencia de `overdue`, no exige que ya
+  // esté vencido. Lo usa el link del Dashboard ("reclamos pendientes").
+  open: z.coerce.boolean().optional(),
   // Permite el link directo "orden → su reclamo" (InsuranceClaim.shipmentId
   // es @unique, así que esto aísla como máximo un resultado) sin tener que
   // buscarlo a mano en el listado — no hay GET /insurance-claims/:id.

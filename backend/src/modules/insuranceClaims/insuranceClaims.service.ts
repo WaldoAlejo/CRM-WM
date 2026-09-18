@@ -169,15 +169,19 @@ interface ListClaimsParams {
   status?: ClaimStatus;
   customerResolution?: CustomerResolution;
   overdue?: boolean;
+  open?: boolean;
   shipmentId?: string;
 }
 
 // "Abierto" = no cerrado ante el courier todavía (ni aprobado, ni pagado, ni
-// rechazado) — mismo criterio que usa `overdue` y el bloque pendingByCourier.
-const OPEN_STATUSES: ClaimStatus[] = [ClaimStatus.PENDIENTE, ClaimStatus.EN_REVISION];
+// rechazado) — mismo criterio que usa `overdue`, el bloque pendingByCourier,
+// el filtro `open`, y GET /dashboard/summary (reclamos en proceso). Se
+// exporta para que el dashboard cuente exactamente lo mismo que este módulo,
+// sin reinventar la definición de "en proceso".
+export const OPEN_STATUSES: ClaimStatus[] = [ClaimStatus.PENDIENTE, ClaimStatus.EN_REVISION];
 
 export async function listInsuranceClaims(params: ListClaimsParams) {
-  const { page, pageSize, courierId, status, customerResolution, overdue, shipmentId } = params;
+  const { page, pageSize, courierId, status, customerResolution, overdue, open, shipmentId } = params;
 
   const where: Prisma.InsuranceClaimWhereInput = {};
   if (customerResolution) where.customerResolution = customerResolution;
@@ -187,11 +191,12 @@ export async function listInsuranceClaims(params: ListClaimsParams) {
   if (courierId || shipmentId) {
     where.shipment = { ...(courierId && { courierId }), ...(shipmentId && { id: shipmentId }) };
   }
+  if (open) where.status = { in: OPEN_STATUSES };
   if (overdue) {
     where.expectedResolutionDate = { lt: new Date() };
     where.status = { notIn: [ClaimStatus.APROBADO, ClaimStatus.PAGADO, ClaimStatus.RECHAZADO] };
   }
-  // Un status explícito siempre gana sobre el filtro implícito de `overdue`.
+  // Un status explícito siempre gana sobre los filtros implícitos de arriba.
   if (status) where.status = status;
 
   const [rows, total, openClaims] = await Promise.all([

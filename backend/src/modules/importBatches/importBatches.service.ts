@@ -96,6 +96,7 @@ interface ReceiveLine {
   quantity: number;
   unitCost: number;
   notes?: string;
+  locationId?: string;
 }
 
 interface ReceiveStockResponse {
@@ -148,6 +149,19 @@ export async function receiveStock(
     throw badRequest(`Variantes no encontradas: ${missingIds.join(", ")}`, { field: "lines" });
   }
 
+  const locationIds = [...new Set(lines.map((l) => l.locationId).filter((id): id is string => !!id))];
+  if (locationIds.length > 0) {
+    const foundLocations = await prisma.location.findMany({
+      where: { id: { in: locationIds }, isActive: true },
+      select: { id: true },
+    });
+    const foundLocationIds = new Set(foundLocations.map((l) => l.id));
+    const missingLocationIds = locationIds.filter((id) => !foundLocationIds.has(id));
+    if (missingLocationIds.length > 0) {
+      throw badRequest(`Ubicaciones no encontradas: ${missingLocationIds.join(", ")}`, { field: "lines" });
+    }
+  }
+
   // Prorrateo simple por unidad: los 3 costos totales del lote se reparten en
   // partes iguales entre TODAS las unidades de ESTE receive (no por valor
   // ponderado, así es como realmente se cobra el flete de un contenedor). Si
@@ -170,6 +184,7 @@ export async function receiveStock(
         unitCost: line.unitCost,
         landedCostPerUnit: landedCostPerUnit.toNumber(),
         notes: line.notes,
+        locationId: line.locationId,
         importBatchId,
         createdById: userId,
       });

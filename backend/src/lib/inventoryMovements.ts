@@ -18,6 +18,11 @@ export interface ApplyMovementInput {
   importBatchId?: string;
   dispatchOrderItemId?: string;
   createdById?: string;
+  // Ubicación única del lado que le corresponde a este movimiento — el
+  // llamante nunca tiene que decidir si es origen o destino, lo decide el
+  // signo de `quantity` acá abajo (mismo criterio que decide sumar/restar
+  // stock). Ver el comentario de fromLocationId/toLocationId en schema.prisma.
+  locationId?: string;
 }
 
 export async function applyMovement(
@@ -59,6 +64,8 @@ export async function applyMovement(
       importBatchId: input.importBatchId,
       dispatchOrderItemId: input.dispatchOrderItemId,
       createdById: input.createdById,
+      toLocationId: input.quantity > 0 ? input.locationId : undefined,
+      fromLocationId: input.quantity < 0 ? input.locationId : undefined,
     },
   });
 }

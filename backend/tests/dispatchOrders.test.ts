@@ -5,6 +5,7 @@ import {
   createCategoryFixture,
   createCourierFixture,
   createFinalCustomerFixture,
+  createLocationFixture,
   createProductFixture,
   createTestUser,
   createVariantWithIngreso,
@@ -285,6 +286,56 @@ describe("POST /api/dispatch-orders/:id/confirm", () => {
     expect(movement?.quantity).toBe(-5);
     expect(movement?.stockAfter).toBe(15);
     expect(movement?.createdById).toBe(user.id);
+  });
+
+  it("locationId elegido al crear la orden queda como fromLocationId de la SALIDA al confirmar", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { variant } = await setupVariant(20, 12.5);
+    const location = await createLocationFixture();
+    const finalCustomer = await createFinalCustomerFixture();
+
+    const created = await request(app)
+      .post("/api/dispatch-orders")
+      .set("Authorization", `Bearer ${token}`)
+      .send(
+        orderBody({
+          finalCustomerId: finalCustomer.id,
+          items: [{ variantId: variant.id, quantity: 5, priceType: "PVP", unitPrice: 20, locationId: location.id }],
+        })
+      );
+    expect(created.status).toBe(201);
+
+    const confirmed = await request(app)
+      .post(`/api/dispatch-orders/${created.body.id}/confirm`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({});
+    expect(confirmed.status).toBe(200);
+
+    const movement = await prisma.inventoryMovement.findFirst({
+      where: { variantId: variant.id, type: "SALIDA" },
+    });
+    expect(movement?.fromLocationId).toBe(location.id);
+    expect(movement?.toLocationId).toBeNull();
+  });
+
+  it("404 si el locationId de un ítem no existe", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { variant } = await setupVariant(20, 12.5);
+    const finalCustomer = await createFinalCustomerFixture();
+
+    const res = await request(app)
+      .post("/api/dispatch-orders")
+      .set("Authorization", `Bearer ${token}`)
+      .send(
+        orderBody({
+          finalCustomerId: finalCustomer.id,
+          items: [
+            { variantId: variant.id, quantity: 5, priceType: "PVP", unitPrice: 20, locationId: "id-inexistente" },
+          ],
+        })
+      );
+
+    expect(res.status).toBe(400);
   });
 
   it("promedio ponderado combina dos ingresos con costos distintos", async () => {

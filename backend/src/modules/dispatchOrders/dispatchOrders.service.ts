@@ -22,6 +22,7 @@ interface CreateOrderItemInput {
   priceType: "MAYORISTA" | "PVP";
   unitPrice: number;
   discountPct?: number;
+  locationId?: string;
 }
 
 interface CreateOrderInput {
@@ -98,6 +99,19 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
     throw badRequest(`Variantes no encontradas: ${missingIds.join(", ")}`, { field: "items" });
   }
 
+  const locationIds = [...new Set(data.items.map((i) => i.locationId).filter((id): id is string => !!id))];
+  if (locationIds.length > 0) {
+    const foundLocations = await prisma.location.findMany({
+      where: { id: { in: locationIds }, isActive: true },
+      select: { id: true },
+    });
+    const foundLocationIds = new Set(foundLocations.map((l) => l.id));
+    const missingLocationIds = locationIds.filter((id) => !foundLocationIds.has(id));
+    if (missingLocationIds.length > 0) {
+      throw badRequest(`Ubicaciones no encontradas: ${missingLocationIds.join(", ")}`, { field: "items" });
+    }
+  }
+
   let creditDays: number | undefined;
   if (data.paymentMethod === PaymentMethod.CREDITO) {
     creditDays = data.creditDays ?? wholesaler?.defaultCreditDays ?? undefined;
@@ -131,6 +145,7 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
               priceType: item.priceType,
               unitPrice: item.unitPrice,
               discountPct: item.discountPct,
+              locationId: item.locationId,
             })),
           },
         },
@@ -226,6 +241,7 @@ export async function confirmDispatchOrder(
         type: MovementType.SALIDA,
         quantity: -item.quantity,
         dispatchOrderItemId: item.id,
+        locationId: item.locationId ?? undefined,
         createdById: userId,
       });
     }
@@ -426,4 +442,32 @@ export async function getAccountsReceivable(params: { page: number; pageSize: nu
     data: rows.map(({ items, ...order }) => ({ ...order, orderTotal: computeOrderTotal(items) })),
     pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
   };
+}
+
+// Versión liviana para GET /dashboard/summary: mismo `where` EXACTO que
+// getAccountsReceivable (misma definición de "vencida" — CREDITO, dueDate
+// pasado, no pagada por completo), pero sin traer comprador ni paginar: acá
+// solo hace falta el conteo y el saldo total pendiente, sumado con
+// computeOrderTotal (la misma fórmula, nunca una nueva).
+export async function getAccountsReceivableSummary() {
+  const where: Prisma.DispatchOrderWhereInput = {
+    deletedAt: null,
+    paymentMethod: PaymentMethod.CREDITO,
+    dueDate: { lt: new Date() },
+    paymentStatus: { not: PaymentStatus.PAGADO },
+  };
+
+  const rows = await prisma.dispatchOrder.findMany({
+    where,
+    select: { amountPaid: true, items: { select: { unitPrice: true, quantity: true } } },
+  });
+
+  const totalOutstanding = rows
+    .reduce(
+      (sum, order) => sum.plus(computeOrderTotal(order.items).minus(order.amountPaid ?? new Prisma.Decimal(0))),
+      new Prisma.Decimal(0)
+    )
+    .toDecimalPlaces(2);
+
+  return { overdueCount: rows.length, totalOutstanding };
 }

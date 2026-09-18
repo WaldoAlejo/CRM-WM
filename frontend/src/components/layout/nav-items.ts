@@ -4,9 +4,11 @@ import {
   LayoutDashboard,
   Layers,
   Package,
+  PackagePlus,
   ShieldAlert,
   BarChart3,
   Truck,
+  Users,
   Wallet,
 } from "lucide-react";
 import type { Role } from "@/types/auth";
@@ -27,6 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
   { label: "Productos", path: "/products", icon: Package },
   { label: "Inventario", path: "/inventory", icon: Boxes },
+  { label: "Importaciones", path: "/import-batches", icon: PackagePlus },
   { label: "Despachos", path: "/dispatch-orders", icon: Truck },
   { label: "Cuentas por cobrar", path: "/accounts-receivable", icon: Wallet, roles: ["ADMIN"] },
   {
@@ -37,10 +40,12 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Marcas", path: "/catalog/brands" },
       { label: "Proveedores", path: "/catalog/suppliers" },
       { label: "Couriers", path: "/catalog/couriers" },
+      { label: "Bodegas", path: "/catalog/warehouses" },
       { label: "Mayoristas", path: "/catalog/wholesalers" },
       { label: "Clientes", path: "/catalog/final-customers" },
     ],
   },
   { label: "Reclamos de Seguro", path: "/insurance-claims", icon: ShieldAlert, roles: ["ADMIN"] },
   { label: "Reportes", path: "/reports", icon: BarChart3, roles: ["ADMIN"] },
+  { label: "Usuarios", path: "/admin/users", icon: Users, roles: ["ADMIN"] },
 ];

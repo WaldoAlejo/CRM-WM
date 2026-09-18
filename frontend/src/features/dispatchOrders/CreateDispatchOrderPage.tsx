@@ -57,6 +57,7 @@ export function CreateDispatchOrderPage() {
       unitPrice: 0,
       discountPct: undefined,
       availableStockAtAdd: result.availableStock,
+      locationId: undefined,
     });
   }
 
@@ -76,6 +77,7 @@ export function CreateDispatchOrderPage() {
         priceType: item.priceType,
         unitPrice: item.unitPrice,
         discountPct: item.discountPct,
+        locationId: item.locationId || undefined,
       })),
     };
 

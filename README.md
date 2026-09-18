@@ -9,7 +9,7 @@ control de productos, variantes, categorías, movimientos de inventario y
 ```
 CRM-WM/
   backend/    API REST (Node.js + TypeScript + Prisma + PostgreSQL)
-  frontend/   Panel administrativo (React + Vite + TypeScript) — próxima etapa
+  frontend/   Panel administrativo (React + Vite + TypeScript + Tailwind)
 ```
 
 ## Backend — cómo levantarlo en local
@@ -112,7 +112,7 @@ Los 4 siguen el mismo shape (`GET` paginado + detalle abierto a `ADMIN`/`OPERATO
 - `POST /api/import-batches` — crea un lote de importación. Admin u operador, pero `freightCost`/`customsCost`/`otherCosts` son admin-only (403 explícito para operador, mismo patrón que precios de variante).
 - `GET /api/import-batches` — listado paginado, con `movementsCount` (cantidad de líneas de ingreso recibidas) y los 3 campos de costo ocultos (ausentes, no `null`) para operador.
 - `GET /api/import-batches/:id` — detalle con todos los `InventoryMovement` de tipo `INGRESO` vinculados; `unitCost` de cada uno oculto para operador.
-- `POST /api/import-batches/:id/receive` — registra el ingreso de una o más líneas (`{ variantId, quantity, unitCost, notes? }`). Todo o nada: si una sola línea referencia un `variantId` inexistente, no se aplica ninguna. `unitCost` sí lo puede cargar operador (es un hecho de la recepción física, no una decisión de precio de venta). Además calcula `landedCostPerUnit` por línea: prorrateo simple, por unidad y en partes iguales, de `freightCost + customsCost + otherCosts` del `ImportBatch` entre TODAS las unidades de ESTE mismo `/receive` (no de todo el historial del lote, si se recibe en varias tandas) — `0` si el lote no tiene ningún costo cargado, nunca `null`.
+- `POST /api/import-batches/:id/receive` — registra el ingreso de una o más líneas (`{ variantId, quantity, unitCost, locationId?, notes? }`; `locationId` opcional = ubicación de destino, ver "Bodegas y Ubicaciones"). Todo o nada: si una sola línea referencia un `variantId` inexistente, no se aplica ninguna. `unitCost` sí lo puede cargar operador (es un hecho de la recepción física, no una decisión de precio de venta). Además calcula `landedCostPerUnit` por línea: prorrateo simple, por unidad y en partes iguales, de `freightCost + customsCost + otherCosts` del `ImportBatch` entre TODAS las unidades de ESTE mismo `/receive` (no de todo el historial del lote, si se recibe en varias tandas) — `0` si el lote no tiene ningún costo cargado, nunca `null`.
   - **Idempotencia opcional**: header `Idempotency-Key`. Si se repite la misma key con el mismo body (comparado por un hash sha256 determinístico, sin importar el orden de las líneas), devuelve la respuesta ya guardada sin tocar el stock de nuevo. Si se repite con un body distinto, `422`. Si se repite apuntando a otro lote, `409`. Sin el header, el endpoint funciona igual, sin protección contra reintentos.
 - `POST /api/inventory/adjustments` — ajuste manual (**solo ADMIN**: puede ocultar mermas/errores, por eso el rol más restrictivo). `reason` obligatorio, `quantity` con signo. Rechaza con 400 si el resultado dejaría el stock en negativo.
 - `GET /api/inventory/movements` — historial paginado, filtros `variantId`/`type`/`importBatchId`/`dateFrom`/`dateTo`. `unitCost` oculto para operador.
@@ -127,7 +127,7 @@ repetir esa lógica.
 
 ### Endpoints disponibles (Módulo 4: Despachos)
 
-- `POST /api/dispatch-orders` — crea una orden `PENDIENTE` y **reserva** stock (`reservedStock`, nunca `stock`) validando disponibilidad por línea. Exactamente uno de `wholesalerId`/`finalCustomerId` según `buyerType`. `paymentMethod=CREDITO` es exclusivo de `buyerType=MAYORISTA` (400 explícito para `CLIENTE_FINAL`); `creditDays` se resuelve del body o de `Wholesaler.defaultCreditDays`, pero la fecha real de `dueDate` recién se calcula al confirmar. Rechaza `variantId` repetido entre líneas (con el SKU en el mensaje) y es todo-o-nada entre líneas.
+- `POST /api/dispatch-orders` — crea una orden `PENDIENTE` y **reserva** stock (`reservedStock`, nunca `stock`) validando disponibilidad por línea. Cada ítem admite un `locationId` opcional (ubicación de origen): se guarda en `DispatchOrderItem`, se usa como origen de la `SALIDA` al confirmar y se reutiliza como destino de la `DEVOLUCION` si el courier rechaza el envío. Exactamente uno de `wholesalerId`/`finalCustomerId` según `buyerType`. `paymentMethod=CREDITO` es exclusivo de `buyerType=MAYORISTA` (400 explícito para `CLIENTE_FINAL`); `creditDays` se resuelve del body o de `Wholesaler.defaultCreditDays`, pero la fecha real de `dueDate` recién se calcula al confirmar. Rechaza `variantId` repetido entre líneas (con el SKU en el mensaje) y es todo-o-nada entre líneas.
 - `POST /api/dispatch-orders/:id/confirm` — transición `PENDIENTE → DESPACHADO`: por ítem, calcula `unitCostSnapshot` (promedio ponderado de todos los `INGRESO` históricos de esa variante) y `landedCostSnapshot` (mismo promedio pero sumando `landedCostPerUnit` de cada `INGRESO`, vía `computeLandedCost`) y los congela, libera `reservedStock`, y aplica `SALIDA`. `landedCostSnapshot` ya es el costo de aterrizaje COMPLETO (fábrica + flete/aduana), no un extra que se sume a `unitCostSnapshot`. Si `paymentMethod=CONTRA_ENTREGA`, crea el `Shipment` en `EN_TRANSITO` en la misma transacción (requiere `courierId`). Rechaza con 409 explícito si la orden no está `PENDIENTE` (cubre tanto doble-confirmación como confirmar una orden cancelada) — nunca duplica la salida de stock.
 - `POST /api/dispatch-orders/:id/cancel` — solo si `PENDIENTE`; libera `reservedStock` sin generar ningún movimiento (el stock real nunca salió).
 - `GET /api/dispatch-orders` / `GET /api/dispatch-orders/:id` — filtros `status`/`paymentMethod`/`buyerType`/`wholesalerId`/`finalCustomerId`/`shippingProvince`/rango de fechas. `unitCostSnapshot`/`landedCostSnapshot` ocultos para operador en el detalle; `unitPrice`/`discountPct` sí se muestran siempre (son precio de venta, no costo).
@@ -151,7 +151,7 @@ del Módulo 3, que sigue siendo admin-only.
   - **REFUND**: crea un `Payment` con `amount` **negativo** en la orden original (`insuranceClaimId` para trazabilidad) y dispara `recalculatePaymentStatus` — `paymentStatus` puede **retroceder** (de `PAGADO` a `PARCIAL` o `PENDIENTE`) si el reembolso baja `amountPaid` por debajo del total; no es un estado que solo avanza. Actualiza `InsuranceClaim.customerResolution = REEMBOLSO`.
   - `claimAmount` (lo que debe el courier) no se recalcula acá — ya quedó fijo al crear el reclamo en `/lost-or-damaged`, independiente de cómo se resuelva la situación con el cliente.
 - `PATCH /api/insurance-claims/:id` — `{ status, reimbursedAmount? }`. Actualiza el estado del reclamo ANTE EL COURIER (independiente de `customerResolution`, que es la resolución ante el CLIENTE — dos ciclos de vida en paralelo). `resolvedDate` se llena automáticamente al pasar a `PAGADO`/`RECHAZADO`.
-- `GET /api/insurance-claims` — paginado, filtros `courierId`/`status`/`customerResolution`/`overdue=true` (`expectedResolutionDate` vencida y `status` no en `APROBADO`/`PAGADO`/`RECHAZADO`). Incluye `pendingByCourier`: suma de `claimAmount` de reclamos abiertos (`PENDIENTE`/`EN_REVISION`) agrupada por courier — **global**, no se filtra por los query params de la lista, es el resumen "de un vistazo" de cuánto debe cada courier.
+- `GET /api/insurance-claims` — paginado, filtros `courierId`/`status`/`customerResolution`/`overdue=true` (`expectedResolutionDate` vencida y `status` no en `APROBADO`/`PAGADO`/`RECHAZADO`) y `open=true` (en proceso: `PENDIENTE`/`EN_REVISION`, sin exigir que esté vencido; es la definición `OPEN_STATUSES` que también usa el Dashboard). Incluye `pendingByCourier`: suma de `claimAmount` de reclamos abiertos (`PENDIENTE`/`EN_REVISION`) agrupada por courier — **global**, no se filtra por los query params de la lista, es el resumen "de un vistazo" de cuánto debe cada courier.
 
 ### Endpoints disponibles (Módulo 5: Reporte de Rentabilidad)
 
@@ -163,6 +163,28 @@ del Módulo 3, que sigue siendo admin-only.
   - Incluye órdenes `DESPACHADO` sin `Shipment`, o con `Shipment` en `EN_TRANSITO`/`ENTREGADO`. Excluye por completo `Shipment.status = RECHAZADO` (el producto volvió a bodega, no hubo venta). Los `PERDIDO`/`DANADO` van a `ventasConReclamoPendiente` mientras su `InsuranceClaim.status` no sea `PAGADO`; en ese momento pasan a `lines`/`totals` como venta normal.
   - **Reproducibilidad**: dos corridas del mismo reporte, sobre el mismo rango de fechas, dan siempre el mismo número — el reporte solo lee snapshots ya congelados en `/confirm`, nunca recalcula costo en vivo (a diferencia de un primer diseño descartado que llamaba a `computeLandedCost` al momento de consultar el reporte).
 - `GET /api/reports/profitability/summary` — mismos filtros; agrega `totals` del período, `byCategory` (mismo shape por categoría) y `topProductsByProfit` (top 10 por `profit` descendente). Usa el mismo dataset de `lines` que el reporte principal (no mezcla `ventasConReclamoPendiente`).
+
+### Endpoints disponibles (Módulo 6: Bodegas y Ubicaciones)
+
+- `GET /api/warehouses` (array plano, con sus `locations` activas anidadas) · `GET /api/warehouses/:id` — cualquier usuario autenticado (OPERATOR las necesita para elegir ubicación). `POST`/`PATCH`/`DELETE` — solo ADMIN.
+- `GET/POST /api/warehouses/:warehouseId/locations` · `PATCH/DELETE /api/locations/:id` — mismo criterio (lectura abierta, escritura ADMIN). `Location` = `code` libre y editable (único por bodega) + `aisle`/`shelf`/`level` opcionales.
+- **Soft delete con `isActive`** (igual que `Courier`, sin `deletedAt`). `DELETE` de bodega falla con 409 si tiene ubicaciones activas; `DELETE` de ubicación falla con 409 si su **stock neto ≠ 0** (agregado del ledger) o si hay ítems de órdenes `PENDIENTE` que la usan como origen. Los movimientos históricos no bloquean.
+- **Ledger**: `InventoryMovement` tiene `fromLocationId`/`toLocationId` (ambas nullable — los movimientos anteriores quedan en `NULL`). `applyMovement()` recibe un solo `locationId` y decide el lado por el signo de `quantity` (positivo → destino, negativo → origen). `POST /inventory/adjustments` también acepta `locationId`.
+- `GET /api/inventory/stock-by-location` — stock neto por (ubicación, variante) **agregado del ledger** (sin contador paralelo), filtros `warehouseId`/`locationId`/`variantId`, paginado.
+- `ProductVariant.warehouseLocation` (texto libre) se conserva tal cual, independiente del nuevo catálogo.
+
+### Endpoints disponibles (Módulo 7: Usuarios) — ADMIN-only, todo el módulo
+
+- `GET /api/users` (activos **e inactivos**, para poder reactivar) · `GET /api/users/:id` · `POST /api/users` (`email`, `password` ≥ 8, `name`, `role`) · `PATCH /api/users/:id` (`name`/`email`/`role`/`isActive`) · `POST /api/users/:id/reset-password`.
+- No hay `DELETE`: se desactiva con `isActive=false`. `passwordHash` nunca se selecciona ni se devuelve.
+- **Reseteo de contraseña**: genera una temporal aleatoria, la guarda hasheada y la devuelve **una sola vez** en la respuesta (el admin se la comunica por fuera; no hay email ni "forzar cambio en el próximo login").
+- **Protecciones** (en `PATCH`): un usuario no puede cambiar su propio `role`/`isActive` (400, aunque el valor no cambie); no se puede desactivar ni degradar al **último ADMIN activo** (409).
+- Limitación heredada: el JWT es stateless (8h) — un usuario desactivado o degradado conserva su token hasta que expire.
+
+### Endpoints disponibles (Módulo 8: Dashboard)
+
+- `GET /api/dashboard/summary` — un solo endpoint (los bloques corren en paralelo). Cada bloque reusa la definición de su módulo dueño: `stockAlerts` (`getStockSummary` con `belowMinStock`, top 5 + `count`, usa `ProductVariant.minStock`), `pendingCourierShipments` (`Shipment` en `EN_TRANSITO`), `sales.today|week|month` (líneas `DESPACHADO`, regla compartida `classifySaleByShipment` de `src/lib/dispatchSaleClassification.ts`, la misma de Reportes; "semana" = últimos 7 días, "mes" = mes calendario, en UTC).
+- **Por rol**: OPERATOR recibe solo `stockAlerts`, `pendingCourierShipments` y `sales` con `unitsSold`/`totalRevenue`. ADMIN además recibe `accountsReceivable` (`overdueCount`, `totalOutstanding`, mismo `where` que `/accounts-receivable`), `insuranceClaims.pendingCount` y, en cada período de ventas, `totalCost`/`profit`/`profitMarginPct`. Para OPERATOR esas claves están **ausentes** del JSON y la query de ventas ni siquiera selecciona las columnas de costo.
 
 ### Validación de RUC (mayoristas)
 
@@ -247,5 +269,39 @@ variante en JSON, ledger de movimientos de inventario, soft delete, auditoría).
 
 ## Frontend
 
-Pendiente — se construirá con React + Vite + TailwindCSS una vez que la API
-tenga sus primeros módulos (categorías, productos/variantes).
+React 19 + Vite + TypeScript + Tailwind, con React Query, React Hook Form + Zod
+y Recharts (gráficos). Se levanta con `cd frontend && npm install && npm run dev`
+(necesita el backend en `http://localhost:4000`).
+
+### Páginas
+
+| Ruta | Página | Acceso |
+|---|---|---|
+| `/` | Dashboard (alertas de stock bajo, envíos esperando al courier, ventas hoy/7 días/mes; ADMIN: cartera vencida, reclamos en proceso y ganancia) | todos (widgets de costo solo ADMIN) |
+| `/products`, `/products/:id`, `/search` | Productos, variantes, imágenes, búsqueda | todos (precios/costos ocultos a OPERATOR) |
+| `/inventory`, `/inventory/low-stock` | Stock por ubicación; stock bajo | todos |
+| `/import-batches`, `/new`, `/:id`, `/:id/receive` | Importaciones: listado, nuevo lote con **vista previa en vivo del prorrateo por unidad** (solo ADMIN), detalle, recepción de más mercadería por tandas, `locationId` por línea | todos (costos del lote y costo puesto solo ADMIN; OPERATOR sí carga el costo unitario en origen porque el backend lo exige) |
+| `/dispatch-orders`, `/new`, `/:id` | Despachos (con selector de ubicación por ítem), pagos, courier | todos |
+| `/catalog/*` | Categorías, marcas, proveedores, couriers, mayoristas, clientes, bodegas (`/catalog/warehouses`) y sus ubicaciones | lectura todos, escritura ADMIN |
+| `/accounts-receivable`, `/insurance-claims`, `/reports*`, `/admin/users` | Cartera, reclamos de seguro (`?open=true`), rentabilidad, usuarios | solo ADMIN (`RequireRole` + oculto en el menú) |
+
+Patrones: catálogos simples usan el CRUD genérico (`components/crud/`); las
+páginas con acciones propias (Usuarios, Importaciones) usan `DataTable` con
+hooks a medida. Los widgets restringidos por rol **no se renderizan** para
+OPERATOR (no se muestra "$0" ni un placeholder).
+
+### Tests end-to-end
+
+Los tests del frontend corren contra el **backend real** (sin mocks) y contra
+la base de **desarrollo**, no una aislada:
+
+```
+cd backend && npm run dev      # terminal 1 (necesita el seed: admin@ / operador@kestore.com.ec)
+cd frontend && npm test        # terminal 2
+```
+
+Reglas para escribir tests nuevos (aprendidas de fallas reales):
+- La base es compartida y **acumula datos**: los pedidos/ledger no se pueden borrar por API. No asumas que tu fixture cae en la página 1 de un listado — filtra por tus propios datos (proveedor, bodega) o recorre las páginas.
+- Un `<Select>` de Radix recién usado deja capas abiertas en happy-dom que impiden abrir un buscador (`Combobox`/Popover) después: usa primero el buscador y luego los selects.
+- Cualquier página que use `<Link>` necesita `MemoryRouter` en su test.
+- `dueDate` de crédito no se puede fijar en el pasado por API: los tests de cartera lo retroceden con un script Node que usa el `PrismaClient` del backend.

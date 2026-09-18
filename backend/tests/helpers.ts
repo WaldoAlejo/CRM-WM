@@ -135,6 +135,17 @@ export async function createCourierFixture() {
   return prisma.courier.create({ data: { name: `Courier ${randomUUID()}` } });
 }
 
+export async function createWarehouseFixture() {
+  return prisma.warehouse.create({ data: { name: `Bodega ${randomUUID()}` } });
+}
+
+export async function createLocationFixture(overrides?: { warehouseId?: string; code?: string }) {
+  const warehouseId = overrides?.warehouseId ?? (await createWarehouseFixture()).id;
+  return prisma.location.create({
+    data: { warehouseId, code: overrides?.code ?? `LOC-${randomUUID().slice(0, 8).toUpperCase()}` },
+  });
+}
+
 export async function createBrandFixture() {
   return prisma.brand.create({ data: { name: `Marca ${randomUUID()}` } });
 }

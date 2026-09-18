@@ -1,0 +1,164 @@
+import { Trash2Icon } from "lucide-react";
+import type { ArrayPath, Control, FieldArrayWithId, FieldErrors, FieldValues, Path } from "react-hook-form";
+import { useWatch } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useLocationOptions } from "@/features/locations/useLocationOptions";
+import type { ReceiveLineFormValues } from "../importBatches.schema";
+import { landedUnitCost } from "../landedCost";
+
+// Tanto la pantalla de "nuevo lote" como la de "recibir más mercadería"
+// comparten esta tabla: solo cambia el form que la contiene, y ambos tienen
+// un campo `lines` con la misma forma.
+interface FormWithLines extends FieldValues {
+  lines: ReceiveLineFormValues[];
+}
+
+interface ReceiveLinesTableProps<T extends FormWithLines> {
+  control: Control<T>;
+  errors: FieldErrors<T>;
+  fields: FieldArrayWithId<T, ArrayPath<T>, "id">[];
+  remove: (index: number) => void;
+  // Prorrateo por unidad ya calculado (null = no mostrar costo puesto: es
+  // OPERATOR, que ni siquiera ve costos del lote).
+  prorationPerUnit: number | null;
+  disabled?: boolean;
+}
+
+export function ReceiveLinesTable<T extends FormWithLines>({
+  control,
+  errors,
+  fields,
+  remove,
+  prorationPerUnit,
+  disabled,
+}: ReceiveLinesTableProps<T>) {
+  const lines = (useWatch({ control, name: "lines" as Path<T> }) as ReceiveLineFormValues[] | undefined) ?? [];
+  const { options: locationOptions } = useLocationOptions();
+
+  const arrayLevelError =
+    (errors.lines as { root?: { message?: string }; message?: string } | undefined)?.root?.message ??
+    (errors.lines as { message?: string } | undefined)?.message;
+
+  if (fields.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+        Todavía no agregaste ninguna línea.
+        {arrayLevelError ? <p className="mt-2 font-medium text-destructive">{arrayLevelError}</p> : null}
+      </div>
+    );
+  }
+
+  const showLanded = prorationPerUnit !== null;
+
+  return (
+    <div className="space-y-2">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Producto</TableHead>
+            <TableHead className="w-24">Cantidad</TableHead>
+            <TableHead className="w-32">Costo en origen</TableHead>
+            {showLanded ? <TableHead className="w-32">Costo puesto</TableHead> : null}
+            <TableHead className="w-48">Ubicación</TableHead>
+            <TableHead className="w-12" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {fields.map((field, index) => {
+            const line = lines[index];
+            const landed = showLanded ? landedUnitCost(Number(line?.unitCost ?? 0) || 0, prorationPerUnit) : null;
+            return (
+              <TableRow key={field.id}>
+                <TableCell>
+                  <p className="font-medium">{line?.sku}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {line?.productName}
+                    {line?.label ? ` — ${line.label}` : ""}
+                  </p>
+                </TableCell>
+                <TableCell>
+                  <FormField
+                    control={control}
+                    name={`lines.${index}.quantity` as Path<T>}
+                    render={({ field: f }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input type="number" min={1} step={1} aria-label={`Cantidad ${line?.sku}`} disabled={disabled} {...f} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TableCell>
+                <TableCell>
+                  <FormField
+                    control={control}
+                    name={`lines.${index}.unitCost` as Path<T>}
+                    render={({ field: f }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input type="number" min={0} step="any" aria-label={`Costo unitario ${line?.sku}`} disabled={disabled} {...f} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TableCell>
+                {showLanded ? (
+                  <TableCell className="text-sm font-medium">${landed?.toFixed(2)}</TableCell>
+                ) : null}
+                <TableCell>
+                  <FormField
+                    control={control}
+                    name={`lines.${index}.locationId` as Path<T>}
+                    render={({ field: f }) => (
+                      <FormItem>
+                        <Select
+                          value={(f.value as string | undefined) ?? "none"}
+                          onValueChange={(value) => f.onChange(value === "none" ? undefined : value)}
+                          disabled={disabled}
+                        >
+                          <FormControl>
+                            <SelectTrigger aria-label={`Ubicación ${line?.sku}`}>
+                              <SelectValue placeholder="Sin especificar" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Sin especificar</SelectItem>
+                            {locationOptions.map((loc) => (
+                              <SelectItem key={loc.id} value={loc.id}>
+                                {loc.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={disabled}
+                    onClick={() => remove(index)}
+                    title="Quitar línea"
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+      {arrayLevelError ? <p className="text-sm font-medium text-destructive">{arrayLevelError}</p> : null}
+    </div>
+  );
+}

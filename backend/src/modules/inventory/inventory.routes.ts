@@ -4,6 +4,7 @@ import { asyncHandler } from "../../middleware/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import {
   createAdjustmentController,
+  getStockByLocationController,
   getStockSummaryController,
   listMovementsController,
 } from "./inventory.controller";
@@ -14,6 +15,7 @@ inventoryRouter.use(requireAuth);
 
 inventoryRouter.get("/movements", asyncHandler(listMovementsController));
 inventoryRouter.get("/stock-summary", asyncHandler(getStockSummaryController));
+inventoryRouter.get("/stock-by-location", asyncHandler(getStockByLocationController));
 
 // Ajustes manuales: solo ADMIN (pueden ocultar mermas/errores sin más
 // control que el motivo escrito — ver discusión de roles del módulo). Si

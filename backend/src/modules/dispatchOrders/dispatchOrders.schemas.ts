@@ -18,6 +18,10 @@ export const createDispatchOrderSchema = z.object({
         priceType: z.nativeEnum(PriceType),
         unitPrice: z.number().nonnegative(),
         discountPct: z.number().min(0).max(100).optional(),
+        // Ubicación de origen elegida al crear la orden. Se usa recién al
+        // confirmar (ver confirmDispatchOrder), pero se captura acá porque es
+        // donde existe el listado de ítems.
+        locationId: z.string().min(1).optional(),
       })
     )
     .min(1, "Debes incluir al menos un ítem"),

@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
 import { unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { fetch as undiciFetch } from "undici";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -69,6 +69,54 @@ function loginAs(role: "admin" | "operator") {
 function setSession(token: string, user: AuthUser) {
   setToken(token);
   localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+}
+
+// CAUSA RAÍZ de la falla que arrastraba este archivo: la base de desarrollo es
+// compartida y una orden CREDITO confirmada NO se puede borrar por API (los
+// pedidos son historial inmutable), así que cada corrida deja una orden
+// vencida más. La página lista de a 20, ordenada por dueDate ascendente — con
+// más de 20 vencidas acumuladas, la orden recién creada (dueDate más reciente)
+// quedaba en la página 2+ y `findByText` nunca la veía en la página 1. No es un
+// bug del módulo (paginar así es su comportamiento correcto): el test tiene
+// que recorrer las páginas como lo haría un usuario, no asumir que su fixture
+// cae en la primera.
+async function findOrderAcrossPages(orderNumber: string): Promise<HTMLElement> {
+  // Los controles de paginación solo existen cuando ya llegó la respuesta.
+  await screen.findByText(/en total/i, {}, { timeout: 8000 });
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const found = screen.queryByText(orderNumber);
+    if (found) return found;
+
+    const next = screen.getByRole("button", { name: /siguiente/i }) as HTMLButtonElement;
+    if (next.disabled) break;
+    const currentPage = /página (\d+) de/i.exec(document.body.textContent ?? "")?.[1];
+    fireEvent.click(next);
+    // Mientras carga la página siguiente los controles de paginación
+    // desaparecen (no hay keepPreviousData): se espera a que vuelvan, ya con
+    // el número de página nuevo y sus filas.
+    await waitFor(
+      () => {
+        const nowPage = /página (\d+) de/i.exec(document.body.textContent ?? "")?.[1];
+        expect(nowPage).toBeDefined();
+        expect(nowPage).not.toBe(currentPage);
+      },
+      { timeout: 8000 }
+    );
+  }
+  return screen.findByText(orderNumber, {}, { timeout: 3000 });
+}
+
+// Todas las páginas de GET /accounts-receivable (pageSize máximo = 100).
+async function fetchAllReceivables(): Promise<{ orderNumber: string; orderTotal: string }[]> {
+  const rows: { orderNumber: string; orderTotal: string }[] = [];
+  for (let page = 1; ; page++) {
+    const res = await apiFetch<{
+      data: { orderNumber: string; orderTotal: string }[];
+      pagination: { totalPages: number };
+    }>(`/accounts-receivable?pageSize=100&page=${page}`);
+    rows.push(...res.data);
+    if (page >= res.pagination.totalPages) return rows;
+  }
 }
 
 function renderWithGate(initialPath: string) {
@@ -210,7 +258,7 @@ describe("Cuentas por cobrar — ADMIN-only y filtrado real, contra el backend r
     renderWithGate("/accounts-receivable");
 
     await screen.findByText(/cuentas por cobrar/i);
-    const orderLink = await screen.findByText(overdueUnpaidOrderNumber, {}, { timeout: 8000 });
+    const orderLink = await findOrderAcrossPages(overdueUnpaidOrderNumber);
     const row = orderLink.closest("tr");
     if (!row) throw new Error("No se encontró la fila de la orden en la tabla");
 
@@ -221,15 +269,13 @@ describe("Cuentas por cobrar — ADMIN-only y filtrado real, contra el backend r
     // de que la base esté "limpia".
     expect(within(row).getByText(/\$0\.00 \/ \$100/)).toBeInTheDocument();
 
-    // La orden pagada por completo (aunque vencida) no debe aparecer.
-    expect(screen.queryByText(overduePaidOrderNumber)).not.toBeInTheDocument();
-
-    // El total mostrado es el mismo que devuelve la API — nunca se
-    // reconstruye sumando ítems del lado del frontend.
-    const ar = await apiFetch<{ data: { orderNumber: string; orderTotal: string }[] }>(
-      "/accounts-receivable?pageSize=100"
-    );
-    const apiOrder = ar.data.find((o) => o.orderNumber === overdueUnpaidOrderNumber);
+    // La orden pagada por completo (aunque vencida) no debe aparecer en NINGUNA
+    // página del listado (se revisa contra la API completa, no solo la
+    // página visible), y el total mostrado es el mismo que devuelve la API —
+    // nunca se reconstruye sumando ítems del lado del frontend.
+    const all = await fetchAllReceivables();
+    expect(all.some((o) => o.orderNumber === overduePaidOrderNumber)).toBe(false);
+    const apiOrder = all.find((o) => o.orderNumber === overdueUnpaidOrderNumber);
     expect(apiOrder?.orderTotal).toBe("100");
   }, 15000);
 });

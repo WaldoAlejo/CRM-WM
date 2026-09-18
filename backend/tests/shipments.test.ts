@@ -5,6 +5,7 @@ import {
   createCategoryFixture,
   createCourierFixture,
   createFinalCustomerFixture,
+  createLocationFixture,
   createProductFixture,
   createTestUser,
   createVariantWithIngreso,
@@ -20,7 +21,13 @@ afterEach(async () => {
 
 // Crea una orden CONTRA_ENTREGA ya confirmada (con su Shipment EN_TRANSITO),
 // lista para probar los 3 escenarios del courier.
-async function setupConfirmedCodOrder(token: string, quantity = 5, unitCost = 10, unitPrice = 25) {
+async function setupConfirmedCodOrder(
+  token: string,
+  quantity = 5,
+  unitCost = 10,
+  unitPrice = 25,
+  locationId?: string
+) {
   const { category } = await createCategoryFixture();
   const product = await createProductFixture({ categoryId: category.id });
   const variant = await createVariantWithIngreso({ productId: product.id, quantity: 20, unitCost });
@@ -36,7 +43,7 @@ async function setupConfirmedCodOrder(token: string, quantity = 5, unitCost = 10
       shippingProvince: "Pichincha",
       shippingCity: "Quito",
       paymentMethod: "CONTRA_ENTREGA",
-      items: [{ variantId: variant.id, quantity, priceType: "PVP", unitPrice }],
+      items: [{ variantId: variant.id, quantity, priceType: "PVP", unitPrice, locationId }],
     });
 
   const confirmed = await request(app)
@@ -128,6 +135,27 @@ describe("POST /api/shipments/:id/reject", () => {
     });
     expect(devolucion?.quantity).toBe(5);
     expect(devolucion?.stockAfter).toBe(20);
+  });
+
+  it("reutiliza el locationId del ítem (origen de la SALIDA) como destino de la DEVOLUCION", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const location = await createLocationFixture();
+    const { variant, shipmentId } = await setupConfirmedCodOrder(token, 5, 10, 25, location.id);
+
+    const salida = await prisma.inventoryMovement.findFirst({
+      where: { variantId: variant.id, type: "SALIDA" },
+    });
+    expect(salida?.fromLocationId).toBe(location.id);
+
+    await request(app)
+      .post(`/api/shipments/${shipmentId}/reject`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ rejectionReason: "Cliente no estaba en casa" });
+
+    const devolucion = await prisma.inventoryMovement.findFirst({
+      where: { variantId: variant.id, type: "DEVOLUCION" },
+    });
+    expect(devolucion?.toLocationId).toBe(location.id);
   });
 
   it("rechaza reject sin rejectionReason", async () => {

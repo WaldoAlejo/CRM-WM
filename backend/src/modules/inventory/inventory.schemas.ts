@@ -6,6 +6,10 @@ export const createAdjustmentSchema = z.object({
   quantity: z.number().int().refine((v) => v !== 0, "La cantidad no puede ser 0"),
   reason: z.string().min(1, "El motivo es obligatorio").max(500),
   notes: z.string().max(500).optional(),
+  // Ubicación donde ocurre el ajuste. applyMovement() decide sola si va a
+  // fromLocationId o toLocationId según el signo de `quantity` — acá no hace
+  // falta distinguir origen/destino, es un solo lugar.
+  locationId: z.string().min(1).optional(),
 });
 
 export const listMovementsQuerySchema = z.object({
@@ -24,4 +28,12 @@ export const stockSummaryQuerySchema = z.object({
   categoryId: z.string().optional(),
   subcategoryId: z.string().optional(),
   belowMinStock: z.coerce.boolean().optional(),
+});
+
+export const stockByLocationQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  warehouseId: z.string().optional(),
+  locationId: z.string().optional(),
+  variantId: z.string().optional(),
 });
