@@ -84,7 +84,7 @@ describe("Ubicaciones — CRUD anidado bajo una bodega, de punta a punta contra 
     await waitFor(() => expect(result.current.deleteMutation.isSuccess).toBe(true), { timeout: 8000 });
     await waitFor(() => {
       expect(result.current.listQuery.data?.data.some((l) => l.id === createdId)).toBe(false);
-    });
+    }, { timeout: 8000 });
 
     createdId = undefined;
   }, 30000);

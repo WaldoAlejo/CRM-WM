@@ -277,5 +277,8 @@ describe("Cuentas por cobrar — ADMIN-only y filtrado real, contra el backend r
     expect(all.some((o) => o.orderNumber === overduePaidOrderNumber)).toBe(false);
     const apiOrder = all.find((o) => o.orderNumber === overdueUnpaidOrderNumber);
     expect(apiOrder?.orderTotal).toBe("100");
-  }, 15000);
+    // Timeout holgado a propósito: findOrderAcrossPages recorre las páginas de a
+    // una y cada corrida deja una vencida más (no se pueden borrar), así que el
+    // tiempo crece con el historial acumulado (~4 s con 80 vencidas).
+  }, 90000);
 });
