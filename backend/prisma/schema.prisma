@@ -1,0 +1,866 @@
+// ============================================================================
+// WM / Kestore - Sistema de Inventario y Almacenamiento
+// Esquema de base de datos (Prisma + PostgreSQL)
+//
+// Este archivo es la "fuente de verdad" de la estructura de datos.
+// Los comentarios explican el PORQUÉ de cada decisión, no el qué (eso ya
+// lo dice el nombre del campo), para que sea fácil de mantener sin ser
+// desarrollador profesional.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Conexión pooled (pgbouncer): la usa la app en tiempo de ejecución.
+  directUrl = env("DIRECT_URL") // Conexión directa: la usa Prisma Migrate (el pooler de Neon no soporta advisory locks).
+}
+
+// ----------------------------------------------------------------------------
+// USUARIOS Y ROLES
+// ----------------------------------------------------------------------------
+
+enum Role {
+  ADMIN // Acceso total: categorías, usuarios, reportes, todo.
+  OPERATOR // Bodega: puede registrar ingresos, salidas y ajustes, pero no
+  // administrar usuarios ni catálogo de categorías (se valida en la API).
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(OPERATOR)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relaciones inversas: para saber quién creó/modificó cada cosa (auditoría).
+  createdProducts    Product[]           @relation("ProductCreatedBy")
+  updatedProducts    Product[]           @relation("ProductUpdatedBy")
+  inventoryMovements InventoryMovement[]
+  importBatches      ImportBatch[]
+  dispatchOrders     DispatchOrder[]
+  payments           Payment[]
+  wholesalers        Wholesaler[]
+  shipments          Shipment[]
+  auditLogs          AuditLog[]
+
+  @@index([email])
+}
+
+// ----------------------------------------------------------------------------
+// CATEGORÍAS Y SUBCATEGORÍAS (jerarquía fija de 2 niveles)
+//
+// Se usan dos tablas separadas en vez de una tabla "Category" auto-referenciada
+// porque el negocio solo necesita 2 niveles (Categoría > Subcategoría), nunca
+// más. Con dos tablas explícitas el código y las consultas son mucho más
+// simples de entender y mantener que con una jerarquía recursiva genérica.
+// ----------------------------------------------------------------------------
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  deletedAt   DateTime? // Soft delete: nunca se borra físicamente.
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  subcategories Subcategory[]
+  products      Product[] // Productos asignados directamente a la categoría
+  // (por si aún no tienen subcategoría definida).
+
+  @@index([deletedAt])
+}
+
+model Subcategory {
+  id         String    @id @default(cuid())
+  name       String
+  categoryId String
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  products Product[]
+
+  // No pueden existir dos subcategorías con el mismo nombre dentro de la misma categoría.
+  @@unique([categoryId, name])
+  @@index([deletedAt])
+}
+
+// ----------------------------------------------------------------------------
+// PROVEEDORES (para lotes de importación) y COMPRADORES (para órdenes de despacho)
+//
+// Se modelan como tablas propias (en vez de un simple campo de texto) para que
+// el sistema escale sin rediseño: mañana se puede filtrar "todo lo que llegó
+// del proveedor X" o "todo lo despachado al cliente Y" sin tocar el esquema.
+//
+// Los compradores se separan en DOS tablas (Wholesaler / FinalCustomer) en
+// vez de un solo "Customer" con un campo `type`: un mayorista se identifica
+// por RUC/razón social y maneja crédito, mientras que un cliente final se
+// identifica por cédula/pasaporte y nunca maneja crédito. Forzar ambos casos
+// en una sola tabla obligaba a que casi todos los campos fueran opcionales
+// (¿RUC de un consumidor final? ¿cédula de una empresa?) y no dejaba validar
+// nada a nivel de esquema. Con tablas separadas, cada una solo tiene los
+// campos que le corresponden.
+// ----------------------------------------------------------------------------
+
+model Supplier {
+  id          String    @id @default(cuid())
+  // Único solo entre los NO eliminados (índice único parcial agregado a mano
+  // en la migración, Prisma DSL no soporta WHERE en @unique): un proveedor
+  // soft-deleted nunca debe bloquear crear uno nuevo con el mismo nombre.
+  name        String
+  contactInfo String? // Teléfono, WeChat, email, lo que sea útil.
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  importBatches ImportBatch[]
+
+  @@index([deletedAt])
+}
+
+model Wholesaler {
+  id           String  @id @default(cuid())
+  businessName String // Razón social.
+  ruc          String  @unique
+  contactName  String?
+  phone        String?
+  email        String?
+  address      String?
+
+  // Límite de crédito habilitado para este mayorista y los días de crédito
+  // que se le ofrecen por defecto. Son solo una referencia/tope sugerido
+  // para la API al armar una orden a crédito (ver DispatchOrder.creditDays);
+  // el crédito realmente usado en un momento dado se calcula sumando el
+  // saldo pendiente de sus DispatchOrder, no se guarda aquí.
+  creditLimit       Decimal? @db.Decimal(10, 2)
+  defaultCreditDays Int?
+
+  // Resultado de la última validación de RUC contra el servicio externo
+  // (ver RucValidationService). Es solo informativo/de auditoría: el registro
+  // del mayorista NUNCA depende de que esta consulta haya funcionado, así que
+  // los tres campos son opcionales y pueden quedar vacíos si el proveedor no
+  // respondió o si se cargó todo a mano.
+  rucValidationStatus   String? // Estado tributario tal cual lo devuelve el proveedor (ej: "ACTIVO", "SUSPENDIDO").
+  rucValidationResponse Json? // Respuesta cruda de esa consulta, para auditoría.
+  rucValidatedAt        DateTime? // Cuándo se hizo esa consulta.
+
+  isActive    Boolean   @default(true)
+  deletedAt   DateTime?
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  dispatchOrders DispatchOrder[]
+
+  @@index([businessName])
+  @@index([deletedAt])
+}
+
+enum IdType {
+  CEDULA
+  PASAPORTE
+  RUC
+}
+
+model FinalCustomer {
+  id       String  @id @default(cuid())
+  fullName String
+  idType   IdType  @default(CEDULA)
+  idNumber String?
+  phone    String?
+  email    String?
+  address  String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  dispatchOrders DispatchOrder[]
+
+  // Compuesto con idType (no solo idNumber): una cédula y un pasaporte
+  // podrían coincidir como string sin ser la misma persona. NULL sigue
+  // permitiendo múltiples clientes sin ID cargado todavía. Único solo entre
+  // los NO eliminados (índice único parcial agregado a mano en la migración,
+  // ver comentario de Supplier.name).
+  @@index([fullName])
+  @@index([idNumber])
+  @@index([deletedAt])
+}
+
+// ----------------------------------------------------------------------------
+// PRODUCTOS (padre) Y VARIANTES
+// ----------------------------------------------------------------------------
+
+// Marca bajo la que se vende el producto (ej: "WM Home"). Es una tabla propia
+// y no un campo de texto en Product porque hoy ya conviven varias líneas
+// propias, y mañana podría venderse marca de terceros sin rediseñar nada.
+model Brand {
+  id String @id @default(cuid())
+  // Único solo entre las NO eliminadas (índice único parcial agregado a mano
+  // en la migración, ver comentario de Supplier.name).
+  name        String
+  description String?
+  deletedAt   DateTime? // Soft delete, consistente con el resto de tablas de referencia (Category, Supplier, etc.).
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products Product[]
+
+  @@index([deletedAt])
+}
+
+enum ProductStatus {
+  ACTIVE
+  DISCONTINUED
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  sku         String        @unique // Código propio interno, ej: WM-0012
+  name        String
+  description String?
+  model       String?
+  barcode     String?       @unique // EAN/UPC de fábrica, opcional.
+  status      ProductStatus @default(ACTIVE)
+
+  categoryId    String
+  category      Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  subcategoryId String? // Opcional: puede clasificarse solo por categoría al inicio.
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: Restrict)
+  brandId       String? // Opcional: no todos los productos necesitan marca asignada desde el día uno.
+  brand         Brand?       @relation(fields: [brandId], references: [id])
+
+  images         ProductImage[]
+  certifications Certification[]
+  attachments    ProductAttachment[]
+  variants       ProductVariant[]
+
+  deletedAt DateTime? // Soft delete.
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   User?   @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([name])
+  @@index([status])
+  @@index([categoryId])
+  @@index([subcategoryId])
+  @@index([deletedAt])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  position  Int      @default(0) // Orden de despliegue (portada = 0).
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// Certificaciones/homologaciones del producto (ARCOTEL para electrónicos que
+// transmiten señal, CE/FCC de fábrica, UN38.3 para baterías de litio, MSDS
+// para químicos, etc.). Se modela aparte de Product porque un mismo producto
+// puede necesitar varias, cada una con su propio número y fecha, y porque en
+// una importadora esto es justo lo que se pide para nacionalizar o vender
+// legalmente ciertas categorías (cámaras, cerraduras smart, power stations).
+model Certification {
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type       String // Ej: "ARCOTEL", "CE", "FCC", "UN38.3", "MSDS".
+  certNumber String?
+  issuedDate DateTime?
+  fileUrl    String? // PDF/imagen del certificado.
+  notes      String?
+  createdAt  DateTime  @default(now())
+
+  @@index([productId])
+}
+
+// Documentos de apoyo del producto (manual de usuario, ficha técnica, etc.),
+// separados de ProductImage porque no son fotos para mostrar en catálogo
+// sino archivos de referencia/soporte.
+model ProductAttachment {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type      String // Ej: "MANUAL", "FICHA_TECNICA".
+  url       String
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// Variante de un producto: color, tipo/modelo, capacidad, etc.
+//
+// Los atributos que distinguen una variante (color, tipo, capacidad...)
+// cambian según la categoría del producto (una freidora tiene "capacidad",
+// una chapa digital tiene "tipo de apertura"). En vez de crear una columna
+// fija por cada posible atributo (lo que obligaría a rediseñar el esquema
+// cada vez que aparece un atributo nuevo), se guardan en un campo JSON
+// flexible. `label` guarda el texto ya armado (ej: "Negro / 5L") para
+// mostrarlo rápido en listados sin tener que interpretar el JSON.
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  sku        String  @unique // Derivado del padre, ej: WM-0012-NEGRO
+  barcode    String? @unique
+  attributes Json // Ej: { "color": "Negro", "capacidad": "5L" }
+  label      String? // Texto legible derivado de attributes, ej: "Negro / 5L"
+
+  // Índice GIN sobre el JSON: con 35 SKUs no se nota, pero permite que
+  // filtros como "todos los productos color negro" o "todos los de 5L"
+  // (across categorías) sigan siendo rápidos cuando el catálogo crezca.
+  // Se agrega ahora para no tener que tocar el esquema/migraciones después.
+
+  // --- Logística ---
+  // Peso y dimensiones por variante (no por producto): dos variantes del
+  // mismo producto pueden pesar/medir distinto (ej: freidora 4L vs 6L). Sirve
+  // para calcular CBM al cotizar o planear un contenedor nuevo.
+  weightKg     Decimal? @db.Decimal(10, 3) // Kilos, con 3 decimales para artículos livianos.
+  dimensionsCm String? // Ej: "20x15x10" (largo x ancho x alto en cm).
+
+  // --- Stock ---
+  // IMPORTANTE: este campo es una CACHÉ de solo lectura para consultas rápidas.
+  // La fuente de verdad real es la suma de InventoryMovement.quantity para esta
+  // variante. Nunca se debe modificar `stock` directamente desde la API: solo
+  // se actualiza dentro de la misma transacción en que se crea un movimiento.
+  // Si alguna vez queda desincronizado, se puede recalcular sumando movimientos.
+  stock             Int     @default(0)
+  minStock          Int? // Umbral para alerta de reorden (opcional).
+  warehouseLocation String? // Ej: "Pasillo A - Estante 3 - Nivel 2"
+
+  // Unidades comprometidas por órdenes en estado PENDIENTE (aún no
+  // despachadas). El stock DISPONIBLE para vender es `stock - reservedStock`,
+  // no `stock` a secas: así no se puede ofrecer/despachar dos veces la misma
+  // unidad mientras una orden todavía no se confirma. Sube al crear una orden
+  // PENDIENTE, baja al cancelarla, y también baja al confirmarla (DESPACHADO),
+  // momento en el que el descuento real pasa a `stock` vía el movimiento de
+  // SALIDA que ya existe.
+  reservedStock Int @default(0)
+
+  // --- Precios y costo de referencia ---
+  // Estos son los precios "vigentes" para mostrar en catálogo/cotizar. NO son
+  // la fuente de verdad para reportes de ganancia histórica: el costo real de
+  // lo vendido se calcula con InventoryMovement.unitCost (costo de cada
+  // ingreso) y se congela en DispatchOrderItem.unitCostSnapshot al momento de
+  // despachar, para que un cambio de precio o costo futuro no altere reportes
+  // pasados. Se usa Decimal (no Float) en todo el dinero para evitar errores
+  // de redondeo.
+  costPriceCNY         Decimal? @db.Decimal(10, 2) // Costo de fábrica en Yuanes (referencia).
+  wholesalePrice       Decimal? @db.Decimal(10, 2) // Precio mayorista de lista.
+  wholesaleDiscountPct Decimal? @db.Decimal(5, 2) // % de descuento típico sobre el mayorista.
+  retailPrice          Decimal? @db.Decimal(10, 2) // Precio público (PVP) de lista.
+  retailDiscountPct    Decimal? @db.Decimal(5, 2) // % de descuento típico sobre el PVP.
+
+  isActive Boolean @default(true) // Permite descontinuar una variante
+  // puntual sin afectar al resto.
+
+  images        VariantImage[]
+  movements     InventoryMovement[]
+  dispatchItems DispatchOrderItem[]
+
+  deletedAt DateTime? // Soft delete.
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([productId])
+  @@index([warehouseLocation])
+  @@index([deletedAt])
+  @@index([attributes], type: Gin)
+}
+
+model VariantImage {
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  url       String
+  position  Int            @default(0)
+  createdAt DateTime       @default(now())
+
+  @@index([variantId])
+}
+
+// ----------------------------------------------------------------------------
+// LOTES DE IMPORTACIÓN (ingresos de mercadería desde China)
+//
+// El costo real de cada ingreso vive en InventoryMovement.unitCost (por
+// variante, por movimiento), no aquí a nivel de lote completo: un mismo
+// contenedor trae variantes con costos distintos, y ese detalle es la base
+// del cálculo de costo promedio ponderado para los reportes de rentabilidad.
+// ----------------------------------------------------------------------------
+
+model ImportBatch {
+  id          String    @id @default(cuid())
+  reference   String    @unique // Nº de contenedor / importación.
+  supplierId  String?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  arrivalDate DateTime
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  // Costos totales del lote completo (en USD), no por unidad: se prorratean
+  // entre las variantes que llegaron en este lote (ej: por CBM o por valor
+  // FOB) para obtener el costo de aterrizaje real de cada una. Ese costo
+  // prorrateado es el que termina en InventoryMovement.unitCost de cada
+  // ingreso de este lote, no estos totales.
+  freightCost Decimal? @db.Decimal(10, 2) // Flete internacional del lote completo.
+  customsCost Decimal? @db.Decimal(10, 2) // Aranceles/impuestos de nacionalización.
+  otherCosts  Decimal? @db.Decimal(10, 2) // Otros gastos del lote (agente de aduana, bodegaje, etc.).
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+
+  movements       InventoryMovement[]
+  idempotencyKeys IdempotencyKey[]
+
+  @@index([arrivalDate])
+}
+
+// Protección opcional contra reintentos duplicados de POST
+// /import-batches/:id/receive (timeout de red, doble clic): si el cliente
+// manda el mismo header Idempotency-Key dos veces, la segunda vez se
+// devuelve la respuesta ya guardada en vez de volver a crear movimientos y
+// tocar el stock. `requestHash` (sha256 del body, normalizado para que el
+// mismo contenido en distinto orden dé el mismo hash) es lo que permite
+// distinguir "mismo pedido reintentado" de "misma key reusada por error con
+// datos distintos" — este segundo caso se rechaza en vez de devolver una
+// respuesta que no corresponde al pedido actual.
+model IdempotencyKey {
+  id             String      @id @default(cuid())
+  idempotencyKey String      @unique
+  importBatchId  String
+  importBatch    ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Restrict)
+  requestHash    String
+  response       Json
+  createdAt      DateTime    @default(now())
+
+  @@index([importBatchId])
+}
+
+// ----------------------------------------------------------------------------
+// MOVIMIENTOS DE INVENTARIO (ledger append-only: nunca se edita ni se borra)
+//
+// Esta tabla es la fuente de verdad del stock. `quantity` es un número CON
+// SIGNO: positivo cuando el stock sube (ingreso, ajuste positivo, devolución)
+// y negativo cuando baja (salida, merma). Así, el stock de una variante en
+// cualquier momento es simplemente la suma de sus movimientos, y sumar/restar
+// según el tipo no depende de recordar una regla distinta por caso.
+// `stockAfter` guarda una "foto" del stock resultante en ese momento, útil
+// para auditar sin tener que re-sumar todo el historial.
+// ----------------------------------------------------------------------------
+
+enum MovementType {
+  INGRESO // Entrada de mercadería (ligada a un ImportBatch). Signo +.
+  SALIDA // Venta/despacho a cliente (ligada a un DispatchOrderItem). Signo -.
+  AJUSTE // Corrección manual, merma o devolución fuera del flujo de courier (motivo obligatorio). Signo + o -.
+  DEVOLUCION // Envío contra entrega (COD) que el cliente rechazó: el producto vuelve físicamente a bodega. Signo + (repone stock).
+  SINIESTRO // Pérdida directa de stock que SÍ estaba en bodega (incendio, robo, siniestro del depósito). Signo - (nunca vuelve a sumarse).
+  // OJO: esto NO es para mercadería perdida/dañada por un courier sobre una
+  // orden ya despachada — ese caso NO genera InventoryMovement, porque el
+  // SALIDA ya restó esas unidades al confirmar la orden (estén donde estén,
+  // ya no cuentan como "stock en bodega"); crear otro movimiento acá
+  // restaría el mismo stock dos veces. Ese escenario se registra solo con
+  // Shipment.status + InsuranceClaim (ver POST /shipments/:id/lost-or-damaged).
+}
+
+model InventoryMovement {
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  type       MovementType
+  quantity   Int // Con signo: + suma stock, - resta stock.
+  stockAfter Int // Stock resultante tras aplicar este movimiento.
+  reason     String? // Obligatorio a nivel de API cuando type = AJUSTE.
+  notes      String?
+
+  // Costo real de ESTA entrada específica (lo que realmente costó ese lote,
+  // no el costo de referencia de la variante). Solo se llena cuando
+  // type = INGRESO; es la base para calcular el costo promedio ponderado
+  // que se usa en los reportes de rentabilidad.
+  unitCost Decimal? @db.Decimal(10, 2)
+
+  // Prorrateo simple (por unidad, en partes iguales) de freightCost +
+  // customsCost + otherCosts del ImportBatch, entre TODAS las líneas de ESE
+  // MISMO POST /import-batches/:id/receive (no entre todo el historial del
+  // lote, si se recibe en varias tandas). Solo se llena cuando type =
+  // INGRESO; es la base de computeLandedCost, que se suma a unitCost para
+  // obtener el costo de aterrizaje real de una variante.
+  landedCostPerUnit Decimal? @db.Decimal(10, 2)
+
+  importBatchId String? // Solo se llena si type = INGRESO.
+  importBatch   ImportBatch? @relation(fields: [importBatchId], references: [id])
+
+  // Ya NO es @unique: un mismo ítem de despacho puede generar más de un
+  // movimiento a lo largo del tiempo (la SALIDA al confirmarse, y más
+  // adelante una DEVOLUCION si el courier lo trae de vuelta, o un SINIESTRO
+  // si se pierde/daña en tránsito).
+  dispatchOrderItemId String?
+  dispatchOrderItem   DispatchOrderItem? @relation(fields: [dispatchOrderItemId], references: [id], onDelete: Restrict)
+
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([variantId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([dispatchOrderItemId])
+}
+
+// ----------------------------------------------------------------------------
+// ÓRDENES DE DESPACHO (salidas / ventas a cliente)
+//
+// Una orden NUNCA se borra físicamente: sus ítems quedan referenciados desde
+// InventoryMovement (el historial de stock), y borrar la orden borraría ese
+// rastro. Por eso `onDelete: Restrict` hacia DispatchOrderItem (en vez de
+// Cascade) y un `deletedAt` propio para ser consistentes con el resto de
+// tablas. La API nunca debe ejecutar un DELETE real sobre una orden: para
+// "anularla" se cambia `status` a CANCELADO.
+// ----------------------------------------------------------------------------
+
+enum DispatchStatus {
+  PENDIENTE
+  DESPACHADO
+  CANCELADO
+}
+
+// Estado de cobro de la orden, independiente de si ya se despachó o no (se
+// puede despachar a crédito). Separado de DispatchStatus porque son dos
+// cosas distintas: una orden puede estar DESPACHADO y PENDIENTE de pago.
+enum PaymentStatus {
+  PENDIENTE
+  PAGADO
+  PARCIAL
+}
+
+// Cómo se espera cobrar la orden. CONTRA_ENTREGA dispara la lógica de
+// courier/Shipment (ver más abajo); CREDITO habilita creditDays/dueDate.
+enum PaymentMethod {
+  CONTADO
+  CREDITO
+  CONTRA_ENTREGA
+}
+
+// Quién compra: define cuál de las dos relaciones de comprador debe estar
+// llena. La API valida que se llene EXACTAMENTE una (wholesalerId si es
+// MAYORISTA, finalCustomerId si es CLIENTE_FINAL) y nunca ambas ni ninguna;
+// el esquema no puede expresar ese "uno u otro" por sí solo, así que ambas
+// columnas quedan nullable y la regla se aplica en el service.
+enum BuyerType {
+  MAYORISTA
+  CLIENTE_FINAL
+}
+
+// Contador atómico de orderNumber: una sola fila (id=1), incrementada bajo
+// bloqueo de fila DENTRO de la misma transacción que crea la orden (ver
+// generateOrderNumber en src/lib/orderNumber.ts). Reemplaza el conteo de
+// filas anterior (dispatchOrder.count()), que no es seguro bajo concurrencia
+// real — confirmado por un test de 10 creaciones simultáneas que producía
+// orderNumber duplicados/colisiones 409 antes de este cambio.
+model OrderNumberCounter {
+  id         Int @id
+  lastNumber Int @default(0)
+}
+
+model DispatchOrder {
+  id          String @id @default(cuid())
+  orderNumber String @unique // Autogenerado, ej: OD-000123.
+
+  buyerType       BuyerType
+  wholesalerId    String?
+  wholesaler      Wholesaler?    @relation(fields: [wholesalerId], references: [id])
+  finalCustomerId String?
+  finalCustomer   FinalCustomer? @relation(fields: [finalCustomerId], references: [id])
+
+  status       DispatchStatus @default(PENDIENTE)
+  dispatchDate DateTime? // Se llena cuando pasa a DESPACHADO.
+  notes        String?
+
+  // Ubicación real de entrega, independiente de la dirección registrada del
+  // comprador (un mayorista de Quito puede pedir que se despache a una
+  // sucursal en Guayaquil). Se guarda en la orden, no se infiere de
+  // Wholesaler.address / FinalCustomer.address, para poder reportar ventas
+  // por ubicación de despacho aunque la dirección del comprador cambie después.
+  shippingProvince String
+  shippingCity     String
+
+  paymentMethod PaymentMethod @default(CONTADO)
+  // Solo aplican cuando paymentMethod = CREDITO. Si el comprador es un
+  // Wholesaler con defaultCreditDays configurado, la API lo usa como valor
+  // por defecto de creditDays al crear la orden, salvo que se especifique
+  // uno distinto para esa orden puntual. dueDate no se escribe a mano: la
+  // API la calcula al confirmar el despacho como dispatchDate + creditDays.
+  creditDays    Int?
+  dueDate       DateTime?
+
+  // IMPORTANTE: igual que `stock` en ProductVariant, estos dos son una CACHÉ
+  // de solo lectura. La fuente de verdad es la suma de los Payment de esta
+  // orden (ver modelo Payment más abajo): nunca se editan a mano ni se
+  // "corrigen" directamente aquí, se recalculan cada vez que se registra un
+  // nuevo pago.
+  paymentStatus PaymentStatus @default(PENDIENTE)
+  amountPaid    Decimal?      @db.Decimal(10, 2)
+
+  // Cuando esta orden nace de POST /insurance-claims/:id/resolve-customer
+  // (resolution=REPLACEMENT), apunta a la orden original que el courier
+  // perdió/dañó. Self-relation opcional: la inmensa mayoría de las órdenes no
+  // reemplazan a ninguna otra.
+  replacesOrderId  String?
+  replacesOrder    DispatchOrder?  @relation("OrderReplacement", fields: [replacesOrderId], references: [id])
+  replacedByOrders DispatchOrder[] @relation("OrderReplacement")
+
+  items    DispatchOrderItem[]
+  payments Payment[]
+  shipment Shipment?
+
+  deletedAt   DateTime? // Soft delete, consistente con el resto del esquema.
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@index([wholesalerId])
+  @@index([finalCustomerId])
+  @@index([dispatchDate])
+  @@index([paymentStatus, dueDate])
+}
+
+// Con qué tipo de precio se vendió el ítem: precio mayorista o precio público (PVP).
+enum PriceType {
+  MAYORISTA
+  PVP
+}
+
+model DispatchOrderItem {
+  id              String         @id @default(cuid())
+  dispatchOrderId String
+  dispatchOrder   DispatchOrder  @relation(fields: [dispatchOrderId], references: [id], onDelete: Restrict)
+  variantId       String
+  variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  quantity        Int
+
+  priceType   PriceType // Mayorista o PVP: define qué lista de precios se cotizó.
+  unitPrice   Decimal   @db.Decimal(10, 2) // Precio real cobrado (ya con descuento aplicado, si hubo).
+  discountPct Decimal?  @db.Decimal(5, 2) // % de descuento aplicado sobre el precio de lista, si aplicó.
+
+  // Costo promedio ponderado de la variante en el momento EXACTO en que se
+  // confirmó la orden (promedio de InventoryMovement.unitCost de todos los
+  // ingresos de esa variante hasta esa fecha). Se calcula una sola vez al
+  // confirmar y queda congelado aquí: si el costo de compra cambia después,
+  // los reportes de ganancia de órdenes pasadas no se ven afectados.
+  unitCostSnapshot Decimal? @db.Decimal(10, 2)
+
+  // Costo de aterrizaje (unitCostSnapshot + landedCostPerUnit prorrateado,
+  // vía computeLandedCost) al momento EXACTO de confirmar, con la misma
+  // filosofía de congelado que unitCostSnapshot: los reportes de
+  // rentabilidad NUNCA deben recalcular esto en vivo (dos corridas del mismo
+  // reporte, sobre el mismo rango de fechas, deben dar siempre el mismo
+  // número, sin importar qué pase con costos o compras posteriores). Null en
+  // órdenes confirmadas antes de que este campo existiera: el reporte trata
+  // ese null como costo adicional = 0 (usa solo unitCostSnapshot para esas
+  // órdenes antiguas), nunca lo recalcula para "rellenarlo".
+  landedCostSnapshot Decimal? @db.Decimal(10, 2)
+
+  // Un ítem de despacho puede generar varios movimientos a lo largo del
+  // tiempo: la SALIDA al confirmarse la orden, y más adelante una DEVOLUCION
+  // (rechazo del courier) o un SINIESTRO (pérdida/daño), pero nunca ambas a
+  // la vez sobre las mismas unidades. Se expone como relación inversa de
+  // InventoryMovement.
+  movements InventoryMovement[]
+
+  @@index([dispatchOrderId])
+  @@index([variantId])
+}
+
+// ----------------------------------------------------------------------------
+// COBROS (ledger append-only, misma filosofía que InventoryMovement: nunca se
+// edita ni se borra un Payment, solo se agregan registros nuevos. El total
+// cobrado de una orden es la suma de sus Payment, no un número que se
+// sobrescribe; si un pago fue un error, se corrige con un Payment negativo o
+// una nota, nunca editando/borrando el original).
+// ----------------------------------------------------------------------------
+
+model Payment {
+  id              String        @id @default(cuid())
+  dispatchOrderId String
+  dispatchOrder   DispatchOrder @relation(fields: [dispatchOrderId], references: [id], onDelete: Restrict)
+
+  amount Decimal  @db.Decimal(10, 2)
+  method String // Ej: "efectivo", "transferencia", "cobro courier", "reembolso".
+  paidAt DateTime
+  notes  String?
+
+  // Se llena cuando este Payment es un reembolso (amount negativo) originado
+  // por POST /insurance-claims/:id/resolve-customer (resolution=REFUND):
+  // permite trazar "este pago vino de este reclamo" sin depender de texto
+  // libre en notes.
+  insuranceClaimId String?
+  insuranceClaim   InsuranceClaim? @relation(fields: [insuranceClaimId], references: [id])
+
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([dispatchOrderId])
+  @@index([paidAt])
+}
+
+// ----------------------------------------------------------------------------
+// COURIERS Y ENVÍOS CONTRA ENTREGA (COD)
+//
+// Un Shipment es 1 a 1 con una DispatchOrder: representa el envío físico de
+// ESA orden completa a través de un courier externo. Se modela aparte de
+// DispatchOrder (en vez de agregarle más campos) porque solo aplica cuando
+// hay transporte tercerizado de por medio, y porque tiene su propio ciclo de
+// vida (en tránsito → entregado/rechazado/perdido/dañado) independiente del
+// ciclo de vida de la orden.
+// ----------------------------------------------------------------------------
+
+model Courier {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  contactInfo String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  shipments Shipment[]
+}
+
+enum ShipmentStatus {
+  EN_TRANSITO
+  ENTREGADO
+  RECHAZADO
+  PERDIDO
+  DANADO
+}
+
+model Shipment {
+  id              String        @id @default(cuid())
+  dispatchOrderId String        @unique
+  dispatchOrder   DispatchOrder @relation(fields: [dispatchOrderId], references: [id], onDelete: Restrict)
+  courierId       String
+  courier         Courier       @relation(fields: [courierId], references: [id], onDelete: Restrict)
+
+  trackingNumber String? // Número de guía del courier.
+
+  // Contra entrega: cuánto se espera cobrar al cliente al momento de la
+  // entrega vs. cuánto terminó cobrando realmente el courier (pueden diferir
+  // por descuentos de último minuto, cobro parcial, etc.).
+  isCOD              Boolean
+  codAmountExpected  Decimal? @db.Decimal(10, 2)
+  codAmountCollected Decimal? @db.Decimal(10, 2)
+
+  status           ShipmentStatus @default(EN_TRANSITO)
+  deliveredAt      DateTime?
+  rejectionReason  String?
+  // Fecha en que el courier efectivamente remitió a WM el efectivo cobrado en
+  // la entrega. Distinta de `deliveredAt`: puede haber días de diferencia
+  // entre que el cliente paga al courier y el courier liquida ese dinero.
+  courierSettledAt DateTime?
+
+  claim InsuranceClaim?
+
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([courierId])
+  @@index([status])
+}
+
+// Reclamo al courier (o a su seguro) por mercadería perdida o dañada en
+// tránsito. claimAmount se calcula sobre el PRECIO DE VENTA de los ítems
+// afectados (Σ unitPrice × quantity, sin volver a aplicar discountPct porque
+// unitPrice ya viene neto): es lo que el courier debe devolver a WM por el
+// valor de la venta que se frustró, no el costo de fábrica.
+enum ClaimStatus {
+  PENDIENTE
+  EN_REVISION
+  APROBADO
+  RECHAZADO
+  PAGADO
+}
+
+// Cómo se resuelve la situación con el CLIENTE final (independiente de
+// `status`, que es el estado del reclamo ANTE EL COURIER): son dos ciclos de
+// vida distintos que avanzan en paralelo.
+enum CustomerResolution {
+  PENDIENTE
+  REEMPLAZO
+  REEMBOLSO
+}
+
+model InsuranceClaim {
+  id         String   @id @default(cuid())
+  shipmentId String   @unique
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+
+  claimAmount      Decimal     @db.Decimal(10, 2)
+  status           ClaimStatus @default(PENDIENTE)
+  reimbursedAmount Decimal?    @db.Decimal(10, 2)
+  claimDate        DateTime
+  resolvedDate     DateTime?
+  notes            String?
+
+  // Plazo esperado para que el courier resuelva el reclamo: claimDate + 20
+  // días, calculado automáticamente al crear el reclamo (no editable).
+  expectedResolutionDate DateTime
+  // Se actualiza vía POST /insurance-claims/:id/resolve-customer.
+  customerResolution     CustomerResolution @default(PENDIENTE)
+
+  // Reembolsos (Payment con amount negativo) originados por este reclamo.
+  payments Payment[]
+
+  @@index([status])
+}
+
+// ----------------------------------------------------------------------------
+// AUDITORÍA GENERAL
+//
+// Además del soft delete (deletedAt) en cada tabla principal, esta tabla
+// registra QUIÉN hizo QUÉ y CUÁNDO sobre cualquier entidad (creación, edición,
+// cambio de categoría, eliminación, ajuste de stock, etc.), guardando un
+// resumen de los cambios en JSON. Sirve como bitácora general de trazabilidad.
+// ----------------------------------------------------------------------------
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  entityType String // Ej: "Product", "Category", "ProductVariant".
+  entityId   String
+  action     AuditAction
+  changes    Json? // Ej: { "before": {...}, "after": {...} }
+
+  performedById String?
+  performedBy   User?    @relation(fields: [performedById], references: [id])
+  performedAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([performedAt])
+}
