@@ -47,9 +47,11 @@ servicio como Neon/Supabase).
    ```
    npx prisma db seed
    ```
-   Usuarios de prueba: `admin@kestore.com.ec` / `Admin123!` (rol ADMIN) y
+   Usuarios de prueba: `ceo@kestore.com.ec` / `Ceo123456!` (rol CEO),
+   `admin@kestore.com.ec` / `Admin123!` (rol ADMIN) y
    `operador@kestore.com.ec` / `Operador123!` (rol OPERATOR — útil para
-   probar las restricciones de precios/costos). Cámbialos cuando exista la
+   probar las restricciones de precios/costos). El primer CEO **solo puede
+   nacer por seed** (un CEO solo lo crea otro CEO). Cámbialos cuando exista la
    pantalla de login real.
 
    Nota: el seed usa `upsert`/verificaciones para no duplicar categorías,
@@ -173,18 +175,28 @@ del Módulo 3, que sigue siendo admin-only.
 - `GET /api/inventory/stock-by-location` — stock neto por (ubicación, variante) **agregado del ledger** (sin contador paralelo), filtros `warehouseId`/`locationId`/`variantId`, paginado.
 - `ProductVariant.warehouseLocation` (texto libre) se conserva tal cual, independiente del nuevo catálogo.
 
-### Endpoints disponibles (Módulo 7: Usuarios) — ADMIN-only, todo el módulo
+### Roles: OPERATOR < ADMIN < CEO
+
+Jerarquía única en `backend/src/lib/roles.ts` (espejo en `frontend/src/lib/roles.ts`): un rol superior pasa **todo** check que exija uno inferior. `requireRole(Role.ADMIN)` deja pasar ADMIN y CEO; `requireRole(Role.CEO)` solo CEO. Los serializers por rol (variantes, lotes, movimientos, despachos) y el Dashboard usan `hasAdminAccess(role)` en vez de comparar `=== ADMIN` — **nunca compares el rol a mano**, dejaría a CEO afuera. Por ahora CEO hereda todo lo de ADMIN sin excepción (el bloque financiero propio llegará con Consignación).
+
+### Endpoints disponibles (Módulo 7: Usuarios) — ADMIN y CEO, todo el módulo
 
 - `GET /api/users` (activos **e inactivos**, para poder reactivar) · `GET /api/users/:id` · `POST /api/users` (`email`, `password` ≥ 8, `name`, `role`) · `PATCH /api/users/:id` (`name`/`email`/`role`/`isActive`) · `POST /api/users/:id/reset-password`.
 - No hay `DELETE`: se desactiva con `isActive=false`. `passwordHash` nunca se selecciona ni se devuelve.
 - **Reseteo de contraseña**: genera una temporal aleatoria, la guarda hasheada y la devuelve **una sola vez** en la respuesta (el admin se la comunica por fuera; no hay email ni "forzar cambio en el próximo login").
 - **Protecciones** (en `PATCH`): un usuario no puede cambiar su propio `role`/`isActive` (400, aunque el valor no cambie); no se puede desactivar ni degradar al **último ADMIN activo** (409).
+- **Reglas del rol CEO**: solo un CEO puede crear un CEO, asignar el rol CEO, o **modificar/desactivar/resetear la contraseña** de un CEO (403 a un ADMIN — si no, un ADMIN podría resetear la clave de un CEO y entrar como él). No se puede desactivar ni degradar al **último CEO activo** (409). La protección de "último admin" cuenta ADMIN **y** CEO activos (promover un ADMIN a CEO no es perder acceso).
 - Limitación heredada: el JWT es stateless (8h) — un usuario desactivado o degradado conserva su token hasta que expire.
 
 ### Endpoints disponibles (Módulo 8: Dashboard)
 
 - `GET /api/dashboard/summary` — un solo endpoint (los bloques corren en paralelo). Cada bloque reusa la definición de su módulo dueño: `stockAlerts` (`getStockSummary` con `belowMinStock`, top 5 + `count`, usa `ProductVariant.minStock`), `pendingCourierShipments` (`Shipment` en `EN_TRANSITO`), `sales.today|week|month` (líneas `DESPACHADO`, regla compartida `classifySaleByShipment` de `src/lib/dispatchSaleClassification.ts`, la misma de Reportes; "semana" = últimos 7 días, "mes" = mes calendario, en UTC).
 - **Por rol**: OPERATOR recibe solo `stockAlerts`, `pendingCourierShipments` y `sales` con `unitsSold`/`totalRevenue`. ADMIN además recibe `accountsReceivable` (`overdueCount`, `totalOutstanding`, mismo `where` que `/accounts-receivable`), `insuranceClaims.pendingCount` y, en cada período de ventas, `totalCost`/`profit`/`profitMarginPct`. Para OPERATOR esas claves están **ausentes** del JSON y la query de ventas ni siquiera selecciona las columnas de costo.
+
+### Endpoints disponibles (Módulo 9: Solicitud de reposición a proveedor de China)
+
+- `GET /api/purchasing/china-request/low-stock?threshold=10` — variantes vigentes de productos ACTIVE con `stock < threshold` (10 por defecto; **no** es `minStock`, que es el criterio del Dashboard). Cada línea trae **solo** `variantId`, `productName`, `variantLabel`, `description`, `imageUrl` (foto de la variante o portada del producto) y `stock`. Abierto a cualquier usuario autenticado porque **nunca** incluye costos ni precios: la query usa un `select` cerrado, así que esas columnas ni salen de la base de datos (test: claves exactas + ninguna clave que parezca costo/precio + ningún valor sembrado, para CEO, ADMIN y OPERATOR). Máx. 500 filas (`total` indica el real).
+- `POST /api/purchasing/china-request/pdf` — **solo CEO** (ADMIN y OPERATOR reciben 403). Body `{ items: [{ variantId, quantity }] }` (la selección vive en el cliente; no se guarda nada, no descuenta ni reserva stock). Devuelve `application/pdf` (attachment) con imagen, nombre/variante, descripción y cantidad — sin costos. Valida selección vacía, cantidades no enteras/≤0, repetidos y variantes inexistentes (400). pdfkit solo embebe JPEG/PNG: una imagen WEBP o ausente sale como recuadro "Sin imagen".
 
 ### Validación de RUC (mayoristas)
 
@@ -283,7 +295,8 @@ y Recharts (gráficos). Se levanta con `cd frontend && npm install && npm run de
 | `/import-batches`, `/new`, `/:id`, `/:id/receive` | Importaciones: listado, nuevo lote con **vista previa en vivo del prorrateo por unidad** (solo ADMIN), detalle, recepción de más mercadería por tandas, `locationId` por línea | todos (costos del lote y costo puesto solo ADMIN; OPERATOR sí carga el costo unitario en origen porque el backend lo exige) |
 | `/dispatch-orders`, `/new`, `/:id` | Despachos (con selector de ubicación por ítem), pagos, courier | todos |
 | `/catalog/*` | Categorías, marcas, proveedores, couriers, mayoristas, clientes, bodegas (`/catalog/warehouses`) y sus ubicaciones | lectura todos, escritura ADMIN |
-| `/accounts-receivable`, `/insurance-claims`, `/reports*`, `/admin/users` | Cartera, reclamos de seguro (`?open=true`), rentabilidad, usuarios | solo ADMIN (`RequireRole` + oculto en el menú) |
+| `/accounts-receivable`, `/insurance-claims`, `/reports*`, `/admin/users` | Cartera, reclamos de seguro (`?open=true`), rentabilidad, usuarios (un ADMIN no ve acciones sobre filas CEO ni la opción de rol CEO) | ADMIN y CEO (`RequireRole` + oculto en el menú) |
+| `/purchasing/china-request` | Solicitud a Proveedor: grid de stock bajo (imagen + descripción), selección con cantidad, descarga del PDF | **solo CEO** (ADMIN no entra: redirige; oculto en el menú) |
 
 Patrones: catálogos simples usan el CRUD genérico (`components/crud/`); las
 páginas con acciones propias (Usuarios, Importaciones) usan `DataTable` con
@@ -304,4 +317,5 @@ Reglas para escribir tests nuevos (aprendidas de fallas reales):
 - La base es compartida y **acumula datos**: los pedidos/ledger no se pueden borrar por API. No asumas que tu fixture cae en la página 1 de un listado — filtra por tus propios datos (proveedor, bodega) o recorre las páginas.
 - Un `<Select>` de Radix recién usado deja capas abiertas en happy-dom que impiden abrir un buscador (`Combobox`/Popover) después: usa primero el buscador y luego los selects.
 - Cualquier página que use `<Link>` necesita `MemoryRouter` en su test.
+- Roles en el frontend: usa `hasAdminAccess(role)` / `roleSatisfies(role, [...])` de `lib/roles.ts`; en `nav-items.ts` y `RequireRole`, `roles: ["ADMIN"]` significa "ADMIN o superior" y `["CEO"]` solo CEO.
 - `dueDate` de crédito no se puede fijar en el pasado por API: los tests de cartera lo retroceden con un script Node que usa el `PrismaClient` del backend.

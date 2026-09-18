@@ -122,3 +122,28 @@ export function normalizeListResponse<T>(raw: unknown): ListResult<T> {
   const body = raw as { data: T[]; pagination: PaginationMeta };
   return { data: body.data, pagination: body.pagination };
 }
+
+// Descarga de un archivo binario (ej. el PDF de la solicitud a proveedor):
+// mismo token, mismo manejo de 401 y mismo ApiError que apiFetch, pero el body
+// exitoso se devuelve como Blob en vez de parsearse como JSON. Los errores del
+// backend siempre son JSON, así que esos sí se leen como texto.
+export async function apiFetchBlob(path: string, options: RequestInit = {}): Promise<Blob> {
+  const token = getToken();
+  const res = await fetch(`${apiBaseUrl}${path}`, {
+    ...options,
+    cache: "no-store",
+    headers: {
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  });
+
+  if (!res.ok) {
+    const errorBody = ((await readBody(res).catch(() => undefined)) ?? {}) as Partial<ApiErrorBody>;
+    if (res.status === 401) onUnauthorized?.();
+    throw new ApiError(errorBody.error ?? `Error ${res.status}`, res.status, errorBody.field, errorBody.details);
+  }
+
+  return res.blob();
+}

@@ -11,6 +11,7 @@ import { CreateDispatchOrderPage } from "@/features/dispatchOrders/CreateDispatc
 import { DispatchOrderDetailPage } from "@/features/dispatchOrders/DispatchOrderDetailPage";
 import { DispatchOrdersPage } from "@/features/dispatchOrders/DispatchOrdersPage";
 import { FinalCustomersPage } from "@/features/finalCustomers/FinalCustomersPage";
+import { ChinaRequestPage } from "@/features/purchasing/ChinaRequestPage";
 import { CreateImportBatchPage } from "@/features/importBatches/CreateImportBatchPage";
 import { ImportBatchDetailPage } from "@/features/importBatches/ImportBatchDetailPage";
 import { ImportBatchesPage } from "@/features/importBatches/ImportBatchesPage";
@@ -68,6 +69,11 @@ export const router = createBrowserRouter([
               { path: "reports/profitability", element: <ProfitabilityDetailPage /> },
               { path: "admin/users", element: <UsersPage /> },
             ],
+          },
+          {
+            // Exclusivo de CEO (ADMIN NO pasa): espejo de requireRole(Role.CEO) del backend.
+            element: <RequireRole roles={["CEO"]} />,
+            children: [{ path: "purchasing/china-request", element: <ChinaRequestPage /> }],
           },
         ],
       },

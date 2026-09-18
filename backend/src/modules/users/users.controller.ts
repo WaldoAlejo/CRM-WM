@@ -12,14 +12,14 @@ export async function getUserController(req: Request, res: Response) {
 
 export async function createUserController(req: Request, res: Response) {
   const data = createUserSchema.parse(req.body);
-  res.status(201).json(await createUser(data));
+  res.status(201).json(await createUser(data, req.user!.role));
 }
 
 export async function updateUserController(req: Request, res: Response) {
   const data = updateUserSchema.parse(req.body);
-  res.json(await updateUser(req.params.id, data, req.user?.id));
+  res.json(await updateUser(req.params.id, data, req.user?.id, req.user!.role));
 }
 
 export async function resetPasswordController(req: Request, res: Response) {
-  res.json(await resetPassword(req.params.id));
+  res.json(await resetPassword(req.params.id, req.user!.role));
 }

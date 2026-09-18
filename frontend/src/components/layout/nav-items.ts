@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Layers,
   Package,
+  Ship,
   PackagePlus,
   ShieldAlert,
   BarChart3,
@@ -48,4 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Reclamos de Seguro", path: "/insurance-claims", icon: ShieldAlert, roles: ["ADMIN"] },
   { label: "Reportes", path: "/reports", icon: BarChart3, roles: ["ADMIN"] },
   { label: "Usuarios", path: "/admin/users", icon: Users, roles: ["ADMIN"] },
+  // Exclusivo de CEO: `roles: ["CEO"]` no incluye a ADMIN (la jerarquía solo
+  // hace que CEO herede lo de ADMIN, no al revés).
+  { label: "Solicitud a Proveedor", path: "/purchasing/china-request", icon: Ship, roles: ["CEO"] },
 ];

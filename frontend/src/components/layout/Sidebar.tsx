@@ -1,12 +1,15 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { roleSatisfies } from "@/lib/roles";
 import { cn } from "@/lib/utils";
+import type { Role } from "@/types/auth";
 import type { NavItem } from "./nav-items";
 import { NAV_ITEMS } from "./nav-items";
 
 function isVisible(item: NavItem, role: string | null): boolean {
   if (!item.roles) return true;
-  return role !== null && item.roles.includes(role as never);
+  // Jerarquía: roles: ["ADMIN"] = ADMIN o superior (CEO); ["CEO"] = solo CEO.
+  return roleSatisfies(role as Role | null, item.roles);
 }
 
 function NavLinkItem({ item }: { item: NavItem }) {

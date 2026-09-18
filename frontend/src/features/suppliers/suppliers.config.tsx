@@ -1,9 +1,10 @@
+import { hasAdminAccess } from "@/lib/roles";
 import type { CrudResourceConfig } from "@/components/crud/types";
 import type { Role } from "@/types/auth";
 import { supplierDefaultValues, supplierFormSchema } from "./suppliers.schema";
 import type { Supplier } from "./suppliers.types";
 
-const isAdmin = (role: Role) => role === "ADMIN";
+const isAdmin = (role: Role) => hasAdminAccess(role);
 
 export const suppliersConfig: CrudResourceConfig<Supplier, typeof supplierDefaultValues> = {
   resourceKey: "suppliers",

@@ -1,10 +1,11 @@
+import { hasAdminAccess } from "@/lib/roles";
 import { Badge } from "@/components/ui/badge";
 import type { CrudResourceConfig } from "@/components/crud/types";
 import type { Role } from "@/types/auth";
 import { courierDefaultValues, courierFormSchema } from "./couriers.schema";
 import type { Courier } from "./couriers.types";
 
-const isAdmin = (role: Role) => role === "ADMIN";
+const isAdmin = (role: Role) => hasAdminAccess(role);
 
 export const couriersConfig: CrudResourceConfig<Courier, typeof courierDefaultValues> = {
   resourceKey: "couriers",

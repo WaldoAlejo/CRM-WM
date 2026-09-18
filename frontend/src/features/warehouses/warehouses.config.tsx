@@ -1,3 +1,4 @@
+import { hasAdminAccess } from "@/lib/roles";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import type { CrudResourceConfig } from "@/components/crud/types";
@@ -5,7 +6,7 @@ import type { Role } from "@/types/auth";
 import { warehouseDefaultValues, warehouseFormSchema } from "./warehouses.schema";
 import type { Warehouse } from "./warehouses.types";
 
-const isAdmin = (role: Role) => role === "ADMIN";
+const isAdmin = (role: Role) => hasAdminAccess(role);
 
 export const warehousesConfig: CrudResourceConfig<Warehouse, typeof warehouseDefaultValues> = {
   resourceKey: "warehouses",

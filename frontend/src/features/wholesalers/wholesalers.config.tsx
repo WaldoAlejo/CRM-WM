@@ -1,9 +1,10 @@
+import { hasAdminAccess } from "@/lib/roles";
 import type { CrudResourceConfig } from "@/components/crud/types";
 import type { Role } from "@/types/auth";
 import { wholesalerDefaultValues, wholesalerFormSchema } from "./wholesalers.schema";
 import type { Wholesaler } from "./wholesalers.types";
 
-const isAdmin = (role: Role) => role === "ADMIN";
+const isAdmin = (role: Role) => hasAdminAccess(role);
 
 // Ya no es un caso especial "sin editar/eliminar": el backend ahora expone
 // PATCH/DELETE /api/wholesalers/:id (admin-only), así que este config trae

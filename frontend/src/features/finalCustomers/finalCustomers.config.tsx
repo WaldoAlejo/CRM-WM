@@ -1,9 +1,10 @@
+import { hasAdminAccess } from "@/lib/roles";
 import type { CrudResourceConfig } from "@/components/crud/types";
 import type { Role } from "@/types/auth";
 import { finalCustomerDefaultValues, finalCustomerFormSchema } from "./finalCustomers.schema";
 import type { FinalCustomer } from "./finalCustomers.types";
 
-const isAdmin = (role: Role) => role === "ADMIN";
+const isAdmin = (role: Role) => hasAdminAccess(role);
 
 const ID_TYPE_LABELS: Record<FinalCustomer["idType"], string> = {
   CEDULA: "Cédula",

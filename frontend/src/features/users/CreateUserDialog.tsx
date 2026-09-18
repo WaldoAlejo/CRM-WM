@@ -1,3 +1,5 @@
+import { useAuth } from "@/context/AuthContext";
+import { isCeo } from "@/lib/roles";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import type { Resolver } from "react-hook-form";
@@ -19,6 +21,7 @@ interface CreateUserDialogProps {
 
 export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) {
   const { createMutation } = useUserMutations();
+  const { role: currentRole } = useAuth();
 
   const form = useForm<CreateUserFormValues>({
     resolver: zodResolver(createUserFormSchema) as Resolver<CreateUserFormValues>,
@@ -98,6 +101,8 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                     <SelectContent>
                       <SelectItem value="OPERATOR">Operador</SelectItem>
                       <SelectItem value="ADMIN">Administrador</SelectItem>
+                      {/* Solo un CEO puede asignar el rol CEO (el backend responde 403 si no). */}
+                      {isCeo(currentRole) ? <SelectItem value="CEO">CEO</SelectItem> : null}
                     </SelectContent>
                   </Select>
                   <FormMessage />

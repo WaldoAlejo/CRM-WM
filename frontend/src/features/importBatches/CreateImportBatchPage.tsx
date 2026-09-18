@@ -1,3 +1,4 @@
+import { hasAdminAccess } from "@/lib/roles";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeftIcon } from "lucide-react";
 import { useState } from "react";
@@ -24,7 +25,7 @@ import { useSupplierOptions } from "./useSupplierOptions";
 export function CreateImportBatchPage() {
   const navigate = useNavigate();
   const { role } = useAuth();
-  const isAdmin = role === "ADMIN";
+  const isAdmin = hasAdminAccess(role);
   const { createMutation, receiveMutation } = useImportBatchMutations();
   const { data: suppliers } = useSupplierOptions();
 

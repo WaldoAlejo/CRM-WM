@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { roleSatisfies } from "@/lib/roles";
 import type { Role } from "@/types/auth";
 
 // Espejo de los routers ADMIN-only del backend (insurance-claims, reports):
@@ -8,7 +9,7 @@ import type { Role } from "@/types/auth";
 export function RequireRole({ roles }: { roles: Role[] }) {
   const { role } = useAuth();
 
-  if (!role || !roles.includes(role)) {
+  if (!roleSatisfies(role, roles)) {
     return <Navigate to="/" replace />;
   }
 

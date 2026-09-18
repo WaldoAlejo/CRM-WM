@@ -1,3 +1,4 @@
+import { hasAdminAccess } from "@/lib/roles";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { AlertCard } from "./components/AlertCard";
@@ -29,7 +30,7 @@ export function DashboardPage() {
   // muestre un placeholder — directamente no hay JSX para ellos si
   // `data.accountsReceivable`/`data.insuranceClaims` no vinieron (mismo
   // criterio que el resto del sistema oculta por rol).
-  const isAdmin = role === "ADMIN";
+  const isAdmin = hasAdminAccess(role);
 
   return (
     <div className="space-y-6">

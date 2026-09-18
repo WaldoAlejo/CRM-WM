@@ -1,4 +1,5 @@
 import { Role } from "@prisma/client";
+import { hasAdminAccess } from "../../lib/roles";
 import { PRICING_FIELDS } from "./pricingFields";
 
 // Quita los campos de precio/costo del objeto ANTES de responder, si quien
@@ -9,7 +10,7 @@ export function serializeVariantForRole<T extends Record<string, unknown>>(
   variant: T,
   role: Role
 ): T {
-  if (role === Role.ADMIN) return variant;
+  if (hasAdminAccess(role)) return variant;
 
   const sanitized = { ...variant }; // nunca muta el objeto original
   for (const field of PRICING_FIELDS) {

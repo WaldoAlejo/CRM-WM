@@ -40,6 +40,22 @@ async function main() {
     },
   });
 
+  // --- Usuario CEO de ejemplo ---
+  // Un CEO solo puede ser creado/modificado por otro CEO (ver módulo de
+  // Usuarios), así que el PRIMERO tiene que nacer por seed: es el único
+  // camino de arranque. Cambia esta contraseña en producción.
+  const ceoPasswordHash = await bcrypt.hash("Ceo123456!", 10);
+  await prisma.user.upsert({
+    where: { email: "ceo@kestore.com.ec" },
+    update: {},
+    create: {
+      email: "ceo@kestore.com.ec",
+      passwordHash: ceoPasswordHash,
+      name: "CEO WM",
+      role: Role.CEO,
+    },
+  });
+
   // --- Categorías y subcategorías ---
   const cocina = await prisma.category.upsert({
     where: { name: "Cocina" },

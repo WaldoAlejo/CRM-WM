@@ -1,3 +1,4 @@
+import { hasAdminAccess } from "@/lib/roles";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeftIcon } from "lucide-react";
 import { useState } from "react";
@@ -26,7 +27,7 @@ export function ReceiveStockPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { role } = useAuth();
-  const isAdmin = role === "ADMIN";
+  const isAdmin = hasAdminAccess(role);
   const { data: batch, isLoading } = useImportBatch(id);
   const { receiveMutation } = useImportBatchMutations();
   const [idempotencyKey] = useState(() => globalThis.crypto.randomUUID());

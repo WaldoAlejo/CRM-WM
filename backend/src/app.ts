@@ -17,6 +17,7 @@ import { insuranceClaimsRouter } from "./modules/insuranceClaims/insuranceClaims
 import { inventoryRouter } from "./modules/inventory/inventory.routes";
 import { locationsRouter } from "./modules/locations/locations.routes";
 import { productsRouter } from "./modules/products/products.routes";
+import { purchasingRouter } from "./modules/purchasing/purchasing.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
 import { searchRouter } from "./modules/search/search.routes";
 import { shipmentsRouter } from "./modules/shipments/shipments.routes";
@@ -47,6 +48,7 @@ export function createApp() {
 
   app.use("/api/auth", authRouter);
   app.use("/api/dashboard", dashboardRouter);
+  app.use("/api/purchasing", purchasingRouter);
   app.use("/api/users", usersRouter);
   app.use("/api/categories", categoriesRouter);
   app.use("/api/subcategories", subcategoriesRouter);

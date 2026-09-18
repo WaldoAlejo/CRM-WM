@@ -1,3 +1,4 @@
+import { hasAdminAccess } from "@/lib/roles";
 import { useAuth } from "@/context/AuthContext";
 
 // `role` de AuthContext es síncrono desde el primer render (useState con
@@ -7,5 +8,5 @@ import { useAuth } from "@/context/AuthContext";
 // `null` (sin sesión) y "OPERATOR" caen ambos a `false`, la opción segura.
 export function usePricingVisibility(): boolean {
   const { role } = useAuth();
-  return role === "ADMIN";
+  return hasAdminAccess(role);
 }

@@ -13,6 +13,7 @@
 import { DispatchStatus, Prisma, Role, ShipmentStatus } from "@prisma/client";
 import { classifySaleByShipment } from "../../lib/dispatchSaleClassification";
 import { prisma } from "../../lib/prisma";
+import { hasAdminAccess } from "../../lib/roles";
 import { getAccountsReceivableSummary } from "../dispatchOrders/dispatchOrders.service";
 import { OPEN_STATUSES } from "../insuranceClaims/insuranceClaims.service";
 import { getStockSummary } from "../inventory/inventory.service";
@@ -126,7 +127,7 @@ export async function getDashboardSummary(role: Role) {
   ]);
   const pendingCourierShipments = { count: pendingCourierCount };
 
-  if (role !== Role.ADMIN) {
+  if (!hasAdminAccess(role)) {
     const [today, week, month] = await Promise.all([
       getSalesRevenueOnly(todayStart, now),
       getSalesRevenueOnly(weekStart, now),

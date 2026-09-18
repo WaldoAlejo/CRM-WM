@@ -1,9 +1,10 @@
+import { hasAdminAccess } from "@/lib/roles";
 import type { CrudResourceConfig } from "@/components/crud/types";
 import type { Role } from "@/types/auth";
 import { brandDefaultValues, brandFormSchema } from "./brands.schema";
 import type { Brand } from "./brands.types";
 
-const isAdmin = (role: Role) => role === "ADMIN";
+const isAdmin = (role: Role) => hasAdminAccess(role);
 
 export const brandsConfig: CrudResourceConfig<Brand, typeof brandDefaultValues> = {
   resourceKey: "brands",

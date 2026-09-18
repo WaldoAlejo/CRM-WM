@@ -1,9 +1,10 @@
+import { hasAdminAccess } from "@/lib/roles";
 import type { CrudResourceConfig } from "@/components/crud/types";
 import type { Role } from "@/types/auth";
 import { categoryDefaultValues, categoryFormSchema } from "./categories.schema";
 import type { Category } from "./categories.types";
 
-const isAdmin = (role: Role) => role === "ADMIN";
+const isAdmin = (role: Role) => hasAdminAccess(role);
 
 export const categoriesConfig: CrudResourceConfig<Category, typeof categoryDefaultValues> = {
   resourceKey: "categories",

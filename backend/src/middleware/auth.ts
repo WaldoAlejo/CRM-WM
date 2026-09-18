@@ -2,6 +2,7 @@
 import { Role } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { roleAtLeast } from "../lib/roles";
 import { forbidden, unauthorized } from "../utils/httpError";
 
 export interface AuthUser {
@@ -45,11 +46,13 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   }
 }
 
-// Exige, además de estar autenticado, que el usuario tenga uno de los roles indicados.
+// Exige, además de estar autenticado, que el usuario tenga alguno de los roles
+// indicados O UNO SUPERIOR en la jerarquía (OPERATOR < ADMIN < CEO): un CEO
+// pasa todo requireRole(Role.ADMIN); requireRole(Role.CEO) deja pasar solo CEO.
 export function requireRole(...roles: Role[]) {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) return next(unauthorized());
-    if (!roles.includes(req.user.role)) return next(forbidden());
+    if (!roles.some((required) => roleAtLeast(req.user!.role, required))) return next(forbidden());
     next();
   };
 }

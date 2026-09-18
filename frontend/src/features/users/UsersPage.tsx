@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/crud/DataTable";
 import type { CrudColumn } from "@/components/crud/types";
 import { useAuth } from "@/context/AuthContext";
+import { isCeo } from "@/lib/roles";
 import { CreateUserDialog } from "./CreateUserDialog";
 import { EditUserDialog } from "./EditUserDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
@@ -23,7 +24,7 @@ import { useUserMutations } from "./useUserMutations";
 import { useUsers } from "./useUsers";
 
 export function UsersPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, role: currentRole } = useAuth();
   const { data: users, isLoading } = useUsers();
   const { toggleActiveMutation } = useUserMutations();
 
@@ -37,7 +38,7 @@ export function UsersPage() {
     { header: "Email", cell: (item) => item.email },
     {
       header: "Rol",
-      cell: (item) => <Badge variant={item.role === "ADMIN" ? "default" : "secondary"}>{item.role}</Badge>,
+      cell: (item) => <Badge variant={item.role === "OPERATOR" ? "secondary" : "default"}>{item.role}</Badge>,
     },
     {
       header: "Estado",
@@ -63,6 +64,11 @@ export function UsersPage() {
         getRowId={(item) => item.id}
         actions={(item) => {
           const isSelf = item.id === currentUser?.id;
+          // Solo un CEO puede tocar a otro CEO (el backend responde 403 a un
+          // ADMIN, incluido el reseteo de contraseña): ni se ofrecen las acciones.
+          if (item.role === "CEO" && !isCeo(currentRole) ) {
+            return <span className="text-xs text-muted-foreground">Solo un CEO</span>;
+          }
           return (
             <div className="flex justify-end gap-1">
               <Button variant="ghost" size="icon" onClick={() => setEditingUser(item)} title="Editar usuario">

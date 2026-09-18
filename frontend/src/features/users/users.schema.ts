@@ -5,7 +5,7 @@ export const createUserFormSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
   name: z.string().min(1, "El nombre es obligatorio").max(200),
-  role: z.enum(["ADMIN", "OPERATOR"]),
+  role: z.enum(["ADMIN", "OPERATOR", "CEO"]),
 });
 
 export type CreateUserFormValues = z.infer<typeof createUserFormSchema>;
@@ -23,7 +23,7 @@ export const createUserDefaultValues: CreateUserFormValues = {
 export const editUserFormSchema = z.object({
   email: z.string().email("Email inválido"),
   name: z.string().min(1, "El nombre es obligatorio").max(200),
-  role: z.enum(["ADMIN", "OPERATOR"]),
+  role: z.enum(["ADMIN", "OPERATOR", "CEO"]),
 });
 
 export type EditUserFormValues = z.infer<typeof editUserFormSchema>;

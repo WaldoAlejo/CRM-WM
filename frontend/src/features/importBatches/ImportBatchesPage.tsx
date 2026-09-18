@@ -1,3 +1,4 @@
+import { hasAdminAccess } from "@/lib/roles";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -37,7 +38,7 @@ export function ImportBatchesPage() {
     { header: "Estado", cell: (item) => <BatchStatusBadge movementsCount={item.movementsCount} /> },
     // Costo a prorratear (flete+aranceles+otros): la columna ni existe para
     // OPERATOR — el backend no manda esos campos, y no se dibuja un "$0".
-    ...(role === "ADMIN"
+    ...(hasAdminAccess(role)
       ? [
           {
             header: "Costos del lote",

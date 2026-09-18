@@ -1,4 +1,5 @@
 import { Role } from "@prisma/client";
+import { hasAdminAccess } from "../../lib/roles";
 
 // Mismos 3 campos que forbidFieldsForRole restringe en la escritura (ver
 // importBatches.routes.ts) — un solo lugar que dice "esto es costo, no lo ve
@@ -9,7 +10,7 @@ export function serializeImportBatchForRole<T extends Record<string, unknown>>(
   batch: T,
   role: Role
 ): T {
-  if (role === Role.ADMIN) return batch;
+  if (hasAdminAccess(role)) return batch;
 
   const sanitized = { ...batch };
   for (const field of IMPORT_BATCH_COST_FIELDS) {

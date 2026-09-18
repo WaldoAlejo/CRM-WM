@@ -26,6 +26,8 @@ enum Role {
   ADMIN // Acceso total: categorías, usuarios, reportes, todo.
   OPERATOR // Bodega: puede registrar ingresos, salidas y ajustes, pero no
   // administrar usuarios ni catálogo de categorías (se valida en la API).
+  CEO // Por encima de ADMIN (jerarquía en src/lib/roles.ts): hereda todo lo de
+  // ADMIN sin excepción. Solo un CEO puede crear/modificar a otro CEO.
 }
 
 model User {

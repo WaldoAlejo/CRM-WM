@@ -1,3 +1,4 @@
+import { hasAdminAccess } from "@/lib/roles";
 import { ArrowLeftIcon } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { useImportBatch } from "./useImportBatches";
 export function ImportBatchDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
-  const isAdmin = role === "ADMIN";
+  const isAdmin = hasAdminAccess(role);
   const { data: batch, isLoading } = useImportBatch(id);
   const { labelById } = useLocationOptions();
 

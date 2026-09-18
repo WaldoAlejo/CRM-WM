@@ -1,9 +1,10 @@
+import { hasAdminAccess } from "@/lib/roles";
 import type { CrudResourceConfig } from "@/components/crud/types";
 import type { Role } from "@/types/auth";
 import { locationDefaultValues, locationFormSchema } from "./locations.schema";
 import type { Location } from "./locations.types";
 
-const isAdmin = (role: Role) => role === "ADMIN";
+const isAdmin = (role: Role) => hasAdminAccess(role);
 
 // A diferencia del resto del catálogo (endpoints fijos), Location está
 // anidada bajo una bodega concreta — el listado/creación viven en

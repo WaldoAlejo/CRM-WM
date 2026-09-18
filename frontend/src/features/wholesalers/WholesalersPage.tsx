@@ -1,3 +1,4 @@
+import { hasAdminAccess } from "@/lib/roles";
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
@@ -22,8 +23,8 @@ export function WholesalersPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const items = listQuery.data?.data ?? [];
-  const canUpdate = role === "ADMIN";
-  const canDelete = role === "ADMIN";
+  const canUpdate = hasAdminAccess(role);
+  const canDelete = hasAdminAccess(role);
 
   return (
     <div className="space-y-4">
