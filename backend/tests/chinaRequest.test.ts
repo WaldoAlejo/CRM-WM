@@ -48,24 +48,34 @@ async function lowStockVariantWithSecrets(stock = 3) {
 }
 
 describe("GET /api/purchasing/china-request/low-stock", () => {
-  it("cada línea trae SOLO los campos permitidos, para CEO, ADMIN y OPERATOR (clave ausente, no null)", async () => {
+  it("cada línea trae SOLO los campos permitidos (clave ausente, no null), sin costos ni precios en la respuesta", async () => {
     const { variant } = await lowStockVariantWithSecrets();
+    const { token } = await createTestUser("CEO");
 
-    for (const role of ["CEO", "ADMIN", "OPERATOR"] as const) {
+    const res = await request(app)
+      .get("/api/purchasing/china-request/low-stock")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const line = res.body.data.find((l: { variantId: string }) => l.variantId === variant.id);
+    expect(Object.keys(line).sort()).toEqual(ALLOWED_LINE_KEYS);
+    // Ninguna clave en TODA la respuesta parece costo/precio…
+    const offending = [...allKeys(res.body)].filter((k) => FORBIDDEN_KEY_PATTERN.test(k));
+    expect(offending).toEqual([]);
+    // …ni aparece ninguno de los valores sensibles sembrados.
+    const raw = JSON.stringify(res.body);
+    for (const secret of ["987.65", "111.11", "222.22"]) expect(raw).not.toContain(secret);
+  });
+
+  it("ADMIN y OPERATOR reciben 403: la lista es exclusiva de CEO", async () => {
+    await lowStockVariantWithSecrets();
+    for (const role of ["ADMIN", "OPERATOR"] as const) {
       const { token } = await createTestUser(role);
       const res = await request(app)
         .get("/api/purchasing/china-request/low-stock")
         .set("Authorization", `Bearer ${token}`);
-
-      expect(res.status, role).toBe(200);
-      const line = res.body.data.find((l: { variantId: string }) => l.variantId === variant.id);
-      expect(Object.keys(line).sort(), role).toEqual(ALLOWED_LINE_KEYS);
-      // Ninguna clave en TODA la respuesta parece costo/precio…
-      const offending = [...allKeys(res.body)].filter((k) => FORBIDDEN_KEY_PATTERN.test(k));
-      expect(offending, role).toEqual([]);
-      // …ni aparece ninguno de los valores sensibles sembrados.
-      const raw = JSON.stringify(res.body);
-      for (const secret of ["987.65", "111.11", "222.22"]) expect(raw, role).not.toContain(secret);
+      expect(res.status, role).toBe(403);
+      expect(JSON.stringify(res.body), role).not.toContain("Freidora");
     }
   });
 
