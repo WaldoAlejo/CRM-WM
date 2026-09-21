@@ -1,4 +1,4 @@
-import { DispatchStatus, Prisma } from "@prisma/client";
+import { DispatchStatus, LocationType, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { conflict, notFound } from "../../utils/httpError";
 
@@ -9,7 +9,9 @@ async function assertWarehouseExists(warehouseId: string) {
 }
 
 async function getLocationOrThrow(id: string) {
-  const location = await prisma.location.findFirst({ where: { id, isActive: true } });
+  const location = await prisma.location.findFirst({
+    where: { id, isActive: true, type: LocationType.STANDARD },
+  });
   if (!location) throw notFound("Ubicación no encontrada");
   return location;
 }
@@ -24,7 +26,7 @@ function mapUniqueConstraintError(err: unknown): never {
 export async function listLocationsByWarehouse(warehouseId: string) {
   await assertWarehouseExists(warehouseId);
   return prisma.location.findMany({
-    where: { warehouseId, isActive: true },
+    where: { warehouseId, isActive: true, type: LocationType.STANDARD },
     orderBy: { code: "asc" },
   });
 }

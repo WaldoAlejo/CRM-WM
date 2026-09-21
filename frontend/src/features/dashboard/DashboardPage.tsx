@@ -59,6 +59,15 @@ export function DashboardPage() {
             highlight={data.insuranceClaims.pendingCount > 0}
           />
         ) : null}
+        {data.consignment ? (
+          <AlertCard
+            label="Consignación: revisión vencida"
+            value={data.consignment.overdueReviewCount}
+            subvalue="Lotes sin liquidar ni extender"
+            to="/consignment?overdue=true"
+            highlight={data.consignment.overdueReviewCount > 0}
+          />
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

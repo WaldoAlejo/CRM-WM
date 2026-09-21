@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { LocationType, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { conflict, notFound } from "../../utils/httpError";
 
@@ -18,7 +18,7 @@ export async function listWarehouses() {
     where: { isActive: true },
     orderBy: { name: "asc" },
     include: {
-      locations: { where: { isActive: true }, orderBy: { code: "asc" } },
+      locations: { where: { isActive: true, type: LocationType.STANDARD }, orderBy: { code: "asc" } },
     },
   });
 }
@@ -27,7 +27,7 @@ export async function getWarehouseById(id: string) {
   const warehouse = await prisma.warehouse.findFirst({
     where: { id, isActive: true },
     include: {
-      locations: { where: { isActive: true }, orderBy: { code: "asc" } },
+      locations: { where: { isActive: true, type: LocationType.STANDARD }, orderBy: { code: "asc" } },
     },
   });
   if (!warehouse) throw notFound("Bodega no encontrada");
@@ -41,7 +41,18 @@ interface WarehouseInput {
 
 export async function createWarehouse(data: WarehouseInput) {
   try {
-    return await prisma.warehouse.create({ data: { name: data.name!, address: data.address } });
+    // Toda bodega nace con su ubicación de Cuarentena/Validación (una por
+    // bodega): sin ella el módulo de Consignación y las devoluciones de courier
+    // no tendrían dónde dejar las unidades a validar.
+    const warehouse = await prisma.warehouse.create({
+      data: {
+        name: data.name!,
+        address: data.address,
+        locations: { create: { code: "Cuarentena", type: LocationType.CUARENTENA } },
+      },
+      include: { locations: { where: { type: LocationType.STANDARD } } },
+    });
+    return warehouse;
   } catch (err) {
     mapUniqueConstraintError(err);
   }
@@ -64,7 +75,7 @@ export async function deactivateWarehouse(id: string) {
   const warehouse = await getWarehouseById(id);
 
   const locationCount = await prisma.location.count({
-    where: { warehouseId: id, isActive: true },
+    where: { warehouseId: id, isActive: true, type: LocationType.STANDARD },
   });
   if (locationCount > 0) {
     throw conflict(
@@ -72,5 +83,23 @@ export async function deactivateWarehouse(id: string) {
     );
   }
 
-  return prisma.warehouse.update({ where: { id: warehouse.id }, data: { isActive: false } });
+  // La Cuarentena se da de baja junto con la bodega, pero solo si no quedan
+  // unidades esperando checklist (perderían su lugar de validación).
+  const pendingInQuarantine = await prisma.returnLine.count({
+    where: { quarantineLocation: { warehouseId: id }, batch: { completedAt: null } },
+  });
+  if (pendingInQuarantine > 0) {
+    throw conflict(
+      `No se puede eliminar: hay devoluciones pendientes de checklist en la Cuarentena de esta bodega (${pendingInQuarantine} línea(s)).`
+    );
+  }
+
+  const [, updated] = await prisma.$transaction([
+    prisma.location.updateMany({
+      where: { warehouseId: id, type: LocationType.CUARENTENA, isActive: true },
+      data: { isActive: false },
+    }),
+    prisma.warehouse.update({ where: { id: warehouse.id }, data: { isActive: false } }),
+  ]);
+  return updated;
 }

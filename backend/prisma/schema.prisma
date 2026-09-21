@@ -50,6 +50,9 @@ model User {
   wholesalers        Wholesaler[]
   shipments          Shipment[]
   auditLogs          AuditLog[]
+  consignmentLots    ConsignmentLot[]
+  consignmentReviews ConsignmentReview[]
+  returnInspections  ReturnInspection[]
 
   @@index([email])
 }
@@ -125,6 +128,16 @@ model Warehouse {
   @@index([isActive])
 }
 
+// Tipo de ubicación. CUARENTENA es la ubicación especial de "Validación": una
+// por bodega (índice único parcial en la migración). Recibe devoluciones
+// (consignación / courier rechazado) hasta que OPERATOR completa el checklist.
+// No es elegible como origen de despacho ni aparece en el listado normal de
+// ubicaciones de la bodega.
+enum LocationType {
+  STANDARD
+  CUARENTENA
+}
+
 model Location {
   id          String    @id @default(cuid())
   warehouseId String
@@ -135,13 +148,18 @@ model Location {
   shelf String? // Estante (opcional).
   level String? // Nivel (opcional).
 
+  type LocationType @default(STANDARD)
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  movementsFrom InventoryMovement[] @relation("MovementFromLocation")
-  movementsTo   InventoryMovement[] @relation("MovementToLocation")
-  dispatchItems DispatchOrderItem[]
+  consignmentLines      ConsignmentLine[]
+  returnLinesOrigin     ReturnLine[]        @relation("ReturnLineOrigin")
+  returnLinesQuarantine ReturnLine[]        @relation("ReturnLineQuarantine")
+  movementsFrom         InventoryMovement[] @relation("MovementFromLocation")
+  movementsTo           InventoryMovement[] @relation("MovementToLocation")
+  dispatchItems         DispatchOrderItem[]
 
   @@unique([warehouseId, code])
   @@index([warehouseId])
@@ -214,7 +232,8 @@ model Wholesaler {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  dispatchOrders DispatchOrder[]
+  dispatchOrders  DispatchOrder[]
+  consignmentLots ConsignmentLot[]
 
   @@index([businessName])
   @@index([deletedAt])
@@ -427,9 +446,11 @@ model ProductVariant {
   isActive Boolean @default(true) // Permite descontinuar una variante
   // puntual sin afectar al resto.
 
-  images        VariantImage[]
-  movements     InventoryMovement[]
-  dispatchItems DispatchOrderItem[]
+  images           VariantImage[]
+  movements        InventoryMovement[]
+  dispatchItems    DispatchOrderItem[]
+  consignmentLines ConsignmentLine[]
+  returnLines      ReturnLine[]
 
   deletedAt DateTime? // Soft delete.
   createdAt DateTime  @default(now())
@@ -526,6 +547,7 @@ enum MovementType {
   SALIDA // Venta/despacho a cliente (ligada a un DispatchOrderItem). Signo -.
   AJUSTE // Corrección manual, merma o devolución fuera del flujo de courier (motivo obligatorio). Signo + o -.
   DEVOLUCION // Envío contra entrega (COD) que el cliente rechazó: el producto vuelve físicamente a bodega. Signo + (repone stock).
+  CONSIGNACION // Entrega de un lote a un mayorista en consignación: sale de bodega SIN generar deuda (el cargo nace al liquidar). Signo -.
   SINIESTRO // Pérdida directa de stock que SÍ estaba en bodega (incendio, robo, siniestro del depósito). Signo - (nunca vuelve a sumarse).
   // OJO: esto NO es para mercadería perdida/dañada por un courier sobre una
   // orden ya despachada — ese caso NO genera InventoryMovement, porque el
@@ -588,10 +610,22 @@ model InventoryMovement {
   dispatchOrderItemId String?
   dispatchOrderItem   DispatchOrderItem? @relation(fields: [dispatchOrderItemId], references: [id], onDelete: Restrict)
 
+  // Movimiento del que vuelve esta unidad (reingreso tras pasar el checklist de
+  // Cuarentena): apunta a la SALIDA / CONSIGNACION original para conservar la
+  // trazabilidad. Un DEVOLUCION nunca es INGRESO, así que no altera el costo
+  // promedio ponderado (solo se promedian los INGRESO).
+  originMovementId    String?
+  originMovement      InventoryMovement?  @relation("MovementOrigin", fields: [originMovementId], references: [id], onDelete: Restrict)
+  reentries           InventoryMovement[] @relation("MovementOrigin")
+  consignmentDelivery ConsignmentLine?
+  returnLines         ReturnLine[]
+  inspectionReentry   ReturnInspection?
+
   createdById String?
   createdBy   User?    @relation(fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
 
+  @@index([originMovementId])
   @@index([variantId])
   @@index([type])
   @@index([createdAt])
@@ -655,9 +689,24 @@ model OrderNumberCounter {
   lastNumber Int @default(0)
 }
 
+// De dónde nace la orden. NORMAL = despacho común. Las otras dos son cargos a
+// crédito generados por el módulo de Consignación (nacen DESPACHADO, sin
+// movimiento de stock: la mercadería ya salió al entregar el lote).
+enum DispatchOrderOrigin {
+  NORMAL
+  CONSIGNACION_LIQUIDACION
+  CONSIGNACION_DEVOLUCION_NO_CONFORME
+}
+
 model DispatchOrder {
   id          String @id @default(cuid())
   orderNumber String @unique // Autogenerado, ej: OD-000123.
+
+  origin              DispatchOrderOrigin @default(NORMAL)
+  consignmentReviewId String?             @unique
+  consignmentReview   ConsignmentReview?  @relation(fields: [consignmentReviewId], references: [id], onDelete: Restrict)
+  returnBatchId       String?             @unique
+  returnBatch         ReturnBatch?        @relation(fields: [returnBatchId], references: [id], onDelete: Restrict)
 
   buyerType       BuyerType
   wholesalerId    String?
@@ -863,7 +912,8 @@ model Shipment {
   // entre que el cliente paga al courier y el courier liquida ese dinero.
   courierSettledAt DateTime?
 
-  claim InsuranceClaim?
+  claim       InsuranceClaim?
+  returnBatch ReturnBatch?
 
   createdById String?
   createdBy   User?    @relation(fields: [createdById], references: [id])
@@ -917,6 +967,226 @@ model InsuranceClaim {
   payments Payment[]
 
   @@index([status])
+}
+
+// ----------------------------------------------------------------------------
+// VENTAS A CONSIGNACIÓN (solo mayoristas, siempre a crédito)
+//
+// Un lote sale de bodega al entregarse (movimiento CONSIGNACION, sin deuda). En
+// cada revisión (cada 20 días) el mayorista extiende o liquida — parcial las
+// veces que haga falta. Cada liquidación genera un cargo a crédito por lo
+// VENDIDO (una DispatchOrder, así Cuentas por Cobrar y Payment funcionan sin
+// cambios) y un ReturnBatch con lo devuelto, que queda en Cuarentena hasta que
+// OPERATOR complete el checklist. Lo que NO pasa el checklist genera un segundo
+// cargo cuando termina la inspección del lote de devolución.
+//
+// "Revisión vencida" NO se guarda: se deriva de nextReviewDate < ahora sobre un
+// lote no cerrado (mismo criterio que Cuentas por Cobrar con dueDate), así no
+// hace falta un cron y nunca queda desactualizada.
+// ----------------------------------------------------------------------------
+
+enum ConsignmentStatus {
+  EN_CONSIGNACION
+  LIQUIDADO_PARCIAL
+  CERRADO
+}
+
+model ConsignmentLot {
+  id   String @id @default(cuid())
+  code String @unique // Autogenerado, ej: CON-000001.
+
+  wholesalerId String
+  wholesaler   Wholesaler @relation(fields: [wholesalerId], references: [id], onDelete: Restrict)
+
+  // Requeridos por DispatchOrder al generar los cargos.
+  shippingProvince String
+  shippingCity     String
+
+  deliveredAt        DateTime
+  reviewIntervalDays Int               @default(20)
+  creditDays         Int // 30/60: congelado al crear; base del dueDate de cada cargo.
+  // Caché: deliveredAt + intervalo al crear, y luego reviewedAt + intervalo en
+  // cada revisión que deja el lote abierto.
+  nextReviewDate     DateTime
+  status             ConsignmentStatus @default(EN_CONSIGNACION)
+  notes              String?
+
+  lines   ConsignmentLine[]
+  reviews ConsignmentReview[]
+
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([wholesalerId])
+  @@index([status, nextReviewDate])
+}
+
+model ConsignmentLine {
+  id        String         @id @default(cuid())
+  lotId     String
+  lot       ConsignmentLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  // Ubicación de la que salió (y a la que vuelve si pasa el checklist).
+  originLocationId String?
+  originLocation   Location? @relation(fields: [originLocationId], references: [id], onDelete: Restrict)
+
+  quantityDelivered  Int
+  // Precio mayorista congelado al entregar: base de TODO cargo (vendido y no
+  // conforme). Costos congelados igual que DispatchOrderItem, para que los
+  // reportes de rentabilidad no dependan de costos posteriores.
+  unitPrice          Decimal  @db.Decimal(10, 2)
+  unitCostSnapshot   Decimal? @db.Decimal(10, 2)
+  landedCostSnapshot Decimal? @db.Decimal(10, 2)
+
+  // El CONSIGNACION que la sacó de bodega. Pendiente = entregado − Σ vendido −
+  // Σ devuelto de sus ConsignmentReviewLine (se calcula, no se cachea).
+  deliveryMovementId String            @unique
+  deliveryMovement   InventoryMovement @relation(fields: [deliveryMovementId], references: [id], onDelete: Restrict)
+
+  reviewLines ConsignmentReviewLine[]
+
+  @@unique([lotId, variantId])
+  @@index([lotId])
+}
+
+enum ReviewAction {
+  EXTENDER
+  LIQUIDAR
+}
+
+// Append-only: una revisión nunca se edita ni se borra.
+model ConsignmentReview {
+  id    String         @id @default(cuid())
+  lotId String
+  lot   ConsignmentLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  reviewedAt     DateTime     @default(now())
+  scheduledFor   DateTime // La fecha de revisión que tenía agendada el lote.
+  action         ReviewAction
+  nextReviewDate DateTime? // reviewedAt + intervalo; null si esta liquidación cerró el lote.
+  notes          String?
+
+  lines       ConsignmentReviewLine[]
+  returnBatch ReturnBatch?
+  chargeOrder DispatchOrder? // Cargo a crédito por lo vendido (solo LIQUIDAR con vendidas > 0).
+
+  registeredById String?
+  registeredBy   User?   @relation(fields: [registeredById], references: [id])
+
+  @@index([lotId])
+}
+
+model ConsignmentReviewLine {
+  id               String            @id @default(cuid())
+  reviewId         String
+  review           ConsignmentReview @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+  lineId           String
+  line             ConsignmentLine   @relation(fields: [lineId], references: [id], onDelete: Restrict)
+  quantitySold     Int
+  quantityReturned Int
+
+  @@unique([reviewId, lineId])
+  @@index([lineId])
+}
+
+// ----------------------------------------------------------------------------
+// LOTES DE DEVOLUCIÓN A VALIDAR (Cuarentena)
+//
+// Origen: una liquidación de consignación (lo no vendido) o un envío de courier
+// RECHAZADO. Mientras esperan checklist las unidades NO están en `stock` ni en
+// el ledger (no son vendibles ni reservables); su cola vive acá. Al pasar el
+// checklist se aplica un DEVOLUCION a la ubicación original; al NO pasar no hay
+// movimiento de stock y se genera el cargo (mayorista: DispatchOrder; courier:
+// InsuranceClaim, con el mismo cálculo Σ unitPrice × cantidad de hoy).
+// ----------------------------------------------------------------------------
+
+enum ReturnSource {
+  CONSIGNACION
+  COURIER_RECHAZADO
+}
+
+model ReturnBatch {
+  id     String       @id @default(cuid())
+  source ReturnSource
+
+  // Exactamente uno de los dos (lo valida el servicio).
+  reviewId   String?            @unique
+  review     ConsignmentReview? @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+  shipmentId String?            @unique
+  shipment   Shipment?          @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+
+  completedAt DateTime? // Cuando todas las unidades quedaron inspeccionadas.
+
+  lines       ReturnLine[]
+  chargeOrder DispatchOrder? // Cargo por no conformes (solo source = CONSIGNACION).
+
+  createdAt DateTime @default(now())
+
+  @@index([completedAt])
+}
+
+model ReturnLine {
+  id        String         @id @default(cuid())
+  batchId   String
+  batch     ReturnBatch    @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  // A dónde vuelve si pasa (null si el ítem de courier no tenía ubicación de
+  // origen: mismo comportamiento que el DEVOLUCION de hoy) y dónde espera.
+  originLocationId     String?
+  originLocation       Location? @relation("ReturnLineOrigin", fields: [originLocationId], references: [id], onDelete: Restrict)
+  quarantineLocationId String?
+  quarantineLocation   Location? @relation("ReturnLineQuarantine", fields: [quarantineLocationId], references: [id], onDelete: Restrict)
+
+  // Movimiento original (CONSIGNACION o SALIDA) del que vuelve la unidad.
+  originMovementId String?
+  originMovement   InventoryMovement? @relation(fields: [originMovementId], references: [id], onDelete: Restrict)
+
+  quantity          Int
+  // Caché atómica de unidades ya inspeccionadas (mismo patrón que
+  // reservedStock): el UPDATE...increment + chequeo <= quantity evita que dos
+  // inspecciones simultáneas sobrepasen la línea.
+  inspectedQuantity Int     @default(0)
+  unitPrice         Decimal @db.Decimal(10, 2) // Precio de cobro congelado.
+
+  inspections ReturnInspection[]
+
+  @@index([batchId])
+}
+
+enum InspectionResult {
+  PASA
+  NO_PASA
+}
+
+// Append-only, solo OPERATOR o superior. Los tres ítems fijos deciden el
+// resultado (PASA solo si los tres son true); `observation` es el "otro" libre.
+model ReturnInspection {
+  id           String     @id @default(cuid())
+  returnLineId String
+  returnLine   ReturnLine @relation(fields: [returnLineId], references: [id], onDelete: Restrict)
+  quantity     Int
+
+  boxOk           Boolean
+  noVisibleDamage Boolean
+  piecesComplete  Boolean
+  observation     String?
+  result          InspectionResult
+
+  // El DEVOLUCION de reingreso (solo cuando PASA y hay ubicación de destino).
+  reentryMovementId String?            @unique
+  reentryMovement   InventoryMovement? @relation(fields: [reentryMovementId], references: [id], onDelete: Restrict)
+
+  inspectedById String?
+  inspectedBy   User?    @relation(fields: [inspectedById], references: [id])
+  inspectedAt   DateTime @default(now())
+
+  @@index([returnLineId])
 }
 
 // ----------------------------------------------------------------------------

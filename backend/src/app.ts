@@ -16,7 +16,9 @@ import { importBatchesRouter } from "./modules/importBatches/importBatches.route
 import { insuranceClaimsRouter } from "./modules/insuranceClaims/insuranceClaims.routes";
 import { inventoryRouter } from "./modules/inventory/inventory.routes";
 import { locationsRouter } from "./modules/locations/locations.routes";
+import { consignmentRouter } from "./modules/consignment/consignment.routes";
 import { productsRouter } from "./modules/products/products.routes";
+import { quarantineRouter } from "./modules/quarantine/quarantine.routes";
 import { purchasingRouter } from "./modules/purchasing/purchasing.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
 import { searchRouter } from "./modules/search/search.routes";
@@ -49,6 +51,8 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/purchasing", purchasingRouter);
+  app.use("/api/consignment", consignmentRouter);
+  app.use("/api/quarantine", quarantineRouter);
   app.use("/api/users", usersRouter);
   app.use("/api/categories", categoriesRouter);
   app.use("/api/subcategories", subcategoriesRouter);

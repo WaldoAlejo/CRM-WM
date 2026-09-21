@@ -1,6 +1,7 @@
 import {
   BuyerType,
   DispatchStatus,
+  LocationType,
   MovementType,
   PaymentMethod,
   PaymentStatus,
@@ -102,7 +103,7 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
   const locationIds = [...new Set(data.items.map((i) => i.locationId).filter((id): id is string => !!id))];
   if (locationIds.length > 0) {
     const foundLocations = await prisma.location.findMany({
-      where: { id: { in: locationIds }, isActive: true },
+      where: { id: { in: locationIds }, isActive: true, type: LocationType.STANDARD },
       select: { id: true },
     });
     const foundLocationIds = new Set(foundLocations.map((l) => l.id));

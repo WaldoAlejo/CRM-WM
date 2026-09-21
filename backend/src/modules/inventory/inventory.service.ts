@@ -1,4 +1,4 @@
-import { MovementType, Prisma, Role } from "@prisma/client";
+import { LocationType, MovementType, Prisma, Role } from "@prisma/client";
 import { applyMovement } from "../../lib/inventoryMovements";
 import { prisma } from "../../lib/prisma";
 import { notFound } from "../../utils/httpError";
@@ -24,7 +24,7 @@ export async function createAdjustment(
 
   if (data.locationId) {
     const location = await prisma.location.findFirst({
-      where: { id: data.locationId, isActive: true },
+      where: { id: data.locationId, isActive: true, type: LocationType.STANDARD },
     });
     if (!location) throw notFound("Ubicación no encontrada");
   }

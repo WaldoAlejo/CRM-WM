@@ -26,4 +26,6 @@ export interface DashboardSummary {
   // Ausentes del todo para OPERATOR — nunca `null`.
   accountsReceivable?: { overdueCount: number; totalOutstanding: string };
   insuranceClaims?: { pendingCount: number };
+  // Lotes de consignación con la revisión vencida (ausente para OPERATOR).
+  consignment?: { overdueReviewCount: number };
 }

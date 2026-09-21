@@ -27,12 +27,13 @@ export async function truncateAllTables(prisma: PrismaClient, schemaName: string
   // una orden dejaría la tabla vacía para TODOS los tests siguientes que
   // también creen una (generateOrderNumber haría un UPDATE sin filas
   // afectadas y la desestructuración de RETURNING explotaría). 0 es el valor
-  // correcto acá: si DispatchOrder también quedó en 0 filas (que es
+  // correcto acá (la fila id=2 es el contador de lotes de consignación, mismo
+  // caso): si DispatchOrder también quedó en 0 filas (que es
   // justamente lo que este TRUNCATE acaba de garantizar), el contador debe
   // arrancar en 0 también.
   if (tables.some((t) => t.tablename === "OrderNumberCounter")) {
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "${schemaName}"."OrderNumberCounter" ("id", "lastNumber") VALUES (1, 0);`
+      `INSERT INTO "${schemaName}"."OrderNumberCounter" ("id", "lastNumber") VALUES (1, 0), (2, 0);`
     );
   }
 }

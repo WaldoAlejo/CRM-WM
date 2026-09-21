@@ -14,6 +14,7 @@ import { DispatchStatus, Prisma, Role, ShipmentStatus } from "@prisma/client";
 import { classifySaleByShipment } from "../../lib/dispatchSaleClassification";
 import { prisma } from "../../lib/prisma";
 import { hasAdminAccess } from "../../lib/roles";
+import { countOverdueReviews } from "../consignment/consignment.service";
 import { getAccountsReceivableSummary } from "../dispatchOrders/dispatchOrders.service";
 import { OPEN_STATUSES } from "../insuranceClaims/insuranceClaims.service";
 import { getStockSummary } from "../inventory/inventory.service";
@@ -136,12 +137,13 @@ export async function getDashboardSummary(role: Role) {
     return { stockAlerts, pendingCourierShipments, sales: { today, week, month } };
   }
 
-  const [today, week, month, accountsReceivable, insuranceClaimsPendingCount] = await Promise.all([
+  const [today, week, month, accountsReceivable, insuranceClaimsPendingCount, consignmentOverdueCount] = await Promise.all([
     getSalesWithCost(todayStart, now),
     getSalesWithCost(weekStart, now),
     getSalesWithCost(monthStart, now),
     getAccountsReceivableSummary(),
     prisma.insuranceClaim.count({ where: { status: { in: OPEN_STATUSES } } }),
+    countOverdueReviews(),
   ]);
 
   return {
@@ -150,5 +152,7 @@ export async function getDashboardSummary(role: Role) {
     sales: { today, week, month },
     accountsReceivable,
     insuranceClaims: { pendingCount: insuranceClaimsPendingCount },
+    // Alerta de consignación: lotes con revisión vencida (solo ADMIN/CEO).
+    consignment: { overdueReviewCount: consignmentOverdueCount },
   };
 }

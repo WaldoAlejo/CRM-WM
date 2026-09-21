@@ -1,4 +1,4 @@
-import { MovementType, Prisma, Role } from "@prisma/client";
+import { LocationType, MovementType, Prisma, Role } from "@prisma/client";
 import { applyMovement } from "../../lib/inventoryMovements";
 import { prisma } from "../../lib/prisma";
 import { badRequest, conflict, notFound, unprocessableEntity } from "../../utils/httpError";
@@ -152,7 +152,7 @@ export async function receiveStock(
   const locationIds = [...new Set(lines.map((l) => l.locationId).filter((id): id is string => !!id))];
   if (locationIds.length > 0) {
     const foundLocations = await prisma.location.findMany({
-      where: { id: { in: locationIds }, isActive: true },
+      where: { id: { in: locationIds }, isActive: true, type: LocationType.STANDARD },
       select: { id: true },
     });
     const foundLocationIds = new Set(foundLocations.map((l) => l.id));

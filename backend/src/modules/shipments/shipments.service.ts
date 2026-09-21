@@ -1,8 +1,9 @@
-import { ClaimStatus, MovementType, ShipmentStatus } from "@prisma/client";
-import { applyMovement } from "../../lib/inventoryMovements";
+import { ClaimStatus, MovementType, ReturnSource, ShipmentStatus } from "@prisma/client";
 import { recalculatePaymentStatus } from "../../lib/paymentRecalculation";
 import { prisma } from "../../lib/prisma";
 import { conflict, notFound } from "../../utils/httpError";
+import { computeOrderTotal } from "../../lib/paymentRecalculation";
+import { createReturnBatch } from "../quarantine/quarantine.service";
 
 async function getShipmentOrThrow(shipmentId: string) {
   const shipment = await prisma.shipment.findUnique({
@@ -52,7 +53,7 @@ export async function deliverShipment(
 export async function rejectShipment(
   shipmentId: string,
   rejectionReason: string,
-  userId: string | undefined
+  _userId: string | undefined
 ) {
   const shipment = await getShipmentOrThrow(shipmentId);
   assertInTransit(shipment.status);
@@ -63,23 +64,33 @@ export async function rejectShipment(
       data: { status: ShipmentStatus.RECHAZADO, rejectionReason },
     });
 
-    // El producto vuelve físicamente a bodega: DEVOLUCION en signo positivo,
-    // por cada ítem de la orden (mismo patrón que la SALIDA original).
-    // Reutiliza automáticamente item.locationId (la ubicación de origen
-    // elegida al crear la orden) como destino: es la ubicación de la que
-    // salió físicamente, así que es la mejor suposición de a dónde vuelve sin
-    // pedirle al operador que la elija de nuevo. Si más adelante se necesita
-    // que vuelva a OTRA ubicación, se puede corregir después con un AJUSTE.
-    for (const item of shipment.dispatchOrder.items) {
-      await applyMovement(tx, {
+    // El producto ya NO vuelve directo a stock: pasa primero por la bodega de
+    // Cuarentena/Validación y queda pendiente de checklist (lo completa
+    // OPERATOR, ver módulo quarantine). Si el checklist PASA, se aplica el
+    // DEVOLUCION a item.locationId (la ubicación de origen de la SALIDA, igual
+    // que antes) con referencia a esa SALIDA; si NO PASA, el courier paga el
+    // valor de venta vía InsuranceClaim (mismo cálculo que perdido/dañado).
+    // (`_userId` no se usa: el usuario relevante es quien inspecciona.)
+    const salidas = await tx.inventoryMovement.findMany({
+      where: {
+        type: MovementType.SALIDA,
+        dispatchOrderItemId: { in: shipment.dispatchOrder.items.map((i) => i.id) },
+      },
+      select: { id: true, dispatchOrderItemId: true },
+    });
+    const salidaByItem = new Map(salidas.map((m) => [m.dispatchOrderItemId, m.id]));
+
+    await createReturnBatch(tx, {
+      source: ReturnSource.COURIER_RECHAZADO,
+      shipmentId,
+      lines: shipment.dispatchOrder.items.map((item) => ({
         variantId: item.variantId,
-        type: MovementType.DEVOLUCION,
         quantity: item.quantity,
-        dispatchOrderItemId: item.id,
-        locationId: item.locationId ?? undefined,
-        createdById: userId,
-      });
-    }
+        unitPrice: item.unitPrice,
+        originLocationId: item.locationId,
+        originMovementId: salidaByItem.get(item.id),
+      })),
+    });
 
     return updatedShipment;
   });
@@ -98,14 +109,13 @@ export async function markShipmentLostOrDamaged(
   // sacó estas unidades de `stock` de forma correcta y definitiva — crear
   // otro movimiento acá las restaría dos veces.
   //
-  // claimAmount = Σ(unitPrice × quantity): lo que el courier debe devolver a
-  // WM es el valor de la VENTA que se frustró, no el costo de fábrica.
-  // unitPrice ya viene neto (con descuento aplicado, según la definición
-  // original del campo) — no se vuelve a aplicar discountPct.
-  const claimAmount = shipment.dispatchOrder.items.reduce(
-    (sum, item) => sum + Number(item.unitPrice) * item.quantity,
-    0
-  );
+  // claimAmount = Σ(unitPrice × quantity), calculado con computeOrderTotal: la
+  // MISMA función (aritmética Decimal) que calcula el total de la orden, o sea
+  // el valor de la factura emitida al cliente final. La aseguradora exige esa
+  // factura como respaldo, así que es el precio real de venta de ESTA orden
+  // (unitPrice congelado, ya neto de descuento), nunca un PVP de lista ni el
+  // costo. El rechazado-no-conforme de Cuarentena usa esta misma función.
+  const claimAmount = computeOrderTotal(shipment.dispatchOrder.items);
   const claimDate = new Date();
   const expectedResolutionDate = new Date(claimDate.getTime() + 20 * 24 * 60 * 60 * 1000);
 

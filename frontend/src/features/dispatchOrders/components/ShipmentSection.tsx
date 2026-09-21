@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Shipment } from "../dispatchOrders.types";
@@ -67,6 +68,16 @@ export function ShipmentSection({ orderId, shipment }: ShipmentSectionProps) {
           </div>
         ) : null}
       </dl>
+
+      {shipment.status === "RECHAZADO" && !shipment.claim ? (
+        <p className="rounded-md bg-blue-50 p-2 text-sm text-blue-800">
+          Las unidades están en Cuarentena pendientes de checklist: si pasan vuelven a stock; si no, se genera el
+          reclamo al courier.{" "}
+          <Link to="/quarantine" className="font-medium underline">
+            Ir a Cuarentena
+          </Link>
+        </p>
+      ) : null}
 
       {shipment.claim ? (
         <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-800">

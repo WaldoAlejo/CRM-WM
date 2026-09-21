@@ -136,7 +136,13 @@ export async function createCourierFixture() {
 }
 
 export async function createWarehouseFixture() {
-  return prisma.warehouse.create({ data: { name: `Bodega ${randomUUID()}` } });
+  // Igual que POST /warehouses: toda bodega nace con su ubicación de Cuarentena.
+  return prisma.warehouse.create({
+    data: {
+      name: `Bodega ${randomUUID()}`,
+      locations: { create: { code: "Cuarentena", type: "CUARENTENA" } },
+    },
+  });
 }
 
 export async function createLocationFixture(overrides?: { warehouseId?: string; code?: string }) {

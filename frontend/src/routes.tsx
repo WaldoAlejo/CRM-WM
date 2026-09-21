@@ -4,6 +4,9 @@ import { RequireRole } from "@/components/auth/RequireRole";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BrandsPage } from "@/features/brands/BrandsPage";
 import { CategoriesPage } from "@/features/categories/CategoriesPage";
+import { ConsignmentDetailPage } from "@/features/consignment/ConsignmentDetailPage";
+import { ConsignmentPage } from "@/features/consignment/ConsignmentPage";
+import { CreateConsignmentLotPage } from "@/features/consignment/CreateConsignmentLotPage";
 import { CouriersPage } from "@/features/couriers/CouriersPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { AccountsReceivablePage } from "@/features/dispatchOrders/AccountsReceivablePage";
@@ -19,6 +22,7 @@ import { ReceiveStockPage } from "@/features/importBatches/ReceiveStockPage";
 import { InsuranceClaimsPage } from "@/features/insuranceClaims/InsuranceClaimsPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { LocationsPage } from "@/features/locations/LocationsPage";
+import { QuarantinePage } from "@/features/quarantine/QuarantinePage";
 import { ProductDetailPage } from "@/features/products/ProductDetailPage";
 import { ProductsPage } from "@/features/products/ProductsPage";
 import { ProfitabilityDashboardPage } from "@/features/reports/ProfitabilityDashboardPage";
@@ -64,11 +68,20 @@ export const router = createBrowserRouter([
             element: <RequireRole roles={["ADMIN"]} />,
             children: [
               { path: "accounts-receivable", element: <AccountsReceivablePage /> },
+              { path: "consignment", element: <ConsignmentPage /> },
+              { path: "consignment/new", element: <CreateConsignmentLotPage /> },
+              { path: "consignment/:id", element: <ConsignmentDetailPage /> },
               { path: "insurance-claims", element: <InsuranceClaimsPage /> },
               { path: "reports", element: <ProfitabilityDashboardPage /> },
               { path: "reports/profitability", element: <ProfitabilityDetailPage /> },
               { path: "admin/users", element: <UsersPage /> },
             ],
+          },
+          {
+            // Cuarentena/Validación: OPERATOR y superiores (todos los roles autenticados).
+            // Espejo de requireRole(OPERATOR) de /api/quarantine; nunca muestra precios.
+            element: <RequireRole roles={["OPERATOR"]} />,
+            children: [{ path: "quarantine", element: <QuarantinePage /> }],
           },
           {
             // Exclusivo de CEO (ADMIN NO pasa): espejo de requireRole(Role.CEO) del backend.

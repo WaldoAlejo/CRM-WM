@@ -38,3 +38,16 @@ export async function generateOrderNumber(tx: Prisma.TransactionClient): Promise
   });
   return `OD-${String(counter.lastNumber).padStart(6, "0")}`;
 }
+
+// Código de lote de consignación ("CON-000001"): segunda fila de
+// OrderNumberCounter (id=2), mismo UPDATE...RETURNING atómico que
+// generateOrderNumber y las mismas reglas: SIEMPRE dentro de la transacción que
+// crea el lote, y SIEMPRE antes de tocar ProductVariant (orden de locks: contador
+// primero, variantes después, en todos los flujos que usan los dos).
+export async function generateConsignmentCode(tx: Prisma.TransactionClient): Promise<string> {
+  const counter = await tx.orderNumberCounter.update({
+    where: { id: 2 },
+    data: { lastNumber: { increment: 1 } },
+  });
+  return `CON-${String(counter.lastNumber).padStart(6, "0")}`;
+}

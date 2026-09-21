@@ -201,7 +201,7 @@ describe("Acciones sobre el shipment — entregado/rechazado/perdido-dañado, co
     expect(stockAfterDeliver).toBe(stockAfterConfirm);
   }, 30000);
 
-  it("marca el envío como rechazado: el stock vuelve a subir (DEVOLUCION) y oculta los 3 botones", async () => {
+  it("marca el envío como rechazado: las unidades pasan a Cuarentena (el stock NO sube hasta el checklist) y oculta los 3 botones", async () => {
     const admin = await loginAsAdmin();
     setSession(admin.token, admin.user);
 
@@ -231,9 +231,23 @@ describe("Acciones sobre el shipment — entregado/rechazado/perdido-dañado, co
     expect(order.shipment?.status).toBe("RECHAZADO");
     expect(order.shipment?.rejectionReason).toBe("Cliente no estaba en el domicilio");
 
-    // DEVOLUCION: la mercadería vuelve físicamente a bodega, +quantity.
-    const stockAfterReject = await getVariantStock(productId, variantId);
-    expect(stockAfterReject).toBe(stockAfterConfirm + 4);
+    // Ya NO hay DEVOLUCION directa: el producto queda pendiente de checklist en
+    // Cuarentena, así que el stock sigue igual que tras confirmar.
+    expect(await getVariantStock(productId, variantId)).toBe(stockAfterConfirm);
+
+    // Al pasar el checklist (OPERATOR o superior) sí vuelve a stock. Además deja
+    // la cola de Cuarentena de la base compartida sin líneas colgadas.
+    const queue = await apiFetch<{ data: { id: string; reference: string | null; remaining: number }[] }>(
+      "/quarantine/queue?pageSize=100"
+    );
+    const detail = await apiFetch<{ orderNumber: string }>(`/dispatch-orders/${orderId}`);
+    const queued = queue.data.find((l) => l.reference === detail.orderNumber);
+    expect(queued?.remaining).toBe(4);
+    await apiFetch(`/quarantine/lines/${queued!.id}/inspections`, {
+      method: "POST",
+      body: JSON.stringify({ quantity: 4, boxOk: true, noVisibleDamage: true, piecesComplete: true }),
+    });
+    expect(await getVariantStock(productId, variantId)).toBe(stockAfterConfirm + 4);
   }, 30000);
 
   it("marca el envío como perdido/dañado: NO crea movimiento de inventario y genera el InsuranceClaim", async () => {
