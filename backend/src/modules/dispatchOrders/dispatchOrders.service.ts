@@ -15,14 +15,18 @@ import { computeOrderTotal, recalculatePaymentStatus } from "../../lib/paymentRe
 import { classifyReceivable, dueSoonUpperBound, type CollectionStatus } from "../../lib/receivableStatus";
 import { prisma } from "../../lib/prisma";
 import { reserveStock, releaseStock } from "../../lib/stockReservation";
-import { badRequest, conflict, notFound } from "../../utils/httpError";
+import { negotiatedCost, negotiatedUnitPrice } from "./negotiatedPricing";
+import { hasAdminAccess } from "../../lib/roles";
+import { badRequest, conflict, forbidden, notFound } from "../../utils/httpError";
 import { serializeDispatchOrderForRole } from "./dispatchOrders.serializer";
 
 interface CreateOrderItemInput {
   variantId: string;
   quantity: number;
   priceType: "MAYORISTA" | "PVP";
-  unitPrice: number;
+  unitPrice?: number;
+  markupPct?: number;
+  expectedRealCost?: number;
   discountPct?: number;
   locationId?: string;
 }
@@ -40,6 +44,9 @@ interface CreateOrderInput {
 }
 
 export async function createDispatchOrder(data: CreateOrderInput, userId: string | undefined, role: Role) {
+  if (!hasAdminAccess(role) && data.items.some(item => item.markupPct !== undefined)) {
+    throw forbidden("La negociación sobre costo requiere acceso a costos.");
+  }
   // Exactamente uno de wholesalerId/finalCustomerId, según buyerType (la
   // misma regla que ya protege el CHECK de la base, pero acá con un mensaje
   // claro en vez de dejar que una violación de CHECK caiga al 500 genérico).
@@ -128,6 +135,20 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
     async (tx) => {
       const orderNumber = await generateOrderNumber(tx);
 
+      const pricedItems = [];
+      for (const item of data.items) {
+        const base = { variantId: item.variantId, quantity: item.quantity, priceType: item.priceType, locationId: item.locationId };
+        if (item.markupPct !== undefined) {
+          const costs = await negotiatedCost(tx, item.variantId);
+          if (item.expectedRealCost !== undefined && !costs.landedCostSnapshot.equals(item.expectedRealCost)) {
+            throw conflict("El costo real cambió. Actualiza el producto en el despacho y revisa la negociación.", { field: "items" });
+          }
+          pricedItems.push({ ...base, priceType: data.buyerType === "MAYORISTA" ? "MAYORISTA" as const : "PVP" as const,
+            ...costs, markupPct: item.markupPct, unitPrice: negotiatedUnitPrice(costs.landedCostSnapshot, item.markupPct) });
+        } else {
+          pricedItems.push({ ...base, unitPrice: new Prisma.Decimal(item.unitPrice!), discountPct: item.discountPct });
+        }
+      }
       const created = await tx.dispatchOrder.create({
         data: {
           orderNumber,
@@ -141,14 +162,7 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
           notes: data.notes,
           createdById: userId,
           items: {
-            create: data.items.map((item) => ({
-              variantId: item.variantId,
-              quantity: item.quantity,
-              priceType: item.priceType,
-              unitPrice: item.unitPrice,
-              discountPct: item.discountPct,
-              locationId: item.locationId,
-            })),
+            create: pricedItems,
           },
         },
         include: { items: true },
@@ -227,14 +241,14 @@ export async function confirmDispatchOrder(
       // de ganancia de esta orden ya no se ven afectados. GET
       // /reports/profitability lee estos dos snapshots, nunca recalcula en
       // vivo.
-      const [unitCostSnapshot, landedCostSnapshot] = await Promise.all([
-        computeWeightedAverageCost(tx, item.variantId),
-        computeLandedCost(tx, item.variantId),
-      ]);
-      await tx.dispatchOrderItem.update({
-        where: { id: item.id },
-        data: { unitCostSnapshot, landedCostSnapshot },
-      });
+      if (item.markupPct == null) {
+        const [unitCostSnapshot, landedCostSnapshot] = await Promise.all([
+          computeWeightedAverageCost(tx, item.variantId), computeLandedCost(tx, item.variantId),
+        ]);
+        await tx.dispatchOrderItem.update({ where: { id: item.id }, data: { unitCostSnapshot, landedCostSnapshot } });
+      }
+      // Negotiated lines keep the cost agreed when the order was created.
+
 
       await releaseStock(tx, item.variantId, item.quantity);
 

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { usePricingVisibility } from "@/hooks/usePricingVisibility";
-import type { PricingField } from "@/lib/pricingFields";
+import { useNegotiatedCost } from "@/features/dispatchOrders/useNegotiatedCost";
 import { AttributesFieldArray } from "./components/AttributesFieldArray";
 import type { ProductStatus, Variant } from "./products.types";
 import { useVariantMutations } from "./useVariantMutations";
@@ -32,17 +32,6 @@ interface VariantFormDialogProps {
   retailPriceOverride?: number;
   wholesalePriceOverride?: number;
 }
-
-// `name` tipado como PricingField (no un string suelto): si backend agrega o
-// renombra un campo de precio en pricingFields.ts, TS marca acá cualquier
-// desajuste en vez de dejarlo pasar silencioso.
-const PRICE_FIELDS_CONFIG: { name: PricingField; label: string }[] = [
-  { name: "costPriceUSD", label: "Costo de fábrica (USD)" },
-  { name: "wholesalePrice", label: "Precio mayorista" },
-  { name: "wholesaleDiscountPct", label: "% descuento mayorista" },
-  { name: "retailPrice", label: "Precio público (PVP)" },
-  { name: "retailDiscountPct", label: "% descuento PVP" },
-];
 
 function toFormValues(variant: Variant | null, retailPriceOverride?: number): VariantFormValues {
   if (!variant) return { ...variantDefaultValues, ...(retailPriceOverride !== undefined && { retailPrice: retailPriceOverride }) };
@@ -76,6 +65,7 @@ export function VariantFormDialog({
 }: VariantFormDialogProps) {
   const isEdit = variant !== null;
   const canSeePricing = usePricingVisibility();
+  const { data: realCost } = useNegotiatedCost(variant?.id ?? "", open && canSeePricing && !!variant);
   const { createMutation, updateMutation } = useVariantMutations(productId);
 
   const form = useForm<VariantFormValues>({
@@ -100,11 +90,8 @@ export function VariantFormDialog({
           minStock: values.minStock ?? null,
           weightKg: values.weightKg ?? null,
           dimensionsCm: values.dimensionsCm || null,
-          costPriceUSD: values.costPriceUSD ?? null,
-          wholesalePrice: values.wholesalePrice ?? null,
-          wholesaleDiscountPct: values.wholesaleDiscountPct ?? null,
-          retailPrice: values.retailPrice ?? null,
-          retailDiscountPct: values.retailDiscountPct ?? null,
+          ...(retailPriceOverride !== undefined && { retailPrice: values.retailPrice }),
+          ...(wholesalePriceOverride !== undefined && { wholesalePrice: values.wholesalePrice }),
         }
       : {
           attributes,
@@ -114,11 +101,6 @@ export function VariantFormDialog({
           minStock: values.minStock,
           weightKg: values.weightKg,
           dimensionsCm: values.dimensionsCm || undefined,
-          costPriceUSD: values.costPriceUSD,
-          wholesalePrice: values.wholesalePrice,
-          wholesaleDiscountPct: values.wholesaleDiscountPct,
-          retailPrice: values.retailPrice,
-          retailDiscountPct: values.retailDiscountPct,
           force: values.force,
         };
 
@@ -235,30 +217,29 @@ export function VariantFormDialog({
               />
             </div>
 
-            {/* Los 5 campos de precio/costo NUNCA se renderizan para OPERATOR
-                — no deshabilitados, no en gris: directamente no están en el
-                array que se mapea, así que no existen en el DOM. Espeja
-                exactamente PRICING_FIELDS del backend. */}
             {canSeePricing ? (
-              <div className="grid grid-cols-2 gap-4 rounded-md border p-3">
-                <p className="col-span-2 text-sm font-medium text-muted-foreground">Precios y costos</p>
-                {PRICE_FIELDS_CONFIG.map((priceField) => (
-                  <FormField
-                    key={priceField.name}
-                    control={form.control}
-                    name={priceField.name}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{priceField.label}</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Opcional" {...field} value={field.value ?? ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ))}
-              </div>
+              <section className="space-y-3 rounded-md border p-3">
+                <p className="font-medium">Costo de importación (USD)</p>
+                <p className="text-sm text-muted-foreground">
+                  La importación registra el costo. En cada despacho ingresa el porcentaje de ganancia
+                  negociado sobre el costo real, tanto para mayoristas como para clientes finales.
+                </p>
+                {!variant?.costPriceUSD ? (
+                  <p className="text-sm">Pendiente de recibir una importación con costo y CBM.</p>
+                ) : null}
+                <div className="grid grid-cols-2 gap-4">
+                  {([
+                    ["costPriceUSD", "Costo de fábrica (USD)"],
+                  ] as const).map(([name, label]) => (
+                    <FormField key={name} control={form.control} name={name} render={({ field }) => (
+                      <FormItem><FormLabel>{label}</FormLabel><FormControl>
+                        <Input readOnly placeholder="Pendiente de importación" {...field} value={field.value ?? ""} />
+                      </FormControl></FormItem>
+                    )} />
+                  ))}
+                  <div className="text-sm"><p>Costo real promedio ponderado (USD)</p><p className="font-medium">{realCost != null ? '$' + realCost.toFixed(2) : "Pendiente de importación"}</p></div>
+                </div>
+              </section>
             ) : null}
 
             {showForceToggle ? (

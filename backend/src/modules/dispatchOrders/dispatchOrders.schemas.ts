@@ -16,13 +16,16 @@ export const createDispatchOrderSchema = z.object({
         variantId: z.string().min(1),
         quantity: z.number().int().positive("La cantidad debe ser mayor a 0"),
         priceType: z.nativeEnum(PriceType),
-        unitPrice: z.number().nonnegative(),
+        unitPrice: z.number().nonnegative().optional(),
+        markupPct: z.number().min(0).max(10000).multipleOf(0.01).optional(),
+        expectedRealCost: z.number().positive().optional(),
         discountPct: z.number().min(0).max(100).optional(),
         // Ubicación de origen elegida al crear la orden. Se usa recién al
         // confirmar (ver confirmDispatchOrder), pero se captura acá porque es
         // donde existe el listado de ítems.
         locationId: z.string().min(1).optional(),
-      })
+      }).refine(item => item.markupPct !== undefined || item.unitPrice !== undefined, { message: "Ingresa el porcentaje negociado o el precio unitario", path: ["markupPct"] })
+        .refine(item => item.markupPct === undefined || !item.discountPct, { message: "No combines incremento sobre costo y descuento", path: ["discountPct"] })
     )
     .min(1, "Debes incluir al menos un ítem"),
 });

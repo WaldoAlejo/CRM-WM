@@ -21,7 +21,9 @@ const NAME = `E2E Proveedor ${Date.now()}`;
 const NAME_EDITADO = `${NAME} (editado)`;
 
 function testWrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // renderHook lee los resultados fuera del render; suscribirse a todos los
+  // cambios evita perder un refetch rápido antes de observar la propiedad data.
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, notifyOnChangeProps: "all" } } });
   return function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   };

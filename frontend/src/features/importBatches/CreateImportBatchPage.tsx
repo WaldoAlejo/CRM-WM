@@ -42,6 +42,7 @@ export function CreateImportBatchPage() {
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "lines" });
   const lines = useWatch({ control: form.control, name: "lines" }) ?? [];
+  const containerType = useWatch({ control: form.control, name: "containerType" });
   const containerCbm = useWatch({ control: form.control, name: "containerCbm" });
   const freightCost = useWatch({ control: form.control, name: "freightCost" });
   const customsCost = useWatch({ control: form.control, name: "customsCost" });
@@ -137,17 +138,17 @@ export function CreateImportBatchPage() {
           <section className="grid grid-cols-2 gap-4 rounded-md border p-4">
             <h2 className="col-span-2 text-lg font-semibold">Lote</h2>
             <FormField control={form.control} name="containerType" render={({ field }) => (
-              <FormItem><FormLabel>Tipo de contenedor</FormLabel>
+              <FormItem><FormLabel>Modalidad de importación</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange} disabled={headerLocked}>
                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                  <SelectContent><SelectItem value="20">20 pies</SelectItem><SelectItem value="40">40 pies</SelectItem><SelectItem value="40HC">40 HC</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="20">20 pies</SelectItem><SelectItem value="40">40 pies</SelectItem><SelectItem value="40HC">40 HC</SelectItem><SelectItem value="LCL">Carga suelta / LCL</SelectItem></SelectContent>
                 </Select><FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="containerCbm" render={({ field }) => (
-              <FormItem><FormLabel>Volumen del contenedor (CBM)</FormLabel>
+              <FormItem><FormLabel>{containerType === "LCL" ? "Volumen contratado de la carga (CBM)" : "Volumen del contenedor (CBM)"}</FormLabel>
                 <FormControl><Input type="number" min="0.000001" step="any" disabled={headerLocked} {...field} value={field.value || ""} /></FormControl>
-                <p className="text-xs text-muted-foreground">Indica el volumen acordado para este contenedor y su carga. No se deduce del tipo.</p><FormMessage />
+                <p className="text-xs text-muted-foreground">{containerType === "LCL" ? "Ingresa solo los CBM de tu carga: por ejemplo, 26 CBM de power stations. Los gastos de este lote corresponden únicamente a tu importación." : "Indica el volumen acordado para este contenedor y su carga. No se deduce del tipo."}</p><FormMessage />
               </FormItem>
             )} />
             <FormField
@@ -155,7 +156,7 @@ export function CreateImportBatchPage() {
               name="reference"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Referencia / contenedor</FormLabel>
+                  <FormLabel>Referencia / embarque</FormLabel>
                   <FormControl>
                     <Input placeholder="Ej: CONT-2026-001" disabled={headerLocked} {...field} />
                   </FormControl>

@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { usePricingVisibility } from "@/hooks/usePricingVisibility";
+import { apiFetch } from "@/lib/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeftIcon } from "lucide-react";
 import type { Resolver } from "react-hook-form";
@@ -22,6 +25,8 @@ import { useDispatchOrderMutations } from "./useDispatchOrderMutations";
 
 export function CreateDispatchOrderPage() {
   const navigate = useNavigate();
+  const canNegotiate = usePricingVisibility();
+  const [loadingCost, setLoadingCost] = useState(false);
   const { createMutation } = useDispatchOrderMutations();
 
   const form = useForm<DispatchOrderFormValues>({
@@ -36,6 +41,7 @@ export function CreateDispatchOrderPage() {
 
   function handleBuyerTypeChange(value: BuyerType) {
     form.setValue("buyerType", value);
+    form.setValue("items", form.getValues("items").map(item => ({ ...item, priceType: value === "MAYORISTA" ? "MAYORISTA" : "PVP" })));
     form.setValue("wholesalerId", undefined);
     form.setValue("finalCustomerId", undefined);
     // El crédito es exclusivo de mayoristas (mismo rechazo que hace el
@@ -47,18 +53,26 @@ export function CreateDispatchOrderPage() {
     }
   }
 
-  function handleAddItem(result: SearchResult) {
+  async function handleAddItem(result: SearchResult) {
+    if (loadingCost) return;
+    setLoadingCost(true);
+    try {
+    const quote = canNegotiate ? await apiFetch<{ realCost: string }>(`/dispatch-orders/pricing/${result.variantId}`) : null;
     append({
+      costBased: canNegotiate,
+      costAtAdd: quote ? Number(quote.realCost) : undefined,
+      markupPct: undefined,
       variantId: result.variantId,
       sku: result.sku,
       label: result.label,
       quantity: 1,
-      priceType: "PVP",
+      priceType: buyerType === "MAYORISTA" ? "MAYORISTA" : "PVP",
       unitPrice: 0,
       discountPct: undefined,
       availableStockAtAdd: result.availableStock,
       locationId: undefined,
     });
+    } catch (error) { applyApiErrorToForm(error, form); } finally { setLoadingCost(false); }
   }
 
   function handleSubmit(values: DispatchOrderFormValues) {
@@ -74,9 +88,8 @@ export function CreateDispatchOrderPage() {
       items: values.items.map((item) => ({
         variantId: item.variantId,
         quantity: item.quantity,
-        priceType: item.priceType,
-        unitPrice: item.unitPrice,
-        discountPct: item.discountPct,
+        priceType: values.buyerType === "MAYORISTA" ? "MAYORISTA" as const : "PVP" as const,
+        ...(item.costBased ? { markupPct: item.markupPct, expectedRealCost: item.costAtAdd } : { unitPrice: item.unitPrice, discountPct: item.discountPct }),
         locationId: item.locationId || undefined,
       })),
     };
@@ -266,7 +279,7 @@ export function CreateDispatchOrderPage() {
             <Button type="button" variant="outline" onClick={() => navigate("/dispatch-orders")}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
+            <Button type="submit" disabled={createMutation.isPending || loadingCost}>
               {createMutation.isPending ? "Creando..." : "Crear orden"}
             </Button>
           </div>

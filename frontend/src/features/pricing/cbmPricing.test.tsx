@@ -30,7 +30,7 @@ describe("CBM → costo real → mayorista → PVP", () => {
 describe("Formulario de importación", () => {
   const data = { reference: "CONT", arrivalDate: "2026-09-22", containerType: "40", containerCbm: 70,
     lines: [{ variantId: "v1", sku: "AIR", label: null, productName: "Freidora", quantity: 204, unitCost: 18, volumeCbm: 4.68 }] };
-  it.each(["20", "40", "40HC"])("permite volumen indicado para contenedor %s", (containerType) => {
+  it.each(["20", "40", "40HC", "LCL"])("permite volumen indicado para contenedor %s", (containerType) => {
     expect(createImportBatchFormSchema.safeParse({ ...data, containerType }).success).toBe(true);
   });
   it("exige volumen y rechaza una carga que supera el contenedor", () => {
@@ -38,4 +38,11 @@ describe("Formulario de importación", () => {
     expect(createImportBatchFormSchema.safeParse({ ...data, containerCbm: 4 }).success).toBe(false);
     expect(createImportBatchFormSchema.safeParse({ ...data, lines: [{ ...data.lines[0], volumeCbm: 0 }] }).success).toBe(false);
   });
+});
+
+it("LCL calcula sobre los 26 CBM contratados, incluyendo sus aranceles y gastos propios", () => {
+  const rate = costPerCbm(2600 + 2000 + 600, 26);
+  expect(rate).toBe(200);
+  expect(landedUnitCost(150, volumeCostPerUnit(rate, 6, 10))).toBe(270);
+  expect(landedUnitCost(100, volumeCostPerUnit(rate, 20, 20))).toBe(300);
 });

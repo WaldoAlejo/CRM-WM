@@ -115,14 +115,11 @@ describe("Selector de ubicación en el formulario real de creación de orden", (
     });
     locationId = location.id;
 
-    await apiFetch("/inventory/adjustments", {
-      method: "POST",
-      body: JSON.stringify({
-        variantId: variant.id,
-        quantity: 50,
-        reason: "Stock inicial para test E2E",
-        locationId,
-      }),
+    const batch = await apiFetch<{ id: string }>("/import-batches", {
+      method: "POST", body: JSON.stringify({ reference: "E2E-COST-" + VARIANT_SKU, arrivalDate: new Date().toISOString(), containerType: "LCL", containerCbm: 1 }),
+    });
+    await apiFetch(`/import-batches/${batch.id}/receive`, {
+      method: "POST", body: JSON.stringify({ lines: [{ variantId: variant.id, quantity: 50, unitCost: 10, volumeCbm: 1, locationId }] }),
     });
 
     const customer = await apiFetch<{ id: string }>("/final-customers", {
@@ -168,8 +165,8 @@ describe("Selector de ubicación en el formulario real de creación de orden", (
 
     const quantityInput = await screen.findByDisplayValue("1");
     fireEvent.change(quantityInput, { target: { value: "2" } });
-    const unitPriceInput = screen.getByDisplayValue("0");
-    fireEvent.change(unitPriceInput, { target: { value: "15" } });
+    const unitPriceInput = screen.getByLabelText(`Incremento sobre costo ${VARIANT_SKU}`);
+    fireEvent.change(unitPriceInput, { target: { value: "50" } });
 
     // Selector de ubicación de la fila: no tiene FormLabel (a diferencia de
     // "Provincia"), así que no se puede abrir por accesible-name — se abre
@@ -183,7 +180,9 @@ describe("Selector de ubicación en el formulario real de creación de orden", (
     fireEvent.click(combos[combos.length - 1]);
     fireEvent.click(await findLastByTextEventually(LOCATION_LABEL));
 
-    fireEvent.click(screen.getByRole("button", { name: /^crear orden$/i }));
+    // happy-dom calcula incorrectamente stepMismatch para 50 con step=0.01.
+    // Enviar el formulario mantiene la validación real del resolver Zod.
+    fireEvent.submit(screen.getByRole("button", { name: /^crear orden$/i }).closest("form")!);
 
     await screen.findByRole("button", { name: /^confirmar$/i }, { timeout: 8000 });
 

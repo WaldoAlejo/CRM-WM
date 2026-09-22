@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const createImportBatchSchema = z.object({
-  containerType: z.enum(["20", "40", "40HC"]),
+  containerType: z.enum(["20", "40", "40HC", "LCL"]),
   containerCbm: z.number().positive().max(999999).multipleOf(0.000001),
   reference: z.string().min(1, "La referencia/contenedor es obligatoria").max(100),
   supplierId: z.string().min(1).optional(),

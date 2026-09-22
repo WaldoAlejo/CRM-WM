@@ -19,8 +19,7 @@ function money(value: string | null | undefined): string {
 
 function lineSubtotal(item: DispatchOrderItem): number {
   const unitPrice = Number(item.unitPrice);
-  const discountPct = item.discountPct ? Number(item.discountPct) : 0;
-  return unitPrice * item.quantity * (1 - discountPct / 100);
+  return unitPrice * item.quantity;
 }
 
 export function OrderDetailItemsTable({ items }: { items: DispatchOrderItem[] }) {
@@ -47,13 +46,11 @@ export function OrderDetailItemsTable({ items }: { items: DispatchOrderItem[] })
     { header: "P. Unit.", cell: (item) => money(item.unitPrice) },
     { header: "Desc. %", cell: (item) => (item.discountPct ? `${item.discountPct}%` : "—") },
     { header: "Subtotal", cell: (item) => `$${lineSubtotal(item).toFixed(2)}` },
-    ...(canSeeCosts
-      ? (COST_COLUMNS_CONFIG.map((config) => ({
-          header: config.header,
-          cell: (item: DispatchOrderItem) => money(item[config.field]),
-        })) satisfies CrudColumn<DispatchOrderItem>[])
-      : []),
+    ...(canSeeCosts ? [
+      { header: "Incremento sobre costo", cell: (item: DispatchOrderItem) => item.markupPct != null ? item.markupPct + "%" : "—" },
+      { header: "Ganancia total (USD)", cell: (item: DispatchOrderItem) => item.landedCostSnapshot != null || item.unitCostSnapshot != null ? "$" + ((Number(item.unitPrice) - Number(item.landedCostSnapshot ?? item.unitCostSnapshot)) * item.quantity).toFixed(2) : "Pendiente" },
+      ...COST_COLUMNS_CONFIG.map(config => ({ header: config.header, cell: (item: DispatchOrderItem) => money(item[config.field]) })),
+    ] : []),
   ];
-
   return <DataTable columns={columns} data={items} isLoading={false} getRowId={(item) => item.id} />;
 }

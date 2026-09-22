@@ -1,4 +1,4 @@
-import { CalculatorIcon, ImageIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ImageIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { DataTable } from "@/components/crud/DataTable";
@@ -9,7 +9,6 @@ import type { ProductStatus, Variant } from "../products.types";
 import { useVariantMutations } from "../useVariantMutations";
 import { VariantFormDialog } from "../VariantFormDialog";
 import { VariantImagesDialog } from "./VariantImagesDialog";
-import { VariantPricingCalculatorDialog } from "./VariantPricingCalculatorDialog";
 
 // Solicitud de apertura que viene de FUERA de esta tabla (hoy: "Usar este
 // PVP" en la calculadora inline de un Lote de Importación, que navega hasta
@@ -40,7 +39,6 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
   const [retailPriceOverride, setRetailPriceOverride] = useState<number | undefined>(undefined);
   const [wholesalePriceOverride, setWholesalePriceOverride] = useState<number | undefined>();
   const [imagesFor, setImagesFor] = useState<Variant | null>(null);
-  const [calculatorFor, setCalculatorFor] = useState<Variant | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   function openEdit(variant: Variant | "new", override?: number, wholesaleOverride?: number) {
@@ -71,8 +69,6 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
     ...(canSeePricing
       ? ([
           { header: "Costo (USD)", cell: (v) => money(v.costPriceUSD, "$") },
-          { header: "Mayorista (USD)", cell: (v) => money(v.wholesalePrice, "$") },
-          { header: "PVP", cell: (v) => money(v.retailPrice, "$") },
         ] satisfies CrudColumn<Variant>[])
       : []),
   ];
@@ -86,6 +82,7 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
         </Button>
       </div>
 
+      {canSeePricing ? <p className="text-sm text-muted-foreground">Los precios se negocian sobre el costo real en cada despacho.</p> : null}
       <DataTable
         columns={columns}
         data={variants}
@@ -93,13 +90,6 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
         getRowId={(v) => v.id}
         actions={(variant) => (
           <div className="flex justify-end gap-1">
-            {/* Calculadora de precios: expone costo aterrizado y margen —
-                misma condición que las columnas de precio, ADMIN/CEO solo. */}
-            {canSeePricing ? (
-              <Button variant="ghost" size="icon" title="Calculadora de precios" onClick={() => setCalculatorFor(variant)}>
-                <CalculatorIcon />
-              </Button>
-            ) : null}
             <Button variant="ghost" size="icon" title="Imágenes" onClick={() => setImagesFor(variant)}>
               <ImageIcon />
             </Button>
@@ -129,18 +119,6 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
           onOpenChange={(open) => !open && setImagesFor(null)}
           productId={productId}
           variant={imagesFor}
-        />
-      ) : null}
-
-      {calculatorFor ? (
-        <VariantPricingCalculatorDialog
-          variant={calculatorFor}
-          onOpenChange={(open) => !open && setCalculatorFor(null)}
-          onUsePvp={(pvp, wholesalePrice) => {
-            const variant = calculatorFor;
-            setCalculatorFor(null);
-            openEdit(variant, pvp, wholesalePrice);
-          }}
         />
       ) : null}
 

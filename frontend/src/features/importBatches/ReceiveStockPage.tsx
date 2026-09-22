@@ -72,7 +72,7 @@ export function ReceiveStockPage() {
   function handleSubmit(values: ReceiveFormValues) {
     const receivedCbm = batch!.movements.reduce((sum, m) => sum + Number(m.volumeCbm ?? 0), 0);
     if (receivedCbm + values.lines.reduce((sum, l) => sum + l.volumeCbm, 0) - Number(batch!.containerCbm) > 0.0000001) {
-      form.setError("lines", { message: "Los CBM superan el volumen disponible del contenedor" });
+      form.setError("lines", { message: "Los CBM superan el volumen disponible del lote" });
       return;
     }
     receiveMutation

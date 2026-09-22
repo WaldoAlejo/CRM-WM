@@ -46,8 +46,8 @@ export const receiveFormDefaultValues: ReceiveFormValues = { lines: [] };
 // solo existen para ADMIN (el backend responde 403 si OPERATOR los manda) —
 // la página simplemente no los renderiza para OPERATOR, quedan undefined.
 export const createImportBatchFormSchema = z.object({
-  containerType: z.enum(["20", "40", "40HC"]),
-  containerCbm: z.coerce.number().positive("Ingresa los CBM del contenedor").max(999999).multipleOf(0.000001),
+  containerType: z.enum(["20", "40", "40HC", "LCL"]),
+  containerCbm: z.coerce.number().positive("Ingresa los CBM contratados del lote").max(999999).multipleOf(0.000001),
   reference: z.string().min(1, "La referencia/contenedor es obligatoria").max(100),
   supplierId: optionalString(z.string().min(1)),
   arrivalDate: z.string().min(1, "La fecha de llegada es obligatoria"),
@@ -58,7 +58,7 @@ export const createImportBatchFormSchema = z.object({
   lines: linesSchema,
 }).superRefine((values, ctx) => {
   if (values.lines.reduce((sum, line) => sum + line.volumeCbm, 0) - values.containerCbm > 0.0000001) {
-    ctx.addIssue({ code: "custom", path: ["lines"], message: "Los CBM de las líneas superan el volumen del contenedor" });
+    ctx.addIssue({ code: "custom", path: ["lines"], message: "Los CBM de las líneas superan el volumen contratado del lote" });
   }
 });
 

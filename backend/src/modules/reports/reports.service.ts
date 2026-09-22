@@ -33,6 +33,9 @@ function endOfDay(date: Date): Date {
 }
 
 interface ProfitLine {
+  buyerId: string;
+  buyerType: string;
+  buyerName: string;
   variantId: string;
   sku: string;
   label: string | null;
@@ -130,7 +133,7 @@ async function fetchClassifiedItems(
       },
     },
     include: {
-      dispatchOrder: { include: { shipment: { include: { claim: true } } } },
+      dispatchOrder: { include: { wholesaler: true, finalCustomer: true, shipment: { include: { claim: true } } } },
       variant: { include: { product: { include: { category: true } } } },
     },
   });
@@ -157,6 +160,9 @@ async function fetchClassifiedItems(
     const totalCost = unitCost.times(item.quantity);
 
     const line: ProfitLine = {
+      buyerId: (item.dispatchOrder.wholesalerId ?? item.dispatchOrder.finalCustomerId)!,
+      buyerType: item.dispatchOrder.buyerType,
+      buyerName: item.dispatchOrder.wholesaler?.businessName ?? item.dispatchOrder.finalCustomer?.fullName ?? "Cliente",
       variantId: item.variantId,
       sku: item.variant.sku,
       label: item.variant.label,
@@ -200,6 +206,18 @@ export async function getProfitabilityReport(query: ProfitabilityQuery) {
   };
 }
 
+function buyerTotals(lines: ProfitLine[]) {
+  const groups = new Map<string, ProfitLine[]>();
+  for (const line of lines) {
+    const key = line.buyerType + ":" + line.buyerId;
+    groups.set(key, [...(groups.get(key) ?? []), line]);
+  }
+  return [...groups.values()].map(rows => ({
+    buyerId: rows[0].buyerId, buyerType: rows[0].buyerType, buyerName: rows[0].buyerName,
+    ...toTotalsOutput(sumTotals(rows)),
+  })).sort((a, b) => b.profit.comparedTo(a.profit));
+}
+
 export async function getProfitabilitySummary(query: ProfitabilityQuery) {
   const { sold } = await fetchClassifiedItems(query);
   const grouped = groupByVariant(sold);
@@ -233,6 +251,7 @@ export async function getProfitabilitySummary(query: ProfitabilityQuery) {
       dateTo: query.dateTo?.toISOString() ?? null,
     },
     totals: toTotalsOutput(sumTotals(grouped)),
+    byBuyer: buyerTotals(sold),
     byCategory: [...byCategory.values()]
       .map(({ categoryId, categoryName, lines }) => ({
         categoryId,

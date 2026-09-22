@@ -501,6 +501,7 @@ model VariantImage {
 // ----------------------------------------------------------------------------
 
 model ImportBatch {
+  // LCL usa containerCbm como volumen contratado de la carga, no del contenedor compartido.
   containerType String?
   containerCbm Decimal? @db.Decimal(12, 6)
   id          String    @id @default(cuid())
@@ -820,6 +821,7 @@ model DispatchOrderItem {
 
   priceType   PriceType // Mayorista o PVP: define qué lista de precios se cotizó.
   unitPrice   Decimal   @db.Decimal(10, 2) // Precio real cobrado (ya con descuento aplicado, si hubo).
+  markupPct   Decimal?  @db.Decimal(7, 2) // Incremento negociado sobre landedCostSnapshot, congelado al crear.
   discountPct Decimal?  @db.Decimal(5, 2) // % de descuento aplicado sobre el precio de lista, si aplicó.
 
   // Costo promedio ponderado de la variante en el momento EXACTO en que se

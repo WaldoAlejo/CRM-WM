@@ -33,6 +33,8 @@ export function ImportBatchesPage() {
         </Link>
       ),
     },
+    { header: "Modalidad", cell: (item) => item.containerType === "LCL" ? "Carga suelta / LCL" : item.containerType === "40HC" ? "40 HC" : item.containerType ? `${item.containerType} pies` : "—" },
+    { header: "CBM contratados", cell: (item) => item.containerCbm ?? "—" },
     { header: "Llegada", cell: (item) => new Date(item.arrivalDate).toLocaleDateString("es-EC", { timeZone: "UTC" }) },
     { header: "Proveedor", cell: (item) => item.supplier?.name ?? "—" },
     { header: "Estado", cell: (item) => <BatchStatusBadge movementsCount={item.movementsCount} /> },

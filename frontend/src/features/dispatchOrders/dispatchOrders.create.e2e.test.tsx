@@ -128,9 +128,11 @@ describe("Crear orden de despacho — formulario real, contra el backend real", 
     // de createDispatchOrder) rechaza con 400 cualquier cantidad > 0 si no
     // hay stock real. Se le da stock de verdad vía el mismo endpoint de
     // ajuste manual que usaría un ADMIN al recibir mercadería.
-    await apiFetch("/inventory/adjustments", {
-      method: "POST",
-      body: JSON.stringify({ variantId: variant.id, quantity: 50, reason: "Stock inicial para test E2E" }),
+    const batch = await apiFetch<{ id: string }>("/import-batches", {
+      method: "POST", body: JSON.stringify({ reference: "E2E-COST-" + VARIANT_SKU, arrivalDate: new Date().toISOString(), containerType: "LCL", containerCbm: 1 }),
+    });
+    await apiFetch(`/import-batches/${batch.id}/receive`, {
+      method: "POST", body: JSON.stringify({ lines: [{ variantId: variant.id, quantity: 50, unitCost: 10, volumeCbm: 1 }] }),
     });
 
     const customer = await apiFetch<{ id: string }>("/final-customers", {
@@ -174,15 +176,17 @@ describe("Crear orden de despacho — formulario real, contra el backend real", 
     // coincida el contenido COMPLETO del nodo, no una parte.
     const itemSearchInput = screen.getByPlaceholderText(/buscar por sku, nombre o código de barras/i);
     fireEvent.change(itemSearchInput, { target: { value: VARIANT_SKU } });
-    fireEvent.click(await findLastByTextEventually(new RegExp(VARIANT_SKU)));
+    fireEvent.click(await screen.findByRole("button", { name: new RegExp(VARIANT_SKU) }));
 
     // Cantidad y precio de la línea recién agregada.
     const quantityInput = await screen.findByDisplayValue("1");
     fireEvent.change(quantityInput, { target: { value: "2" } });
-    const unitPriceInput = screen.getByDisplayValue("0");
-    fireEvent.change(unitPriceInput, { target: { value: "15" } });
+    const unitPriceInput = screen.getByLabelText(`Incremento sobre costo ${VARIANT_SKU}`);
+    fireEvent.change(unitPriceInput, { target: { value: "50" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /^crear orden$/i }));
+    // happy-dom calcula incorrectamente stepMismatch para 50 con step=0.01.
+    // Enviar el formulario mantiene la validación real del resolver Zod.
+    fireEvent.submit(screen.getByRole("button", { name: /^crear orden$/i }).closest("form")!);
 
     // Navega al detalle real de la orden recién creada.
     await screen.findByRole("button", { name: /^confirmar$/i }, { timeout: 8000 });
@@ -214,13 +218,13 @@ describe("Crear orden de despacho — formulario real, contra el backend real", 
 
     const itemSearchInput = await screen.findByPlaceholderText(/buscar por sku, nombre o código de barras/i);
     fireEvent.change(itemSearchInput, { target: { value: VARIANT_SKU } });
-    fireEvent.click(await findLastByTextEventually(new RegExp(VARIANT_SKU)));
+    fireEvent.click(await screen.findByRole("button", { name: new RegExp(VARIANT_SKU) }));
     await screen.findByDisplayValue("1");
 
     const toastErrorSpy = vi.spyOn(toast, "error");
 
     fireEvent.change(itemSearchInput, { target: { value: VARIANT_SKU } });
-    fireEvent.click(await findLastByTextEventually(new RegExp(VARIANT_SKU)));
+    fireEvent.click(await screen.findByRole("button", { name: new RegExp(VARIANT_SKU) }));
 
     await waitFor(() =>
       expect(toastErrorSpy).toHaveBeenCalledWith(expect.stringContaining("ya está en la orden"))

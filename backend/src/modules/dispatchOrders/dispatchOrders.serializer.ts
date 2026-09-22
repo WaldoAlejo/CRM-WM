@@ -10,6 +10,7 @@ function serializeItemForRole<T extends Record<string, unknown>>(item: T, role: 
   const sanitized = { ...item };
   delete (sanitized as Record<string, unknown>).unitCostSnapshot;
   delete (sanitized as Record<string, unknown>).landedCostSnapshot;
+  delete (sanitized as Record<string, unknown>).markupPct;
   return sanitized;
 }
 

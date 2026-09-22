@@ -1,25 +1,25 @@
-# Costos de importación en USD
+# Importaciones y precios negociados
 
-- Costo de referencia de fábrica: `costPriceUSD`. La recepción registra el costo unitario de compra en USD en `unitCost`.
-- Cada lote nuevo exige `containerType` (20, 40 o 40HC) y `containerCbm` positivo, indicado por el usuario según la carga contratada.
-- Cada línea exige `volumeCbm`: volumen total de todas las unidades de esa línea, no volumen por unidad.
-- Los costos del lote son flete + aranceles + otros gastos, sin incluir la compra de productos.
+Todos los costos y precios están expresados en USD. Cada lote exige un tipo (20, 40, 40HC o LCL) y su volumen contratado. LCL usa solamente los CBM propios, por ejemplo 26 CBM de power stations.
 
-Tarifa por CBM = costos del lote / CBM del contenedor.
-Gasto de la línea = tarifa × CBM de la línea.
-Gasto unitario = gasto de la línea / cantidad.
-Costo real unitario = compra en USD + gasto unitario.
+Los gastos del lote son flete + aranceles + otros gastos, sin incluir la compra de productos. Tarifa por CBM = gastos / CBM contratados. Gasto unitario de cada línea = tarifa × CBM de esa línea / cantidad. El costo real incluye compra y gasto unitario.
 
-El reparto conserva precisión y se guarda con seis decimales. Se muestra el costo real a centavos. La calculadora aplica 70% sobre ese costo para mayorista y 30% sobre el precio mayorista para PVP; ambos incrementos son editables. Cada precio comercial se redondea a centavos antes de calcular el siguiente.
+La importación registra costos y stock; no fija porcentajes ni precios de venta. La recepción actualiza costPriceUSD y conserva referencias anteriores, sin usarlas para negociar despachos.
 
-Ejemplo: 45,000 / 70 × 4.68 / 204 + 18 = 32.747899… → costo real $32.75 → mayorista $55.68 → PVP $72.38.
+## Despacho
 
-Las recepciones parciales comparten la tarifa del lote. La suma de CBM recibidos no puede exceder el volumen registrado. El servidor bloquea el lote durante la transacción para validar también recepciones concurrentes. Los reintentos idénticos con la misma clave no duplican stock; cambiar el volumen cambia la identidad de la solicitud.
+ADMIN/CEO pueden consultar el costo real promedio ponderado de las recepciones y escribir un incremento por línea, sin porcentaje predeterminado. Tanto mayoristas como clientes finales se calculan directamente sobre ese costo: precio = costo real × (1 + porcentaje / 100). 100% duplica el costo; 120% lo multiplica por 2.20. No es margen sobre ventas ni descuento.
 
-## Migración y datos anteriores
+Se redondean costo y precio a centavos. Con costo $32.75: 70% = $55.68; 80% = $58.95; 90% = $62.23; 100% = $65.50; 120% = $72.05.
 
-Aplicar `backend/prisma/migrations/20260922120000_import_cbm_usd/migration.sql` mediante `npm run prisma:deploy` desde backend antes de desplegar el código. Regenerar el cliente con `npm run prisma:generate` y reiniciar el backend.
+El servidor calcula el precio y guarda markupPct, landedCostSnapshot, unitCostSnapshot y unitPrice asociados al comprador en la misma transacción que la reserva. El costo acordado queda congelado al crear el despacho y no cambia al confirmarlo ni por importaciones posteriores. Si cambia el costo desde la vista previa, se exige revisar la negociación. El precio enviado por el cliente no reemplaza al cálculo cuando se proporciona markupPct.
 
-La columna histórica `costPriceCNY` se conserva, pero queda fuera del cliente Prisma y de las API. No se copian ni convierten esos valores a USD: los costos USD anteriores quedan vacíos hasta ingresar valores confirmados. Los movimientos y sus costos históricos no se recalculan. Para nuevas recepciones de lotes antiguos sin CBM, crear un lote con los datos de volumen; no se inventa el volumen histórico.
+Los permisos de costos se mantienen: OPERATOR no puede consultar o escribir porcentajes sobre costo ni leer esos porcentajes, pues permitirían deducir el costo. El flujo operativo con precios netos manuales sigue siendo compatible, igual que las ventas históricas. No se combina un incremento negociado con descuento adicional.
 
-Desde la calculadora, “Usar precios mayorista y PVP” completa ambos campos del formulario de variante. “Guardar” persiste ambos; cancelar conserva los precios anteriores.
+## Ganancia
+
+El detalle del despacho muestra porcentaje, costo congelado y ganancia por línea. Rentabilidad agrupa ventas confirmadas por mayorista o cliente final, con ventas, costo, ganancia y margen sobre ventas. Los filtros de fechas y reglas existentes para entregas/reclamos siguen aplicando. La ganancia es venta menos costo de mercadería importada; no representa utilidad neta después de todos los gastos operativos del negocio.
+
+## Migraciones
+
+Aplicar npm run prisma:deploy desde backend y regenerar Prisma antes de reiniciar. Las migraciones 20260922120000_import_cbm_usd, 20260922130000_import_lcl y 20260922140000_dispatch_negotiated_markup son aditivas. Los costos CNY históricos se conservan sin conversión automática. Las ventas anteriores no se recalculan ni se les inventa un porcentaje negociado.

@@ -1,3 +1,5 @@
+import { prisma } from "../../lib/prisma";
+import { negotiatedCost } from "./negotiatedPricing";
 import { Role } from "@prisma/client";
 import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler";
@@ -25,6 +27,10 @@ export const dispatchOrdersRouter = Router();
 dispatchOrdersRouter.use(requireAuth);
 
 dispatchOrdersRouter.get("/", asyncHandler(listDispatchOrdersController));
+dispatchOrdersRouter.get("/pricing/:variantId", requireRole(Role.ADMIN), asyncHandler(async (req, res) => {
+  const costs = await negotiatedCost(prisma, String(req.params.variantId));
+  res.json({ realCost: costs.landedCostSnapshot });
+}));
 dispatchOrdersRouter.get("/:id", asyncHandler(getDispatchOrderController));
 dispatchOrdersRouter.post("/", asyncHandler(createDispatchOrderController));
 dispatchOrdersRouter.post("/:id/confirm", asyncHandler(confirmDispatchOrderController));

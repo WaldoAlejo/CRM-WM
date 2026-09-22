@@ -58,6 +58,7 @@ export interface DispatchOrderItem {
   quantity: number;
   priceType: PriceType;
   unitPrice: string;
+  markupPct?: string | null;
   discountPct: string | null;
   unitCostSnapshot?: string | null;
   landedCostSnapshot?: string | null;

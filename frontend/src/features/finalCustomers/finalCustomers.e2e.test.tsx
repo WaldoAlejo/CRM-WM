@@ -20,7 +20,8 @@ const OPERATOR_CREDENTIALS = { email: "operador@kestore.com.ec", password: "Oper
 const NAME = `E2E Cliente ${Date.now()}`;
 
 function testWrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // renderHook observa data fuera del render: recibir también refetches rápidos.
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, notifyOnChangeProps: "all" } } });
   return function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   };

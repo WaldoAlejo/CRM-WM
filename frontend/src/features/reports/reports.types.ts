@@ -28,6 +28,7 @@ export interface ProfitabilitySummary {
   period: { dateFrom: string | null; dateTo: string | null };
   totals: ProfitabilityTotals;
   byCategory: ProfitabilityByCategory[];
+  byBuyer?: (ProfitabilityTotals & { buyerId: string; buyerType: string; buyerName: string })[];
   topProductsByProfit: TopProduct[];
 }
 

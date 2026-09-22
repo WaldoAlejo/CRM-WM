@@ -95,11 +95,11 @@ async function createVariantWithRealCost(sku: string, unitCost: number, receiveQ
 
   const batch = await apiFetch<{ id: string }>("/import-batches", {
     method: "POST",
-    body: JSON.stringify({ reference: `E2E-BATCH-${sku}`, arrivalDate: new Date().toISOString() }),
+    body: JSON.stringify({ reference: `E2E-BATCH-${sku}`, arrivalDate: new Date().toISOString(), containerType: "LCL", containerCbm: 1 }),
   });
   await apiFetch(`/import-batches/${batch.id}/receive`, {
     method: "POST",
-    body: JSON.stringify({ lines: [{ variantId: variant.id, quantity: receiveQuantity, unitCost }] }),
+    body: JSON.stringify({ lines: [{ variantId: variant.id, quantity: receiveQuantity, unitCost, volumeCbm: 1 }] }),
   });
 
   return { categoryId: category.id, productId: product.id, variantId: variant.id };

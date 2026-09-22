@@ -1,27 +1,22 @@
 import { hasAdminAccess } from "@/lib/roles";
-import { ArrowLeftIcon, CalculatorIcon } from "lucide-react";
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeftIcon } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/context/AuthContext";
 import { useLocationOptions } from "@/features/locations/useLocationOptions";
-import { PricingCalculatorDialog } from "@/features/pricing/PricingCalculatorDialog";
 import { BatchStatusBadge } from "./components/BatchStatusBadge";
-import type { ImportBatchMovement } from "./importBatches.types";
 import { landedUnitCost, totalBatchCost } from "./landedCost";
 import { useImportBatch } from "./useImportBatches";
 
 export function ImportBatchDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { role } = useAuth();
   const isAdmin = hasAdminAccess(role);
   const { data: batch, isLoading } = useImportBatch(id);
   const { labelById } = useLocationOptions();
-  const [calculatorFor, setCalculatorFor] = useState<ImportBatchMovement | null>(null);
 
   if (isLoading) return <Skeleton className="h-48 w-full" />;
   if (!batch) return <p className="text-muted-foreground">Lote no encontrado.</p>;
@@ -41,7 +36,7 @@ export function ImportBatchDetailPage() {
   });
 
   const summary: { label: string; value: string }[] = [
-    { label: "Contenedor", value: batch.containerType ? `${batch.containerType} pies · ${batch.containerCbm} CBM` : "Histórico sin CBM" },
+    { label: "Modalidad / volumen", value: batch.containerType ? `${batch.containerType === "LCL" ? "Carga suelta / LCL" : batch.containerType === "40HC" ? "40 HC" : `${batch.containerType} pies`} · ${batch.containerCbm} CBM` : "Histórico sin CBM" },
     { label: "CBM recibidos", value: batch.movements.reduce((sum, m) => sum + Number(m.volumeCbm ?? 0), 0).toFixed(6) },
     { label: "Unidades recibidas", value: String(totalUnits) },
     ...(isAdmin
@@ -101,7 +96,8 @@ export function ImportBatchDetailPage() {
                   <TableHead>Costo en origen</TableHead>
                   <TableHead>Prorrateo / unidad</TableHead>
                   <TableHead>Costo puesto / unidad</TableHead>
-                  <TableHead>Calculadora de precios</TableHead>
+
+                  <TableHead>Precio de venta</TableHead>
                 </>
               ) : null}
               <TableHead>Fecha</TableHead>
@@ -131,9 +127,7 @@ export function ImportBatchDetailPage() {
                         ${landedUnitCost(Number(m.unitCost) || 0, Number(m.landedCostPerUnit) || 0).toFixed(2)}
                       </TableCell>
                       <TableCell>
-                        <Button variant="outline" size="sm" onClick={() => setCalculatorFor(m)}>
-                          <CalculatorIcon /> Calcular PVP
-                        </Button>
+                        <Link to="/dispatch-orders/new" className="underline">Negociar en despacho</Link>
                       </TableCell>
                     </>
                   ) : null}
@@ -145,20 +139,7 @@ export function ImportBatchDetailPage() {
         </Table>
       </section>
 
-      {calculatorFor ? (
-        <PricingCalculatorDialog
-          open
-          onOpenChange={(open) => !open && setCalculatorFor(null)}
-          title={`Calculadora de precios — ${calculatorFor.variant.sku}`}
-          landedCost={landedUnitCost(Number(calculatorFor.unitCost) || 0, Number(calculatorFor.landedCostPerUnit) || 0)}
-          onUsePvp={(pvp, wholesalePrice) => {
-            const productId = calculatorFor.variant.productId;
-            const variantId = calculatorFor.variantId;
-            setCalculatorFor(null);
-            navigate(`/products/${productId}?editVariantId=${variantId}&suggestedRetailPrice=${pvp}&suggestedWholesalePrice=${wholesalePrice}`);
-          }}
-        />
-      ) : null}
+
     </div>
   );
 }

@@ -32,7 +32,7 @@ export function LandedCostPreview({ totalCost, totalUnits, costPerCbm, originTot
         ))}
       </div>
       <p className="text-xs text-muted-foreground">
-        Costo por CBM = costos del lote / CBM del contenedor. Gasto por producto = CBM de la línea × costo por CBM / cantidad. Los costos del lote no incluyen la compra de mercadería.
+        Costo por CBM = costos del lote / CBM contratados del lote (contenedor completo o carga LCL). Gasto por producto = CBM de la línea × costo por CBM / cantidad. Los costos del lote no incluyen la compra de mercadería. La importación registra el costo real. El porcentaje de ganancia y el precio de venta se acuerdan con cada comprador en el despacho.
       </p>
     </div>
   );

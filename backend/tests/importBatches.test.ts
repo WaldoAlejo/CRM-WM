@@ -470,3 +470,49 @@ describe("Costeo CBM", () => {
     expect(await prisma.inventoryMovement.count({ where: { importBatchId: batch.id } })).toBe(1);
   });
 });
+
+describe("Carga suelta LCL", () => {
+  it("reparte los gastos propios sobre 26 CBM y conserva la tarifa entre recepciones", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { variant: powerStationA } = await setupProductWithVariant();
+    const { variant: powerStationB } = await setupProductWithVariant();
+    const created = await request(app).post("/api/import-batches").set("Authorization", `Bearer ${token}`).send({
+      reference: "LCL-POWER-STATIONS", arrivalDate: "2026-09-22", containerType: "LCL", containerCbm: 26,
+      freightCost: 2600, customsCost: 2000, otherCosts: 600,
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.containerType).toBe("LCL");
+    expect(Number(created.body.containerCbm)).toBe(26);
+    const receive = (variantId: string, quantity: number, volumeCbm: number, unitCost: number) =>
+      request(app).post(`/api/import-batches/${created.body.id}/receive`).set("Authorization", `Bearer ${token}`).send({ lines: [{ variantId, quantity, volumeCbm, unitCost }] });
+    const first = await receive(powerStationA.id, 10, 6, 150);
+    expect(first.status).toBe(201);
+    expect(Number(first.body.movements[0].landedCostPerUnit)).toBe(120);
+    const second = await receive(powerStationB.id, 20, 20, 100);
+    expect(second.status).toBe(201);
+    expect(Number(second.body.movements[0].landedCostPerUnit)).toBe(200);
+    const saved = await prisma.productVariant.findUniqueOrThrow({ where: { id: powerStationB.id } });
+    expect(saved.wholesalePrice).toBeNull();
+    expect(saved.retailPrice).toBeNull();
+    expect(10 * Number(first.body.movements[0].landedCostPerUnit) + 20 * Number(second.body.movements[0].landedCostPerUnit)).toBe(5200);
+    expect((await receive(powerStationA.id, 1, 0.01, 150)).status).toBe(400);
+    const detail = await request(app).get(`/api/import-batches/${created.body.id}`).set("Authorization", `Bearer ${token}`);
+    expect(detail.body.containerType).toBe("LCL");
+    expect(detail.body.movements).toHaveLength(2);
+  });
+});
+
+describe("La importación registra costos sin fijar precios de venta", () => {
+  it("actualiza el costo USD y conserva los precios anteriores", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { variant } = await setupProductWithVariant();
+    await prisma.productVariant.update({ where: { id: variant.id }, data: { wholesalePrice: 55, retailPrice: 75 } });
+    const batch = await createImportBatchFixture();
+    const res = await request(app).post(`/api/import-batches/${batch.id}/receive`).set("Authorization", `Bearer ${token}`).send({ lines: [{ variantId: variant.id, quantity: 10, volumeCbm: 4, unitCost: 18 }] });
+    expect(res.status).toBe(201);
+    const updated = await prisma.productVariant.findUniqueOrThrow({ where: { id: variant.id } });
+    expect(Number(updated.costPriceUSD)).toBe(18);
+    expect(Number(updated.wholesalePrice)).toBe(55);
+    expect(Number(updated.retailPrice)).toBe(75);
+  });
+});

@@ -1,3 +1,5 @@
+import { negotiatedPrice } from "../negotiatedPricing";
+import type { DispatchOrderItemFormValues } from "../dispatchOrders.schema";
 import { Trash2Icon } from "lucide-react";
 import type { Control, FieldArrayWithId, FieldErrors } from "react-hook-form";
 import { useWatch } from "react-hook-form";
@@ -20,8 +22,8 @@ interface OrderItemsTableProps {
   remove: (index: number) => void;
 }
 
-function lineSubtotal(unitPrice: number, quantity: number, discountPct: number | undefined): number {
-  return unitPrice * quantity * (1 - (discountPct ?? 0) / 100);
+function unitPrice(item: DispatchOrderItemFormValues): number {
+  return item.costBased ? negotiatedPrice(item.costAtAdd ?? 0, Number(item.markupPct) || 0) : Number(item.unitPrice) || 0;
 }
 
 // La tabla de líneas del borrador: no es un CrudColumn genérico porque cada
@@ -29,7 +31,13 @@ function lineSubtotal(unitPrice: number, quantity: number, discountPct: number |
 // muestra el aviso de stock — no encaja en "una celda, un valor de solo
 // lectura".
 export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsTableProps) {
-  const items = useWatch({ control, name: "items" }) ?? [];
+  const watchedItems = useWatch({ control, name: "items" }) ?? [];
+  // El array de filas puede actualizarse antes que useWatch al agregar o quitar.
+  // Cada variante aparece una sola vez: conservar su identidad evita cruzar
+  // costos y porcentajes cuando cambia el índice de una fila.
+  const watchedByVariant = new Map(watchedItems.map(item => [item.variantId, item]));
+  const items = fields.map(field => watchedByVariant.get(field.variantId) ?? field);
+  const costBased = items.some(item => item.costBased);
   const { data: warehouses } = useWarehouseOptions();
   // Selector plano de ubicaciones activas, con el nombre de la bodega
   // delante (ej. "Bodega Central · A-3-2") — hoy hay una sola bodega, pero
@@ -46,7 +54,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
     (errors.items as { message?: string } | undefined)?.message;
 
   const total = items.reduce(
-    (sum, item) => sum + lineSubtotal(item.unitPrice ?? 0, item.quantity ?? 0, item.discountPct),
+    (sum, item) => sum + unitPrice(item) * (Number(item.quantity) || 0),
     0
   );
 
@@ -67,7 +75,8 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
             <TableHead className="w-24">Cantidad</TableHead>
             <TableHead className="w-28">Tipo</TableHead>
             <TableHead className="w-28">P. Unit.</TableHead>
-            <TableHead className="w-24">Desc. %</TableHead>
+            <TableHead className="w-24">{costBased ? "Incremento sobre costo (%)" : "Desc. %"}</TableHead>
+            {costBased ? <><TableHead>Costo real unitario</TableHead><TableHead>Ganancia de la línea</TableHead></> : null}
             <TableHead className="w-40">Ubicación</TableHead>
             <TableHead className="w-28">Subtotal</TableHead>
             <TableHead className="w-32">Stock</TableHead>
@@ -104,7 +113,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                     name={`items.${index}.priceType`}
                     render={({ field: f }) => (
                       <FormItem>
-                        <Select value={f.value} onValueChange={f.onChange}>
+                        <Select value={f.value} onValueChange={f.onChange} disabled={item?.costBased}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -127,7 +136,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                     render={({ field: f }) => (
                       <FormItem>
                         <FormControl>
-                          <Input type="number" min={0} step="any" {...f} />
+                          <Input type="number" min={0} step="any" {...f} readOnly={item?.costBased} value={item?.costBased ? unitPrice(item) : f.value} aria-label={`Precio unitario ${item?.sku}`} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -137,17 +146,18 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                 <TableCell>
                   <FormField
                     control={control}
-                    name={`items.${index}.discountPct`}
+                    name={item?.costBased ? `items.${index}.markupPct` : `items.${index}.discountPct`}
                     render={({ field: f }) => (
                       <FormItem>
                         <FormControl>
-                          <Input type="number" min={0} max={100} step="any" {...f} value={f.value ?? ""} />
+                          <Input type="number" min={0} max={item?.costBased ? 10000 : 100} step="0.01" {...f} value={f.value ?? ""} aria-label={`${item?.costBased ? "Incremento sobre costo" : "Descuento"} ${item?.sku}`} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </TableCell>
+                {costBased ? <><TableCell>${Number(item?.costAtAdd ?? 0).toFixed(2)}</TableCell><TableCell>${((unitPrice(item) - Number(item?.costAtAdd ?? 0)) * (Number(item?.quantity) || 0)).toFixed(2)}</TableCell></> : null}
                 <TableCell>
                   <FormField
                     control={control}
@@ -178,7 +188,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                   />
                 </TableCell>
                 <TableCell className="text-sm">
-                  ${lineSubtotal(item?.unitPrice ?? 0, item?.quantity ?? 0, item?.discountPct).toFixed(2)}
+                  ${(unitPrice(item) * (Number(item?.quantity) || 0)).toFixed(2)}
                 </TableCell>
                 <TableCell>
                   {/* Aviso, no bloqueo: el backend sigue siendo la
@@ -202,6 +212,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
 
       {arrayLevelError ? <p className="text-sm font-medium text-destructive">{arrayLevelError}</p> : null}
 
+      {costBased ? <p className="text-sm text-muted-foreground">Precio = costo real promedio ponderado × (1 + incremento / 100). El costo y porcentaje quedan registrados con la venta. Si el costo cambia antes de guardar, vuelve a agregar el producto para revisar la negociación.</p> : null}
       <p className="text-right text-sm font-medium">Total: ${total.toFixed(2)}</p>
     </div>
   );

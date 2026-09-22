@@ -7,7 +7,9 @@ interface CreateOrderItemPayload {
   variantId: string;
   quantity: number;
   priceType: PriceType;
-  unitPrice: number;
+  unitPrice?: number;
+  markupPct?: number;
+  expectedRealCost?: number;
   discountPct?: number;
 }
 

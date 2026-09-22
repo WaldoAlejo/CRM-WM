@@ -3,7 +3,7 @@ import { apiFetch } from "@/lib/api";
 import type { ReceiveResponse } from "./importBatches.types";
 
 export interface CreateBatchPayload {
-  containerType: "20" | "40" | "40HC";
+  containerType: "20" | "40" | "40HC" | "LCL";
   containerCbm: number;
   reference: string;
   supplierId?: string;
@@ -49,6 +49,7 @@ export function useImportBatchMutations() {
       // El stock y el stock por ubicación cambiaron.
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
     },
   });
 

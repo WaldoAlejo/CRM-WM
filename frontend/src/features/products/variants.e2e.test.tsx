@@ -199,9 +199,9 @@ describe("Variantes — atributos, precios por rol e imágenes, contra el backen
     fireEvent.click(await screen.findByRole("button", { name: /nueva variante/i }, { timeout: 8000 }));
     const adminDialog = await screen.findByRole("dialog");
     expect(within(adminDialog).getByText(/costo de fábrica/i)).toBeInTheDocument();
-    expect(within(adminDialog).getByText(/precio público/i)).toBeInTheDocument();
+    expect(within(adminDialog).queryByText(/precio público/i)).not.toBeInTheDocument();
     expect(screen.getByText(/costo \(usd\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/^pvp$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^pvp$/i)).not.toBeInTheDocument();
     // Desmonta explícitamente antes de renderizar la segunda vez en el MISMO
     // test: el cleanup automático de testing-library corre entre tests
     // (afterEach), no entre dos render() dentro del mismo it — sin esto,

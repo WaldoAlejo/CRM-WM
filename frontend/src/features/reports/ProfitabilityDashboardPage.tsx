@@ -1,3 +1,4 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,6 +34,14 @@ export function ProfitabilityDashboardPage() {
       ) : (
         <>
           <TotalsSummaryCards totals={data.totals} />
+          <section className="space-y-2 rounded-md border p-4">
+            <h2 className="text-lg font-semibold">Ganancia por mayorista y cliente</h2>
+            <Table><TableHeader><TableRow><TableHead>Comprador</TableHead><TableHead>Tipo</TableHead><TableHead>Ventas (USD)</TableHead><TableHead>Costo real (USD)</TableHead><TableHead>Ganancia (USD)</TableHead><TableHead>Margen sobre ventas</TableHead></TableRow></TableHeader>
+              <TableBody>{(data.byBuyer ?? []).map(buyer => (
+                <TableRow key={buyer.buyerType + buyer.buyerId}><TableCell>{buyer.buyerName}</TableCell><TableCell>{buyer.buyerType === "MAYORISTA" ? "Mayorista" : "Cliente final"}</TableCell><TableCell>{Number(buyer.totalRevenue).toFixed(2)}</TableCell><TableCell>{Number(buyer.totalCost).toFixed(2)}</TableCell><TableCell>{Number(buyer.profit).toFixed(2)}</TableCell><TableCell>{buyer.profitMarginPct}%</TableCell></TableRow>
+              ))}</TableBody>
+            </Table>
+          </section>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="space-y-2 rounded-md border p-4">

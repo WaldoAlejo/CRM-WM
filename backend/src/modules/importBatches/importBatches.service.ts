@@ -7,7 +7,7 @@ import { serializeImportBatchForRole } from "./importBatches.serializer";
 import { computeReceiveRequestHash } from "./receiveRequestHash";
 
 interface CreateImportBatchInput {
-  containerType: "20" | "40" | "40HC";
+  containerType: "20" | "40" | "40HC" | "LCL";
   containerCbm: number;
   reference: string;
   supplierId?: string;
@@ -176,8 +176,12 @@ export async function receiveStock(
   const costPerCbm = totalBatchCost.dividedBy(batch.containerCbm);
 
   const result = await prisma.$transaction(async (tx) => {
-    // Lock the container so concurrent receipts cannot exceed its volume.
-    await tx.$queryRaw`SELECT id FROM "ImportBatch" WHERE id = ${importBatchId} FOR UPDATE`;
+    // Updating the immutable reference to itself locks the batch in Prisma's
+    // configured schema, including isolated test schemas behind a pooler.
+    await tx.importBatch.update({
+      where: { id: importBatchId },
+      data: { reference: batch.reference },
+    });
     if (idempotencyKey) {
       const cached = await tx.idempotencyKey.findUnique({ where: { idempotencyKey } });
       if (cached) {
@@ -192,7 +196,7 @@ export async function receiveStock(
     });
     const requestedCbm = lines.reduce((sum, line) => sum.plus(line.volumeCbm), new Prisma.Decimal(0));
     if (requestedCbm.plus(received._sum.volumeCbm ?? 0).greaterThan(batch.containerCbm!)) {
-      throw badRequest("El volumen recibido supera los CBM del contenedor", { field: "lines" });
+      throw badRequest("El volumen recibido supera los CBM contratados del lote", { field: "lines" });
     }
     const movements = [];
     for (const line of lines) {
@@ -207,6 +211,10 @@ export async function receiveStock(
         locationId: line.locationId,
         importBatchId,
         createdById: userId,
+      });
+      await tx.productVariant.update({
+        where: { id: line.variantId },
+        data: { costPriceUSD: movement.unitCost },
       });
       movements.push(movement);
     }

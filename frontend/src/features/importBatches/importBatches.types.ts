@@ -10,7 +10,7 @@ export interface ImportBatchSupplierRef {
 
 export interface ImportBatchListItem {
   id: string;
-  containerType?: "20" | "40" | "40HC" | null;
+  containerType?: "20" | "40" | "40HC" | "LCL" | null;
   containerCbm?: string | null;
   reference: string;
   supplier: ImportBatchSupplierRef | null;

@@ -13,12 +13,15 @@ export const dispatchOrderItemSchema = z.object({
   label: z.string().nullable(),
   quantity: z.coerce.number().int().positive("La cantidad debe ser mayor a 0"),
   priceType: z.enum(["MAYORISTA", "PVP"]),
+  costBased: z.boolean().optional(),
+  costAtAdd: z.number().positive().optional(),
+  markupPct: optionalNumber(z.number().min(0).max(10000).multipleOf(0.01)),
   unitPrice: z.coerce.number().nonnegative("El precio no puede ser negativo"),
   discountPct: optionalNumber(z.number().min(0).max(100, "Debe estar entre 0 y 100")),
   availableStockAtAdd: z.number(),
   // Ubicación de origen (opcional): de dónde sale físicamente este ítem.
   locationId: optionalString(z.string().min(1)),
-});
+}).refine(item => !item.costBased || (item.markupPct !== undefined && item.costAtAdd !== undefined), { message: "Ingresa el incremento negociado sobre el costo real", path: ["markupPct"] });
 
 export type DispatchOrderItemFormValues = z.infer<typeof dispatchOrderItemSchema>;
 

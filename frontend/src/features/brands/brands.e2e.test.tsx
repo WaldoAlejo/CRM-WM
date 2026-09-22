@@ -6,7 +6,7 @@
 //
 // Precondición: backend corriendo (npm run dev en backend/) con datos de
 // seed aplicados (npx prisma db seed) — usa admin@kestore.com.ec/Admin123!
-// y reusa la primera categoría existente. Si el backend no responde, el
+// y crea su propia categoría. Si el backend no responde, el
 // beforeAll falla con un mensaje explícito señalando la causa, no un timeout
 // críptico de fetch.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -27,7 +27,7 @@ globalThis.fetch = undiciFetch as unknown as typeof fetch;
 const BASE = "http://localhost:4000";
 const ADMIN_CREDENTIALS = { email: "admin@kestore.com.ec", password: "Admin123!" };
 
-const created: { brandId?: string; productId?: string } = {};
+const created: { brandId?: string; productId?: string; categoryId?: string } = {};
 
 function testWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -66,18 +66,18 @@ describe("Brands — bloqueo 409 al borrar una marca con productos activos (E2E 
     });
     created.brandId = brand.id;
 
-    const categories = await apiFetch<{ id: string }[]>("/categories");
-    const categoryId = categories[0]?.id;
-    if (!categoryId) {
-      throw new Error('No hay ninguna categoría en la base — corré "npx prisma db seed" en backend/ primero.');
-    }
+    const category = await apiFetch<{ id: string }>("/categories", {
+      method: "POST",
+      body: JSON.stringify({ name: `E2E Categoría Marca ${Date.now()}` }),
+    });
+    created.categoryId = category.id;
 
     const product = await apiFetch<{ id: string }>("/products", {
       method: "POST",
       body: JSON.stringify({
         sku: `E2E-${Date.now()}`,
         name: "Producto de prueba E2E (limpiado en afterAll)",
-        categoryId,
+        categoryId: created.categoryId,
         brandId: created.brandId,
       }),
     });
@@ -93,6 +93,9 @@ describe("Brands — bloqueo 409 al borrar una marca con productos activos (E2E 
     }
     if (created.brandId) {
       await apiFetch(`/brands/${created.brandId}`, { method: "DELETE" }).catch(() => {});
+    }
+    if (created.categoryId) {
+      await apiFetch(`/categories/${created.categoryId}`, { method: "DELETE" }).catch(() => {});
     }
   });
 
