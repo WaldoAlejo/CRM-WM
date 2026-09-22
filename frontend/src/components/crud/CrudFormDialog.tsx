@@ -68,7 +68,10 @@ export function CrudFormDialog<TItem extends { id: string }, TFormValues extends
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4">
-            {config.formFields.map((fieldConfig) => (
+            {/* Solo se llega acá cuando la config SÍ trae formFields (ver
+                CrudTablePage's hasGenericForm) — el ?? [] es nada más para el
+                type-checker, que no puede ver esa garantía a través del prop. */}
+            {(config.formFields ?? []).map((fieldConfig) => (
               <FormField
                 key={fieldConfig.name}
                 control={form.control}

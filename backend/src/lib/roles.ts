@@ -20,3 +20,11 @@ export function roleAtLeast(userRole: Role, required: Role): boolean {
 export function hasAdminAccess(role: Role): boolean {
   return roleAtLeast(role, Role.ADMIN);
 }
+
+// Roles elegibles para ser responsable de una bodega (Warehouse.managerId):
+// ADMIN u OPERATOR, y CEO porque hereda todo lo de ADMIN. Hoy coincide con
+// TODOS los roles del sistema, pero se deja explícito (no "cualquier rol")
+// para no depender de que el enum nunca crezca. Única fuente de verdad,
+// usada tanto al validar managerId (warehouses.service.ts) como al bloquear
+// la desactivación de ese usuario (users.service.ts).
+export const WAREHOUSE_MANAGER_ROLES: Role[] = [Role.ADMIN, Role.OPERATOR, Role.CEO];

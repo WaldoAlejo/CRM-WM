@@ -60,8 +60,13 @@ export function CrudTablePage<TItem extends { id: string }, TFormValues extends 
   });
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const canCreate = !!config.createEndpoint && checkPermission(role, config.permissions?.create);
-  const canUpdate = !!config.updateEndpoint && checkPermission(role, config.permissions?.update);
+  // El diálogo genérico (texto/textarea/select con opciones ESTÁTICAS) solo
+  // aplica si la config lo declara — un recurso con un campo que necesita
+  // datos vivos (ej: un selector de usuarios) trae su propia página con un
+  // diálogo hecho a mano y ni siquiera monta este componente (ver Bodegas).
+  const hasGenericForm = !!config.formFields && !!config.formSchema && config.defaultFormValues !== undefined;
+  const canCreate = hasGenericForm && !!config.createEndpoint && checkPermission(role, config.permissions?.create);
+  const canUpdate = hasGenericForm && !!config.updateEndpoint && checkPermission(role, config.permissions?.update);
   const canDelete = !!config.deleteEndpoint && checkPermission(role, config.permissions?.delete);
 
   const items = listQuery.data?.data ?? [];

@@ -39,9 +39,16 @@ export interface CrudResourceConfig<TItem extends { id: string }, TFormValues ex
   updateEndpoint?: (id: string) => string;
   deleteEndpoint?: (id: string) => string;
   columns: CrudColumn<TItem>[];
-  formSchema: ZodType<TFormValues>;
-  formFields: CrudFormFieldConfig<TFormValues>[];
-  defaultFormValues: TFormValues;
+  // Los 3 de abajo solo hacen falta si esta config se renderiza con
+  // CrudTablePage/CrudFormDialog (el formulario genérico de texto/textarea/
+  // select con opciones ESTÁTICAS). Un recurso con un campo que necesita
+  // datos vivos (ej: un selector de usuarios) usa su propio diálogo hecho a
+  // mano — igual que ya hacen Variantes/Consignación — y sigue reusando
+  // useCrudResource(config) para list/create/update/delete: por eso el resto
+  // de la config (endpoints, columns, permissions) no cambia, solo estos 3.
+  formSchema?: ZodType<TFormValues>;
+  formFields?: CrudFormFieldConfig<TFormValues>[];
+  defaultFormValues?: TFormValues;
   toFormValues?: (item: TItem) => TFormValues;
   permissions?: CrudPermissions;
 }

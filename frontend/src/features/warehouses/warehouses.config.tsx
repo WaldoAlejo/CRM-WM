@@ -3,12 +3,19 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import type { CrudResourceConfig } from "@/components/crud/types";
 import type { Role } from "@/types/auth";
-import { warehouseDefaultValues, warehouseFormSchema } from "./warehouses.schema";
+import type { WarehouseFormValues } from "./warehouses.schema";
 import type { Warehouse } from "./warehouses.types";
 
 const isAdmin = (role: Role) => hasAdminAccess(role);
 
-export const warehousesConfig: CrudResourceConfig<Warehouse, typeof warehouseDefaultValues> = {
+// Sin formSchema/formFields/defaultFormValues: el formulario de Bodegas
+// necesita un selector de responsable con datos vivos (usuarios ADMIN/
+// OPERATOR/CEO activos), algo que el diálogo genérico (texto/textarea/select
+// de opciones ESTÁTICAS) no sabe hacer — así que usa su propio
+// WarehouseFormDialog (ver WarehousesPage.tsx), igual que ya hacen Variantes
+// y Consignación. Esta config solo aporta endpoints/columnas/permisos, que
+// useCrudResource sigue reutilizando tal cual.
+export const warehousesConfig: CrudResourceConfig<Warehouse, WarehouseFormValues> = {
   resourceKey: "warehouses",
   title: "Bodegas",
   singular: "bodega",
@@ -21,6 +28,13 @@ export const warehousesConfig: CrudResourceConfig<Warehouse, typeof warehouseDef
   columns: [
     { header: "Nombre", cell: (item) => item.name },
     { header: "Dirección", cell: (item) => item.address ?? "—" },
+    { header: "Capacidad", cell: (item) => (item.capacity != null ? `${item.capacity} posiciones` : "—") },
+    { header: "Teléfono", cell: (item) => item.phone ?? "—" },
+    {
+      header: "Responsable",
+      cell: (item) => (item.manager ? `${item.manager.name} (${item.manager.role})` : "—"),
+    },
+    { header: "Notas", cell: (item) => item.notes ?? "—" },
     {
       header: "Ubicaciones",
       cell: (item) => (
@@ -36,13 +50,6 @@ export const warehousesConfig: CrudResourceConfig<Warehouse, typeof warehouseDef
       ),
     },
   ],
-  formSchema: warehouseFormSchema,
-  formFields: [
-    { name: "name", label: "Nombre", type: "text", placeholder: "Ej: Bodega Central" },
-    { name: "address", label: "Dirección", type: "textarea", placeholder: "Opcional" },
-  ],
-  defaultFormValues: warehouseDefaultValues,
-  toFormValues: (item) => ({ name: item.name, address: item.address ?? "" }),
   permissions: {
     create: isAdmin,
     update: isAdmin,

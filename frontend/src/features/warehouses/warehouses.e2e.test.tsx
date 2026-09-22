@@ -29,6 +29,7 @@ function testWrapper() {
 
 describe("Bodegas — CRUD de punta a punta contra el backend real (via useCrudResource)", () => {
   let createdId: string | undefined;
+  let managerId: string | undefined;
 
   beforeAll(async () => {
     const health = await fetch(`${BASE}/health`).catch(() => null);
@@ -48,31 +49,65 @@ describe("Bodegas — CRUD de punta a punta contra el backend real (via useCrudR
     }
     const { token } = (await loginRes.json()) as { token: string };
     setToken(token);
+
+    // Responsable para las pruebas de campos operativos (OPERATOR es un rol
+    // elegible, no solo ADMIN/CEO).
+    const manager = await apiFetch<{ id: string }>("/users", {
+      method: "POST",
+      body: JSON.stringify({
+        email: `e2e-warehouse-manager-${Date.now()}@test.local`,
+        password: "Test123!",
+        name: "E2E Responsable de Bodega",
+        role: "OPERATOR",
+      }),
+    });
+    managerId = manager.id;
   });
 
   afterAll(async () => {
     if (createdId) await apiFetch(`/warehouses/${createdId}`, { method: "DELETE" }).catch(() => {});
+    // La bodega de arriba ya quedó isActive=false (el DELETE no borra
+    // managerId, solo desactiva la bodega): el bloqueo de "responsable de
+    // bodega activa" ya no aplica, y el usuario se puede desactivar sin
+    // problema (nunca se borra físicamente).
+    if (managerId) await apiFetch(`/users/${managerId}`, { method: "PATCH", body: JSON.stringify({ isActive: false }) }).catch(() => {});
   });
 
-  it("crear -> aparece con locations:[] -> editar -> 409 si tiene ubicación activa -> elimina tras vaciarla", async () => {
+  it("crear con capacity/phone/notes/managerId -> aparece con locations:[] -> editar -> 409 si tiene ubicación activa -> elimina tras vaciarla", async () => {
     const { result } = renderHook(() => useCrudResource(warehousesConfig), { wrapper: testWrapper() });
 
     await waitFor(() => expect(result.current.listQuery.isSuccess).toBe(true), { timeout: 8000 });
 
-    result.current.createMutation.mutate({ name: NAME, address: "Av. Siempre Viva 123" });
+    result.current.createMutation.mutate({
+      name: NAME,
+      address: "Av. Siempre Viva 123",
+      capacity: 300,
+      phone: "0987654321",
+      notes: "Bodega de prueba E2E",
+      managerId,
+    });
     await waitFor(() => expect(result.current.createMutation.isSuccess).toBe(true), { timeout: 8000 });
     createdId = result.current.createMutation.data?.id;
     expect(createdId).toBeTruthy();
     expect(result.current.createMutation.data?.isActive).toBe(true);
+    expect(result.current.createMutation.data).toMatchObject({
+      capacity: 300,
+      phone: "0987654321",
+      notes: "Bodega de prueba E2E",
+      manager: { id: managerId, role: "OPERATOR" },
+    });
     // POST no incluye `locations` (mismo criterio que Category/Subcategory:
     // el create response no trae la relación anidada, solo GET list/byId sí).
 
     await waitFor(() => {
       expect(result.current.listQuery.data?.data.some((w) => w.id === createdId)).toBe(true);
     });
+    const listed = result.current.listQuery.data?.data.find((w) => w.id === createdId);
+    expect(listed?.manager?.id).toBe(managerId);
 
-    result.current.updateMutation.mutate({ id: createdId!, values: { name: NAME_EDITADA, address: "" } });
+    result.current.updateMutation.mutate({ id: createdId!, values: { name: NAME_EDITADA, address: "", capacity: 450 } });
     await waitFor(() => expect(result.current.updateMutation.isSuccess).toBe(true), { timeout: 8000 });
+    expect(result.current.updateMutation.data?.capacity).toBe(450);
     await waitFor(() => {
       const row = result.current.listQuery.data?.data.find((w) => w.id === createdId);
       expect(row?.name).toBe(NAME_EDITADA);

@@ -2,8 +2,9 @@ import { randomBytes } from "crypto";
 import { Prisma, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/prisma";
-import { hasAdminAccess } from "../../lib/roles";
+import { hasAdminAccess, WAREHOUSE_MANAGER_ROLES } from "../../lib/roles";
 import { badRequest, conflict, forbidden, notFound } from "../../utils/httpError";
+import { countActiveWarehousesManagedBy } from "../warehouses/warehouses.service";
 
 // Nunca se selecciona passwordHash fuera de este módulo (ni siquiera acá,
 // salvo donde hace falta comparar/escribir): defensa en profundidad, para
@@ -111,6 +112,26 @@ export async function updateUser(
     ((data.role !== undefined && !hasAdminAccess(data.role)) || data.isActive === false);
   if (losingAdminAccess && (await countOtherActive([Role.ADMIN, Role.CEO], id)) === 0) {
     throw conflict("Es el último admin activo del sistema: no se puede desactivar ni quitarle el rol de ADMIN.");
+  }
+
+  // Responsable de bodega ACTIVA: no se puede desactivar (ni degradar a un rol
+  // fuera de WAREHOUSE_MANAGER_ROLES — hoy imposible, son todos los roles, pero
+  // se chequea igual por si el enum crece) mientras siga siendo managerId de
+  // alguna Warehouse con isActive=true. Nunca se lo reemplaza en null solo: es
+  // el mismo patrón que el último ADMIN/CEO activo — decisión explícita de
+  // reasignar primero, no una cascada silenciosa. Evalúa Warehouse.isActive
+  // nada más; una Cuarentena (o cualquier Location) activa de esa bodega no
+  // cambia esta cuenta.
+  const losingManagerEligibility =
+    target.isActive &&
+    ((data.role !== undefined && !WAREHOUSE_MANAGER_ROLES.includes(data.role)) || data.isActive === false);
+  if (losingManagerEligibility) {
+    const activeWarehousesManaged = await countActiveWarehousesManagedBy(id);
+    if (activeWarehousesManaged > 0) {
+      throw conflict(
+        `Es responsable de ${activeWarehousesManaged} bodega(s) activa(s): reasigná el responsable antes de desactivarlo o cambiarle el rol.`
+      );
+    }
   }
 
   return prisma.user.update({ where: { id: target.id }, data, select: USER_SELECT });

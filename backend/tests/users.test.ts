@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
-import { createTestUser, prisma, resetDatabase } from "./helpers";
+import { createTestUser, createWarehouseFixture, prisma, resetDatabase } from "./helpers";
 
 const app = createApp();
 
@@ -231,6 +231,160 @@ describe("PATCH /api/users/:id — protección del último admin activo", () => 
       .send({ isActive: false });
 
     expect(res.status).toBe(409);
+  });
+});
+
+describe("PATCH /api/users/:id — protección del responsable de bodega activa", () => {
+  it("una bodega activa bloquea aunque todas sus ubicaciones estén inactivas", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { user: manager } = await createTestUser("OPERATOR");
+    const warehouse = await createWarehouseFixture();
+    await prisma.warehouse.update({ where: { id: warehouse.id }, data: { managerId: manager.id } });
+    await prisma.location.updateMany({ where: { warehouseId: warehouse.id }, data: { isActive: false } });
+
+    const res = await request(app)
+      .patch(`/api/users/${manager.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ isActive: false });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/responsable de 1 bodega/i);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: manager.id } })).isActive).toBe(true);
+  });
+
+  it("cambiar ADMIN a OPERATOR mantiene la elegibilidad y la asignación de responsable", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { user: manager } = await createTestUser("ADMIN");
+    const warehouse = await createWarehouseFixture();
+    await prisma.warehouse.update({ where: { id: warehouse.id }, data: { managerId: manager.id } });
+
+    const res = await request(app)
+      .patch(`/api/users/${manager.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ role: "OPERATOR" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.role).toBe("OPERATOR");
+    expect((await prisma.warehouse.findUniqueOrThrow({ where: { id: warehouse.id } })).managerId).toBe(manager.id);
+  });
+
+  it("409 al desactivar a quien es responsable de una bodega ACTIVA; no se toca ni el usuario ni la bodega", async () => {
+    const { token: adminToken } = await createTestUser("ADMIN");
+    const { user: manager } = await createTestUser("OPERATOR");
+    const warehouse = await createWarehouseFixture();
+    await prisma.warehouse.update({ where: { id: warehouse.id }, data: { managerId: manager.id } });
+
+    const res = await request(app)
+      .patch(`/api/users/${manager.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ isActive: false });
+
+    expect(res.status).toBe(409);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: manager.id } })).isActive).toBe(true);
+    expect((await prisma.warehouse.findUniqueOrThrow({ where: { id: warehouse.id } })).isActive).toBe(true);
+  });
+
+  it("una Cuarentena activa de la bodega NO genera el bloqueo por sí sola: lo que cuenta es Warehouse.isActive", async () => {
+    // La bodega está ACTIVA (su Cuarentena, creada junto con ella, también lo
+    // está): el bloqueo debe aplicar igual, sin necesidad de mirar Location.
+    const { token: adminToken } = await createTestUser("ADMIN");
+    const { user: manager } = await createTestUser("ADMIN");
+    const warehouse = await createWarehouseFixture();
+    await prisma.warehouse.update({ where: { id: warehouse.id }, data: { managerId: manager.id } });
+    const quarantine = await prisma.location.findFirstOrThrow({ where: { warehouseId: warehouse.id, type: "CUARENTENA" } });
+    expect(quarantine.isActive).toBe(true);
+
+    const res = await request(app)
+      .patch(`/api/users/${manager.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ isActive: false });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/responsable de 1 bodega/i);
+  });
+
+  it("se puede desactivar si la bodega que dirige está INACTIVA (Warehouse.isActive, no sus Location)", async () => {
+    const { token: adminToken } = await createTestUser("ADMIN");
+    const { user: manager } = await createTestUser("OPERATOR");
+    const warehouse = await createWarehouseFixture();
+    await prisma.warehouse.update({
+      where: { id: warehouse.id },
+      data: { managerId: manager.id, isActive: false },
+    });
+    const quarantine = await prisma.location.findFirstOrThrow({
+      where: { warehouseId: warehouse.id, type: "CUARENTENA" },
+    });
+    expect(quarantine.isActive).toBe(true);
+
+    const res = await request(app)
+      .patch(`/api/users/${manager.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ isActive: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.isActive).toBe(false);
+    expect((await prisma.location.findUniqueOrThrow({ where: { id: quarantine.id } })).isActive).toBe(true);
+  });
+
+  it("se puede desactivar una vez que se reasigna (o se limpia) el responsable de la bodega activa", async () => {
+    const { token: adminToken } = await createTestUser("ADMIN");
+    const { user: manager } = await createTestUser("OPERATOR");
+    const { user: newManager } = await createTestUser("ADMIN");
+    const warehouse = await createWarehouseFixture();
+    await prisma.warehouse.update({ where: { id: warehouse.id }, data: { managerId: manager.id } });
+
+    await request(app)
+      .patch(`/api/warehouses/${warehouse.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ managerId: newManager.id });
+
+    const res = await request(app)
+      .patch(`/api/users/${manager.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ isActive: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.isActive).toBe(false);
+  });
+
+  it("responsable de VARIAS bodegas activas: el conteo aparece en el mensaje y basta con que quede UNA para bloquear", async () => {
+    const { token: adminToken } = await createTestUser("ADMIN");
+    const { user: manager } = await createTestUser("ADMIN");
+    const w1 = await createWarehouseFixture();
+    const w2 = await createWarehouseFixture();
+    await prisma.warehouse.updateMany({ where: { id: { in: [w1.id, w2.id] } }, data: { managerId: manager.id } });
+
+    const first = await request(app)
+      .patch(`/api/users/${manager.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ isActive: false });
+    expect(first.status).toBe(409);
+    expect(first.body.error).toMatch(/responsable de 2 bodega/i);
+
+    await request(app)
+      .patch(`/api/warehouses/${w1.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ managerId: null });
+
+    const second = await request(app)
+      .patch(`/api/users/${manager.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ isActive: false });
+    expect(second.status).toBe(409);
+    expect(second.body.error).toMatch(/responsable de 1 bodega/i);
+  });
+
+  it("un usuario que NO es responsable de ninguna bodega se puede desactivar sin problema", async () => {
+    const { token: adminToken } = await createTestUser("ADMIN");
+    const { user: notManager } = await createTestUser("OPERATOR");
+    await createWarehouseFixture(); // bodega sin responsable, no debe afectar en nada
+
+    const res = await request(app)
+      .patch(`/api/users/${notManager.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ isActive: false });
+
+    expect(res.status).toBe(200);
   });
 });
 

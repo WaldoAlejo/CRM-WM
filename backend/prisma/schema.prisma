@@ -53,6 +53,7 @@ model User {
   consignmentLots    ConsignmentLot[]
   consignmentReviews ConsignmentReview[]
   returnInspections  ReturnInspection[]
+  managedWarehouses  Warehouse[]         @relation("WarehouseManager")
 
   @@index([email])
 }
@@ -116,9 +117,24 @@ model Subcategory {
 // ----------------------------------------------------------------------------
 
 model Warehouse {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  address   String?
+  id      String  @id @default(cuid())
+  name    String  @unique
+  address String? // Dirección completa (texto libre).
+
+  capacity Int? // Capacidad total en posiciones/pallets (unidad de negocio, no validada acá).
+  phone    String? // Teléfono de contacto.
+  notes    String? // Notas libres.
+
+  // Responsable de bodega. Se valida en el service (no acá: Prisma no puede
+  // expresar "solo estos roles") que sea un usuario ACTIVO con rol en
+  // WAREHOUSE_MANAGER_ROLES (lib/roles.ts) — hoy ADMIN, OPERATOR o CEO.
+  // Desactivar a ese usuario mientras siga siendo responsable de ESTA bodega
+  // con isActive=true está bloqueado (409) desde users.service.ts::updateUser
+  // — mismo patrón que la protección de "último ADMIN/CEO activo": nunca se
+  // pone en null solo, es una decisión explícita de quien reasigna.
+  managerId String?
+  manager   User?   @relation("WarehouseManager", fields: [managerId], references: [id])
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -126,6 +142,7 @@ model Warehouse {
   locations Location[]
 
   @@index([isActive])
+  @@index([managerId])
 }
 
 // Tipo de ubicación. CUARENTENA es la ubicación especial de "Validación": una

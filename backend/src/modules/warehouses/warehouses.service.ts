@@ -1,6 +1,7 @@
 import { LocationType, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
-import { conflict, notFound } from "../../utils/httpError";
+import { WAREHOUSE_MANAGER_ROLES } from "../../lib/roles";
+import { badRequest, conflict, notFound } from "../../utils/httpError";
 
 // `Warehouse.name` es un @unique normal (no parcial): igual que Courier, este
 // modelo no tiene `deletedAt` — usa `isActive` como su equivalente de soft
@@ -13,12 +14,32 @@ function mapUniqueConstraintError(err: unknown): never {
   throw err;
 }
 
+// Campos del responsable que se exponen: nunca el email/hash — acá alcanza
+// con identificarlo y saber su rol para mostrarlo en el listado/detalle.
+const MANAGER_SELECT = { id: true, name: true, role: true } satisfies Prisma.UserSelect;
+
+// managerId es opcional, pero si viene debe ser un usuario ACTIVO con un rol
+// elegible (WAREHOUSE_MANAGER_ROLES) — nunca se asigna como responsable a
+// alguien ya inactivo o a un rol fuera de esa lista.
+async function assertValidManager(managerId: string | null | undefined) {
+  if (!managerId) return;
+  const manager = await prisma.user.findUnique({ where: { id: managerId }, select: { isActive: true, role: true } });
+  if (!manager) throw badRequest("El responsable indicado no existe", { field: "managerId" });
+  if (!manager.isActive) {
+    throw badRequest("El responsable indicado no está activo", { field: "managerId" });
+  }
+  if (!WAREHOUSE_MANAGER_ROLES.includes(manager.role)) {
+    throw badRequest(`El responsable debe tener rol ${WAREHOUSE_MANAGER_ROLES.join("/")}`, { field: "managerId" });
+  }
+}
+
 export async function listWarehouses() {
   return prisma.warehouse.findMany({
     where: { isActive: true },
     orderBy: { name: "asc" },
     include: {
       locations: { where: { isActive: true, type: LocationType.STANDARD }, orderBy: { code: "asc" } },
+      manager: { select: MANAGER_SELECT },
     },
   });
 }
@@ -28,6 +49,7 @@ export async function getWarehouseById(id: string) {
     where: { id, isActive: true },
     include: {
       locations: { where: { isActive: true, type: LocationType.STANDARD }, orderBy: { code: "asc" } },
+      manager: { select: MANAGER_SELECT },
     },
   });
   if (!warehouse) throw notFound("Bodega no encontrada");
@@ -36,10 +58,16 @@ export async function getWarehouseById(id: string) {
 
 interface WarehouseInput {
   name?: string;
-  address?: string;
+  address?: string | null;
+  capacity?: number | null;
+  phone?: string | null;
+  notes?: string | null;
+  managerId?: string | null;
 }
 
 export async function createWarehouse(data: WarehouseInput) {
+  await assertValidManager(data.managerId);
+
   try {
     // Toda bodega nace con su ubicación de Cuarentena/Validación (una por
     // bodega): sin ella el módulo de Consignación y las devoluciones de courier
@@ -48,9 +76,13 @@ export async function createWarehouse(data: WarehouseInput) {
       data: {
         name: data.name!,
         address: data.address,
+        capacity: data.capacity,
+        phone: data.phone,
+        notes: data.notes,
+        managerId: data.managerId,
         locations: { create: { code: "Cuarentena", type: LocationType.CUARENTENA } },
       },
-      include: { locations: { where: { type: LocationType.STANDARD } } },
+      include: { locations: { where: { type: LocationType.STANDARD } }, manager: { select: MANAGER_SELECT } },
     });
     return warehouse;
   } catch (err) {
@@ -60,9 +92,14 @@ export async function createWarehouse(data: WarehouseInput) {
 
 export async function updateWarehouse(id: string, data: WarehouseInput) {
   await getWarehouseById(id); // valida que exista y esté activa
+  await assertValidManager(data.managerId);
 
   try {
-    return await prisma.warehouse.update({ where: { id }, data });
+    return await prisma.warehouse.update({
+      where: { id },
+      data,
+      include: { locations: { where: { isActive: true, type: LocationType.STANDARD } }, manager: { select: MANAGER_SELECT } },
+    });
   } catch (err) {
     mapUniqueConstraintError(err);
   }
@@ -102,4 +139,11 @@ export async function deactivateWarehouse(id: string) {
     prisma.warehouse.update({ where: { id: warehouse.id }, data: { isActive: false } }),
   ]);
   return updated;
+}
+
+// Usado por users.service.ts::updateUser para bloquear la desactivación de un
+// responsable de bodega ACTIVA (Warehouse.isActive, no sus Location — una
+// Cuarentena activa no cambia esta cuenta, sigue la bodega padre).
+export async function countActiveWarehousesManagedBy(userId: string): Promise<number> {
+  return prisma.warehouse.count({ where: { managerId: userId, isActive: true } });
 }

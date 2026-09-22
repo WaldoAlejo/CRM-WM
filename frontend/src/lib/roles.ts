@@ -23,3 +23,9 @@ export function isCeo(role: Role | null | undefined): boolean {
 export function roleSatisfies(role: Role | null | undefined, allowed: Role[]): boolean {
   return allowed.some((required) => roleAtLeast(role, required));
 }
+
+// Espejo de WAREHOUSE_MANAGER_ROLES en backend/src/lib/roles.ts: roles
+// elegibles para ser responsable de una bodega. Filtra el selector del
+// formulario de Bodegas — el backend vuelve a validarlo, esto es solo para
+// no ofrecer opciones que el submit rechazaría.
+export const WAREHOUSE_MANAGER_ROLES: Role[] = ["ADMIN", "OPERATOR", "CEO"];
