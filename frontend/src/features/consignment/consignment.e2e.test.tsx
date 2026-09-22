@@ -228,8 +228,18 @@ describe("Consignación y Cuarentena — de punta a punta contra el backend real
     await signInAs("admin");
     renderApp("/consignment");
     await screen.findByRole("heading", { name: /consignación/i });
+    // La base compartida conserva lotes de otras corridas. El nuevo lote
+    // puede estar en cualquier página del listado ordenado por revisión.
+    for (let page = 1; ; page += 1) {
+      await screen.findByText(new RegExp(`Página ${page} de`), {}, { timeout: 8000 });
+      await screen.findByRole("table", {}, { timeout: 8000 });
+      if (screen.queryByText(lot.code)) break;
+      const next = screen.getByRole("button", { name: /siguiente/i });
+      if (next.hasAttribute("disabled")) break;
+      fireEvent.click(next);
+    }
     expect(await screen.findByText(lot.code, {}, { timeout: 8000 })).toBeInTheDocument();
-  }, 30000);
+  }, 60000);
 
   it("liquidación (UI): vendió 4 y devuelve 6 → se cobra lo vendido, lo devuelto queda en Cuarentena y el lote se cierra", async () => {
     await signInAs("admin");

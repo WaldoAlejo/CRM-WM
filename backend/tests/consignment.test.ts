@@ -1,5 +1,5 @@
 import request from "supertest";
-import { afterEach, describe, expect, it as vitestIt, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it as vitestIt, vi } from "vitest";
 import { createApp } from "../src/app";
 import {
   createCategoryFixture,
@@ -37,6 +37,10 @@ const it = (name: string, fn: () => Promise<void>, timeout?: number) =>
   );
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PRICE = 20;
+
+// Una corrida interrumpida puede dejar movimientos de consignación en el
+// schema de tests. El primer caso también necesita el mismo estado limpio.
+beforeAll(resetDatabase);
 
 afterEach(async () => {
   // Esperar (sin propagar el error: ese ya lo reporta el propio test) a que el
