@@ -79,7 +79,10 @@ export async function getImportBatchById(id: string, role: Role) {
       movements: {
         where: { type: MovementType.INGRESO },
         orderBy: { createdAt: "asc" },
-        include: { variant: { select: { sku: true, label: true } } },
+        // productId: no es dato de costo/precio (igual que en inventory.service.ts::listMovements,
+        // que ya lo expone a todos los roles) — lo usa la calculadora de precios del
+        // frontend para enlazar "Usar este PVP" con la página del producto.
+        include: { variant: { select: { sku: true, label: true, productId: true } } },
       },
     },
   });

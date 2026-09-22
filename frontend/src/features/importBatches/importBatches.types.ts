@@ -30,7 +30,10 @@ export interface ImportBatchMovement {
   toLocationId: string | null;
   unitCost?: string | null;
   landedCostPerUnit?: string | null;
-  variant: { sku: string; label: string | null };
+  // productId no es costo/precio: viaja para cualquier rol (ver
+  // backend/src/modules/importBatches/importBatches.service.ts). Lo usa la
+  // calculadora de precios para enlazar "Usar este PVP" con /products/:id.
+  variant: { sku: string; label: string | null; productId: string };
 }
 
 export interface ImportBatchDetail extends Omit<ImportBatchListItem, "movementsCount"> {

@@ -1,22 +1,27 @@
 import { hasAdminAccess } from "@/lib/roles";
-import { ArrowLeftIcon } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { ArrowLeftIcon, CalculatorIcon } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/context/AuthContext";
 import { useLocationOptions } from "@/features/locations/useLocationOptions";
+import { PricingCalculatorDialog } from "@/features/pricing/PricingCalculatorDialog";
 import { BatchStatusBadge } from "./components/BatchStatusBadge";
+import type { ImportBatchMovement } from "./importBatches.types";
 import { landedUnitCost, totalBatchCost } from "./landedCost";
 import { useImportBatch } from "./useImportBatches";
 
 export function ImportBatchDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { role } = useAuth();
   const isAdmin = hasAdminAccess(role);
   const { data: batch, isLoading } = useImportBatch(id);
   const { labelById } = useLocationOptions();
+  const [calculatorFor, setCalculatorFor] = useState<ImportBatchMovement | null>(null);
 
   if (isLoading) return <Skeleton className="h-48 w-full" />;
   if (!batch) return <p className="text-muted-foreground">Lote no encontrado.</p>;
@@ -93,6 +98,7 @@ export function ImportBatchDetailPage() {
                   <TableHead>Costo en origen</TableHead>
                   <TableHead>Prorrateo / unidad</TableHead>
                   <TableHead>Costo puesto / unidad</TableHead>
+                  <TableHead>Calculadora de precios</TableHead>
                 </>
               ) : null}
               <TableHead>Fecha</TableHead>
@@ -101,7 +107,7 @@ export function ImportBatchDetailPage() {
           <TableBody>
             {batch.movements.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 7 : 4} className="h-20 text-center text-muted-foreground">
+                <TableCell colSpan={isAdmin ? 8 : 4} className="h-20 text-center text-muted-foreground">
                   Este lote todavía no recibió mercadería.
                 </TableCell>
               </TableRow>
@@ -121,6 +127,11 @@ export function ImportBatchDetailPage() {
                       <TableCell className="font-medium">
                         ${landedUnitCost(Number(m.unitCost) || 0, Number(m.landedCostPerUnit) || 0).toFixed(2)}
                       </TableCell>
+                      <TableCell>
+                        <Button variant="outline" size="sm" onClick={() => setCalculatorFor(m)}>
+                          <CalculatorIcon /> Calcular PVP
+                        </Button>
+                      </TableCell>
                     </>
                   ) : null}
                   <TableCell>{new Date(m.createdAt).toLocaleString("es-EC")}</TableCell>
@@ -130,6 +141,21 @@ export function ImportBatchDetailPage() {
           </TableBody>
         </Table>
       </section>
+
+      {calculatorFor ? (
+        <PricingCalculatorDialog
+          open
+          onOpenChange={(open) => !open && setCalculatorFor(null)}
+          title={`Calculadora de precios — ${calculatorFor.variant.sku}`}
+          landedCost={landedUnitCost(Number(calculatorFor.unitCost) || 0, Number(calculatorFor.landedCostPerUnit) || 0)}
+          onUsePvp={(pvp) => {
+            const productId = calculatorFor.variant.productId;
+            const variantId = calculatorFor.variantId;
+            setCalculatorFor(null);
+            navigate(`/products/${productId}?editVariantId=${variantId}&suggestedRetailPrice=${pvp}`);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

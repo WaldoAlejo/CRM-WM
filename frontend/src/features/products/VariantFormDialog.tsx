@@ -26,6 +26,10 @@ interface VariantFormDialogProps {
   productId: string;
   productStatus: ProductStatus;
   variant: Variant | null; // null = modo crear
+  // Precarga el campo PVP (viene de "Usar este PVP" en la calculadora de
+  // precios) SIN guardar nada por sí sola: el usuario sigue teniendo que
+  // tocar "Guardar" acá abajo, como cualquier otro cambio de este formulario.
+  retailPriceOverride?: number;
 }
 
 // `name` tipado como PricingField (no un string suelto): si backend agrega o
@@ -39,8 +43,8 @@ const PRICE_FIELDS_CONFIG: { name: PricingField; label: string }[] = [
   { name: "retailDiscountPct", label: "% descuento PVP" },
 ];
 
-function toFormValues(variant: Variant | null): VariantFormValues {
-  if (!variant) return variantDefaultValues;
+function toFormValues(variant: Variant | null, retailPriceOverride?: number): VariantFormValues {
+  if (!variant) return { ...variantDefaultValues, ...(retailPriceOverride !== undefined && { retailPrice: retailPriceOverride }) };
   return {
     attributePairs: attributesToPairs(variant.attributes),
     sku: variant.sku,
@@ -52,7 +56,9 @@ function toFormValues(variant: Variant | null): VariantFormValues {
     costPriceCNY: variant.costPriceCNY ? Number(variant.costPriceCNY) : undefined,
     wholesalePrice: variant.wholesalePrice ? Number(variant.wholesalePrice) : undefined,
     wholesaleDiscountPct: variant.wholesaleDiscountPct ? Number(variant.wholesaleDiscountPct) : undefined,
-    retailPrice: variant.retailPrice ? Number(variant.retailPrice) : undefined,
+    // El override de la calculadora gana sobre el PVP guardado: es justo lo
+    // que el usuario acaba de pedir usar. Sigue sin persistirse hasta "Guardar".
+    retailPrice: retailPriceOverride ?? (variant.retailPrice ? Number(variant.retailPrice) : undefined),
     retailDiscountPct: variant.retailDiscountPct ? Number(variant.retailDiscountPct) : undefined,
     force: false,
   };
@@ -64,6 +70,7 @@ export function VariantFormDialog({
   productId,
   productStatus,
   variant,
+  retailPriceOverride,
 }: VariantFormDialogProps) {
   const isEdit = variant !== null;
   const canSeePricing = usePricingVisibility();
@@ -76,8 +83,8 @@ export function VariantFormDialog({
 
   useEffect(() => {
     if (!open) return;
-    form.reset(toFormValues(variant));
-  }, [open, variant]);
+    form.reset(toFormValues(variant, retailPriceOverride));
+  }, [open, variant, retailPriceOverride]);
 
   function handleSubmit(values: VariantFormValues) {
     const attributes = pairsToAttributes(values.attributePairs);

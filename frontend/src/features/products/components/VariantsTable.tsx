@@ -1,5 +1,5 @@
-import { ImageIcon, PencilIcon, Trash2Icon } from "lucide-react";
-import { useState } from "react";
+import { CalculatorIcon, ImageIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { DataTable } from "@/components/crud/DataTable";
 import type { CrudColumn } from "@/components/crud/types";
@@ -9,23 +9,53 @@ import type { ProductStatus, Variant } from "../products.types";
 import { useVariantMutations } from "../useVariantMutations";
 import { VariantFormDialog } from "../VariantFormDialog";
 import { VariantImagesDialog } from "./VariantImagesDialog";
+import { VariantPricingCalculatorDialog } from "./VariantPricingCalculatorDialog";
+
+// Solicitud de apertura que viene de FUERA de esta tabla (hoy: "Usar este
+// PVP" en la calculadora inline de un Lote de Importación, que navega hasta
+// acá por URL — ver ProductDetailPage). `retailPriceOverride` nunca se
+// guarda solo: solo precarga el campo del formulario de edición.
+export interface PendingVariantEdit {
+  variantId: string;
+  retailPriceOverride?: number;
+}
 
 interface VariantsTableProps {
   productId: string;
   productStatus: ProductStatus;
   variants: Variant[];
+  pendingEdit?: PendingVariantEdit | null;
+  onPendingEditHandled?: () => void;
 }
 
 function money(value: string | null | undefined, prefix: string): string {
   return value ? `${prefix}${value}` : "—";
 }
 
-export function VariantsTable({ productId, productStatus, variants }: VariantsTableProps) {
+export function VariantsTable({ productId, productStatus, variants, pendingEdit, onPendingEditHandled }: VariantsTableProps) {
   const canSeePricing = usePricingVisibility();
   const { deleteMutation } = useVariantMutations(productId);
   const [editing, setEditing] = useState<Variant | null | "new">(null);
+  const [retailPriceOverride, setRetailPriceOverride] = useState<number | undefined>(undefined);
   const [imagesFor, setImagesFor] = useState<Variant | null>(null);
+  const [calculatorFor, setCalculatorFor] = useState<Variant | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  function openEdit(variant: Variant | "new", override?: number) {
+    setRetailPriceOverride(override);
+    setEditing(variant);
+  }
+
+  // Abre la edición pedida desde afuera (llega por URL, ver ProductDetailPage)
+  // en cuanto la variante correspondiente esté cargada, y avisa para que el
+  // padre limpie ese pedido (los query params) — así no se reabre en un refresh.
+  useEffect(() => {
+    if (!pendingEdit) return;
+    const variant = variants.find((v) => v.id === pendingEdit.variantId);
+    if (!variant) return;
+    openEdit(variant, pendingEdit.retailPriceOverride);
+    onPendingEditHandled?.();
+  }, [pendingEdit, variants, onPendingEditHandled]);
 
   // Mismo mecanismo que el backend (variants.serializer.ts): las columnas de
   // precio/costo directamente no se agregan al array si el rol no puede
@@ -47,7 +77,7 @@ export function VariantsTable({ productId, productStatus, variants }: VariantsTa
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Variantes ({variants.length})</h2>
-        <Button size="sm" onClick={() => setEditing("new")}>
+        <Button size="sm" onClick={() => openEdit("new")}>
           Nueva variante
         </Button>
       </div>
@@ -59,10 +89,17 @@ export function VariantsTable({ productId, productStatus, variants }: VariantsTa
         getRowId={(v) => v.id}
         actions={(variant) => (
           <div className="flex justify-end gap-1">
+            {/* Calculadora de precios: expone costo aterrizado y margen —
+                misma condición que las columnas de precio, ADMIN/CEO solo. */}
+            {canSeePricing ? (
+              <Button variant="ghost" size="icon" title="Calculadora de precios" onClick={() => setCalculatorFor(variant)}>
+                <CalculatorIcon />
+              </Button>
+            ) : null}
             <Button variant="ghost" size="icon" title="Imágenes" onClick={() => setImagesFor(variant)}>
               <ImageIcon />
             </Button>
-            <Button variant="ghost" size="icon" title="Editar variante" onClick={() => setEditing(variant)}>
+            <Button variant="ghost" size="icon" title="Editar variante" onClick={() => openEdit(variant)}>
               <PencilIcon />
             </Button>
             <Button variant="ghost" size="icon" title="Eliminar variante" onClick={() => setDeleteId(variant.id)}>
@@ -78,6 +115,7 @@ export function VariantsTable({ productId, productStatus, variants }: VariantsTa
         productId={productId}
         productStatus={productStatus}
         variant={editing === "new" ? null : editing}
+        retailPriceOverride={retailPriceOverride}
       />
 
       {imagesFor ? (
@@ -86,6 +124,18 @@ export function VariantsTable({ productId, productStatus, variants }: VariantsTa
           onOpenChange={(open) => !open && setImagesFor(null)}
           productId={productId}
           variant={imagesFor}
+        />
+      ) : null}
+
+      {calculatorFor ? (
+        <VariantPricingCalculatorDialog
+          variant={calculatorFor}
+          onOpenChange={(open) => !open && setCalculatorFor(null)}
+          onUsePvp={(pvp) => {
+            const variant = calculatorFor;
+            setCalculatorFor(null);
+            openEdit(variant, pvp);
+          }}
         />
       ) : null}
 

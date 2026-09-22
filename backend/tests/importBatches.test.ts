@@ -408,7 +408,7 @@ describe("GET /api/import-batches/:id", () => {
   it("incluye los movimientos INGRESO vinculados, con unitCost oculto para OPERATOR", async () => {
     const { token: adminToken } = await createTestUser("ADMIN");
     const { token: operatorToken } = await createTestUser("OPERATOR");
-    const { variant } = await setupProductWithVariant();
+    const { product, variant } = await setupProductWithVariant();
     const batch = await createImportBatchFixture();
 
     await request(app)
@@ -426,5 +426,10 @@ describe("GET /api/import-batches/:id", () => {
     expect(asAdmin.body.movements).toHaveLength(1);
     expect(asAdmin.body.movements[0].unitCost).toBe("12.34");
     expect(Object.prototype.hasOwnProperty.call(asOperator.body.movements[0], "unitCost")).toBe(false);
+
+    // productId NO es costo/precio (la calculadora de precios del frontend lo usa
+    // para enlazar con la página del producto): viaja para cualquier rol.
+    expect(asAdmin.body.movements[0].variant.productId).toBe(product.id);
+    expect(asOperator.body.movements[0].variant.productId).toBe(product.id);
   });
 });
