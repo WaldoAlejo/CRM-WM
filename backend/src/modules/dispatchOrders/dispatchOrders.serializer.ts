@@ -13,10 +13,20 @@ function serializeItemForRole<T extends Record<string, unknown>>(item: T, role: 
   return sanitized;
 }
 
-export function serializeDispatchOrderForRole<T extends { items?: Record<string, unknown>[] }>(
+// La ruta interna del comprobante (proofFile) NUNCA sale por la API. ADMIN/CEO
+// solo reciben `hasProof` (para mostrar el botón); OPERATOR no recibe ni eso:
+// la foto puede mostrar datos bancarios del mayorista y no la necesita.
+function serializePaymentForRole<T extends Record<string, unknown>>(payment: T, role: Role) {
+  const { proofFile, ...rest } = payment;
+  return hasAdminAccess(role) ? { ...rest, hasProof: Boolean(proofFile) } : rest;
+}
+
+export function serializeDispatchOrderForRole<T extends { items?: Record<string, unknown>[]; payments?: Record<string, unknown>[] }>(
   order: T,
   role: Role
 ): T {
-  if (!order.items) return order;
-  return { ...order, items: order.items.map((item) => serializeItemForRole(item, role)) };
+  const payments = order.payments?.map((p) => serializePaymentForRole(p, role));
+  const items = order.items?.map((item) => serializeItemForRole(item, role));
+  if (!items && !payments) return order;
+  return { ...order, ...(items && { items }), ...(payments && { payments }) };
 }

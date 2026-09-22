@@ -24,5 +24,8 @@ import("./app").then(({ createApp }) => {
 
   createApp().listen(port, () => {
     console.log(`API de inventario WM/Kestore escuchando en http://localhost:${port}`);
+    // Tareas programadas (recordatorios de pago por vencer). Aquí y no en
+    // createApp(): los tests nunca deben arrancar un job real.
+    import("./jobs/scheduler").then(({ startScheduler }) => startScheduler());
   });
 });

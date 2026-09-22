@@ -24,7 +24,12 @@ export interface DashboardSummary {
   pendingCourierShipments: { count: number };
   sales: { today: SalesPeriod; week: SalesPeriod; month: SalesPeriod };
   // Ausentes del todo para OPERATOR — nunca `null`.
-  accountsReceivable?: { overdueCount: number; totalOutstanding: string };
+  accountsReceivable?: {
+    overdueCount: number;
+    totalOutstanding: string;
+    // Semáforo de la cartera con saldo pendiente (mismo clasificador que el listado y el detalle).
+    byStatus?: Record<"VENCIDO" | "POR_VENCER" | "PENDIENTE", { count: number; outstanding: string }>;
+  };
   insuranceClaims?: { pendingCount: number };
   // Lotes de consignación con la revisión vencida (ausente para OPERATOR).
   consignment?: { overdueReviewCount: number };

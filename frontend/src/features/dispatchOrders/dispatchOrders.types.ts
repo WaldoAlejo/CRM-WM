@@ -3,6 +3,8 @@ export type DispatchStatus = "PENDIENTE" | "DESPACHADO" | "CANCELADO";
 export type PaymentMethod = "CONTADO" | "CREDITO" | "CONTRA_ENTREGA";
 export type PaymentStatus = "PENDIENTE" | "PAGADO" | "PARCIAL";
 export type PriceType = "MAYORISTA" | "PVP";
+// Semáforo de una cuenta a crédito: lo deriva el BACKEND al consultar (nunca se guarda).
+export type CollectionStatus = "COMPLETADO" | "PENDIENTE" | "POR_VENCER" | "VENCIDO";
 export type ShipmentStatus = "EN_TRANSITO" | "ENTREGADO" | "RECHAZADO" | "PERDIDO" | "DANADO";
 export type ClaimStatus = "PENDIENTE" | "EN_REVISION" | "APROBADO" | "RECHAZADO" | "PAGADO";
 
@@ -68,6 +70,8 @@ export interface Payment {
   paidAt: string;
   notes: string | null;
   createdAt: string;
+  // Solo lo recibe ADMIN/CEO (OPERATOR no ve ni la marca): hay foto de comprobante.
+  hasProof?: boolean;
 }
 
 export interface InsuranceClaimRef {
@@ -111,6 +115,8 @@ export interface DispatchOrderDetail {
   paymentStatus: PaymentStatus;
   amountPaid: string | null;
   orderTotal: string;
+  // Semáforo (solo crédito despachado; null en cualquier otro caso).
+  collectionStatus: CollectionStatus | null;
   items: DispatchOrderItem[];
   payments: Payment[];
   shipment: Shipment | null;
@@ -129,4 +135,5 @@ export interface AccountsReceivableItem {
   paymentStatus: PaymentStatus;
   amountPaid: string | null;
   orderTotal: string;
+  collectionStatus: CollectionStatus | null;
 }

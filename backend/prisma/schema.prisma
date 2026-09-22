@@ -743,6 +743,14 @@ model DispatchOrder {
   paymentStatus PaymentStatus @default(PENDIENTE)
   amountPaid    Decimal?      @db.Decimal(10, 2)
 
+  // Recordatorios de cobro (job diario): cuándo se envió el ÚLTIMO correo al
+  // mayorista. El TIPO de ese aviso se deduce de esta fecha vs. dueDate:
+  // remindedAt <= dueDate = "por vencer"; remindedAt > dueDate = "vencida". Así un
+  // aviso "por vencer" previo no impide el aviso "vencida" (ver
+  // src/jobs/dueReminders.ts). Por defecto UN aviso de cada tipo por cuenta;
+  // REMINDER_REPEAT_DAILY lo repite cada día. Null = nunca se avisó.
+  remindedAt DateTime?
+
   // Cuando esta orden nace de POST /insurance-claims/:id/resolve-customer
   // (resolution=REPLACEMENT), apunta a la orden original que el courier
   // perdió/dañó. Self-relation opcional: la inmensa mayoría de las órdenes no
@@ -843,6 +851,13 @@ model Payment {
   method String // Ej: "efectivo", "transferencia", "cobro courier", "reembolso".
   paidAt DateTime
   notes  String?
+
+  // Comprobante opcional (foto de la transferencia/depósito). Es la RUTA
+  // relativa dentro del almacenamiento PRIVADO (uploads-private/, nunca bajo
+  // /uploads, que es público): solo se sirve por un endpoint autenticado y
+  // solo ADMIN/CEO. Igual que el resto del ledger es append-only: se fija al
+  // registrar el pago y no existe ninguna operación para cambiarlo ni borrarlo.
+  proofFile String?
 
   // Se llena cuando este Payment es un reembolso (amount negativo) originado
   // por POST /insurance-claims/:id/resolve-customer (resolution=REFUND):

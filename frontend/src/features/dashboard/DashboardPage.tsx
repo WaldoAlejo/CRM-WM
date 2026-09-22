@@ -2,6 +2,7 @@ import { hasAdminAccess } from "@/lib/roles";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { AlertCard } from "./components/AlertCard";
+import { ReceivablesTrafficLight } from "./components/ReceivablesTrafficLight";
 import { SalesPeriodCard } from "./components/SalesPeriodCard";
 import { SalesRevenueChart } from "./components/SalesRevenueChart";
 import { StockAlertsList } from "./components/StockAlertsList";
@@ -69,6 +70,8 @@ export function DashboardPage() {
           />
         ) : null}
       </div>
+
+      {data.accountsReceivable?.byStatus ? <ReceivablesTrafficLight byStatus={data.accountsReceivable.byStatus} /> : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <StockAlertsList count={data.stockAlerts.count} items={data.stockAlerts.items} />

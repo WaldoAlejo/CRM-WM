@@ -33,8 +33,10 @@ export const confirmDispatchOrderSchema = z.object({
   trackingNumber: z.string().max(100).optional(),
 });
 
+// El pago puede llegar como JSON o como multipart (cuando lleva foto de
+// comprobante): en multipart todo campo es texto, por eso `amount` se coacciona.
 export const createPaymentSchema = z.object({
-  amount: z.number().positive("El monto debe ser mayor a 0"),
+  amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
   method: z.string().min(1, "El método de pago es obligatorio").max(50),
   paidAt: z.coerce.date().optional(),
   notes: z.string().max(500).optional(),
@@ -56,4 +58,7 @@ export const listDispatchOrdersQuerySchema = z.object({
 export const accountsReceivableQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  // Sin `status`: solo las VENCIDAS (el comportamiento de siempre). TODAS = todas
+  // las cuentas a crédito con su semáforo.
+  status: z.enum(["VENCIDO", "POR_VENCER", "PENDIENTE", "COMPLETADO", "TODAS"]).optional(),
 });

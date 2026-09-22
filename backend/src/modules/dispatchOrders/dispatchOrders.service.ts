@@ -12,6 +12,7 @@ import {
 import { applyMovement, computeLandedCost, computeWeightedAverageCost } from "../../lib/inventoryMovements";
 import { generateOrderNumber } from "../../lib/orderNumber";
 import { computeOrderTotal, recalculatePaymentStatus } from "../../lib/paymentRecalculation";
+import { classifyReceivable, dueSoonUpperBound, type CollectionStatus } from "../../lib/receivableStatus";
 import { prisma } from "../../lib/prisma";
 import { reserveStock, releaseStock } from "../../lib/stockReservation";
 import { badRequest, conflict, notFound } from "../../utils/httpError";
@@ -383,7 +384,9 @@ export async function getDispatchOrderById(id: string, role: Role) {
   // registrar un pago — el detalle nunca reimplementa la fórmula de sumar
   // ítems, solo muestra lo que ya calculó el sistema.
   const orderTotal = computeOrderTotal(order.items);
-  return serializeDispatchOrderForRole({ ...order, orderTotal }, role);
+  // Semáforo de la cuenta (null si no es crédito despachado): derivado ahora.
+  const collectionStatus = classifyReceivable(order);
+  return serializeDispatchOrderForRole({ ...order, orderTotal, collectionStatus }, role);
 }
 
 interface AddPaymentInput {
@@ -391,6 +394,13 @@ interface AddPaymentInput {
   method: string;
   paidAt?: Date;
   notes?: string;
+  // Ruta relativa del comprobante ya subido al almacenamiento privado (opcional).
+  proofFile?: string;
+}
+
+export async function assertOrderExists(orderId: string) {
+  const order = await prisma.dispatchOrder.findFirst({ where: { id: orderId, deletedAt: null }, select: { id: true } });
+  if (!order) throw notFound("Orden no encontrada");
 }
 
 export async function addPayment(orderId: string, data: AddPaymentInput, userId: string | undefined) {
@@ -405,6 +415,7 @@ export async function addPayment(orderId: string, data: AddPaymentInput, userId:
         method: data.method,
         paidAt: data.paidAt ?? new Date(),
         notes: data.notes,
+        proofFile: data.proofFile,
         createdById: userId,
       },
     });
@@ -412,19 +423,55 @@ export async function addPayment(orderId: string, data: AddPaymentInput, userId:
   });
 }
 
-export async function getAccountsReceivable(params: { page: number; pageSize: number }) {
-  const { page, pageSize } = params;
-  const where: Prisma.DispatchOrderWhereInput = {
+// Ruta en BD del comprobante de UN pago de ESTA orden (nunca de otra: el
+// paymentId solo se resuelve dentro del orderId de la URL).
+export async function getPaymentProofPath(orderId: string, paymentId: string): Promise<string> {
+  const payment = await prisma.payment.findFirst({
+    where: { id: paymentId, dispatchOrderId: orderId },
+    select: { proofFile: true },
+  });
+  if (!payment?.proofFile) throw notFound("Este pago no tiene comprobante");
+  return payment.proofFile;
+}
+
+export type ReceivableFilter = CollectionStatus | "TODAS";
+
+// `where` de cada estado: espejo EXACTO de classifyReceivable (mismos bordes,
+// mismo umbral de 7 días). Ver lib/receivableStatus.ts.
+function receivableWhere(filter: ReceivableFilter, now: Date): Prisma.DispatchOrderWhereInput {
+  const base: Prisma.DispatchOrderWhereInput = {
     deletedAt: null,
     paymentMethod: PaymentMethod.CREDITO,
-    dueDate: { lt: new Date() },
-    paymentStatus: { not: PaymentStatus.PAGADO },
+    dueDate: { not: null },
   };
+  const unpaid = { paymentStatus: { not: PaymentStatus.PAGADO } };
+  const soonLimit = dueSoonUpperBound(now);
+  switch (filter) {
+    case "VENCIDO":
+      return { ...base, ...unpaid, dueDate: { lt: now } };
+    case "POR_VENCER":
+      return { ...base, ...unpaid, dueDate: { gte: now, lte: soonLimit } };
+    case "PENDIENTE":
+      return { ...base, ...unpaid, dueDate: { gt: soonLimit } };
+    case "COMPLETADO":
+      return { ...base, paymentStatus: PaymentStatus.PAGADO };
+    case "TODAS":
+      return base;
+  }
+}
+
+// Por defecto (sin `status`) sigue siendo el listado de siempre: solo VENCIDAS.
+// Con `status` se ve cualquier otro estado, o TODAS las cuentas a crédito con su
+// semáforo (collectionStatus, derivado al consultar — nunca guardado).
+export async function getAccountsReceivable(params: { page: number; pageSize: number; status?: ReceivableFilter }) {
+  const { page, pageSize, status = "VENCIDO" } = params;
+  const now = new Date();
+  const where = receivableWhere(status, now);
 
   const [rows, total] = await Promise.all([
     prisma.dispatchOrder.findMany({
       where,
-      orderBy: { dueDate: "asc" },
+      orderBy: { dueDate: status === "COMPLETADO" ? "desc" : "asc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: {
@@ -440,35 +487,66 @@ export async function getAccountsReceivable(params: { page: number; pageSize: nu
   // fórmula reimplementada acá — y los items crudos no se exponen, solo el
   // total ya calculado (el listado de cartera no necesita línea por línea).
   return {
-    data: rows.map(({ items, ...order }) => ({ ...order, orderTotal: computeOrderTotal(items) })),
+    data: rows.map(({ items, ...order }) => ({
+      ...order,
+      orderTotal: computeOrderTotal(items),
+      collectionStatus: classifyReceivable(order, now),
+    })),
     pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
   };
 }
 
-// Versión liviana para GET /dashboard/summary: mismo `where` EXACTO que
-// getAccountsReceivable (misma definición de "vencida" — CREDITO, dueDate
-// pasado, no pagada por completo), pero sin traer comprador ni paginar: acá
-// solo hace falta el conteo y el saldo total pendiente, sumado con
-// computeOrderTotal (la misma fórmula, nunca una nueva).
-export async function getAccountsReceivableSummary() {
-  const where: Prisma.DispatchOrderWhereInput = {
-    deletedAt: null,
-    paymentMethod: PaymentMethod.CREDITO,
-    dueDate: { lt: new Date() },
-    paymentStatus: { not: PaymentStatus.PAGADO },
-  };
+export interface ReceivableBucket {
+  count: number;
+  outstanding: Prisma.Decimal;
+}
 
+// Versión liviana para GET /dashboard/summary. `overdueCount` y
+// `totalOutstanding` siguen siendo EXACTAMENTE lo de siempre (cuentas VENCIDAS);
+// `byStatus` agrega el semáforo de la cartera con saldo pendiente (vencidas, por
+// vencer, pendientes) clasificando con la MISMA función que el listado y el
+// detalle, y sumando con computeOrderTotal (la misma fórmula, nunca una nueva).
+export async function getAccountsReceivableSummary() {
+  const now = new Date();
   const rows = await prisma.dispatchOrder.findMany({
-    where,
-    select: { amountPaid: true, items: { select: { unitPrice: true, quantity: true } } },
+    where: {
+      deletedAt: null,
+      paymentMethod: PaymentMethod.CREDITO,
+      dueDate: { not: null },
+      paymentStatus: { not: PaymentStatus.PAGADO },
+    },
+    select: {
+      paymentMethod: true,
+      paymentStatus: true,
+      dueDate: true,
+      amountPaid: true,
+      items: { select: { unitPrice: true, quantity: true } },
+    },
   });
 
-  const totalOutstanding = rows
-    .reduce(
-      (sum, order) => sum.plus(computeOrderTotal(order.items).minus(order.amountPaid ?? new Prisma.Decimal(0))),
-      new Prisma.Decimal(0)
-    )
-    .toDecimalPlaces(2);
+  const zero = () => ({ count: 0, outstanding: new Prisma.Decimal(0) });
+  const byStatus: Record<"VENCIDO" | "POR_VENCER" | "PENDIENTE", ReceivableBucket> = {
+    VENCIDO: zero(),
+    POR_VENCER: zero(),
+    PENDIENTE: zero(),
+  };
 
-  return { overdueCount: rows.length, totalOutstanding };
+  for (const order of rows) {
+    const status = classifyReceivable(order, now);
+    if (status !== "VENCIDO" && status !== "POR_VENCER" && status !== "PENDIENTE") continue;
+    const outstanding = computeOrderTotal(order.items).minus(order.amountPaid ?? new Prisma.Decimal(0));
+    byStatus[status].count += 1;
+    byStatus[status].outstanding = byStatus[status].outstanding.plus(outstanding);
+  }
+
+  const round = (b: ReceivableBucket) => ({ count: b.count, outstanding: b.outstanding.toDecimalPlaces(2) });
+  return {
+    overdueCount: byStatus.VENCIDO.count,
+    totalOutstanding: byStatus.VENCIDO.outstanding.toDecimalPlaces(2),
+    byStatus: {
+      VENCIDO: round(byStatus.VENCIDO),
+      POR_VENCER: round(byStatus.POR_VENCER),
+      PENDIENTE: round(byStatus.PENDIENTE),
+    },
+  };
 }

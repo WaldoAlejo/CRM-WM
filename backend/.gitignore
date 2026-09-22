@@ -5,3 +5,6 @@ dist/
 *.log
 uploads/
 coverage/
+
+# Comprobantes de pago (almacenamiento privado, nunca estático)
+uploads-private/

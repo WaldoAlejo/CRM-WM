@@ -16,7 +16,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmOrderDialog } from "./components/ConfirmOrderDialog";
 import { DispatchStatusBadge } from "./components/DispatchStatusBadge";
 import { OrderDetailItemsTable } from "./components/OrderDetailItemsTable";
+import { CollectionStatusBadge } from "./components/CollectionStatusBadge";
 import { PaymentStatusBadge } from "./components/PaymentStatusBadge";
+import { describeDeadline } from "./collectionStatus";
 import { PaymentsSection } from "./components/PaymentsSection";
 import { ShipmentSection } from "./components/ShipmentSection";
 import { useDispatchOrder } from "./useDispatchOrder";
@@ -61,11 +63,18 @@ export function DispatchOrderDetailPage() {
             <h1 className="text-2xl font-semibold">{order.orderNumber}</h1>
             <DispatchStatusBadge status={order.status} />
             <PaymentStatusBadge status={order.paymentStatus} />
+            {/* Semáforo de la cuenta a crédito (el backend lo deriva al consultar). */}
+            <CollectionStatusBadge status={order.collectionStatus} />
           </div>
           <p className="text-sm text-muted-foreground">
             {buyerName} ({order.buyerType === "MAYORISTA" ? "Mayorista" : "Cliente final"}) ·{" "}
             {new Date(order.createdAt).toLocaleDateString("es-EC")}
           </p>
+          {order.collectionStatus && order.collectionStatus !== "COMPLETADO" && order.dueDate ? (
+            <p className="text-sm text-muted-foreground">
+              Vence el {new Date(order.dueDate).toLocaleDateString("es-EC")} · {describeDeadline(order.collectionStatus, order.dueDate)}
+            </p>
+          ) : null}
         </div>
         {isPending ? (
           <div className="flex gap-2">

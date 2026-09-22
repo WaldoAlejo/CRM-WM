@@ -1,19 +1,27 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import type { PaginationMeta } from "@/types/api";
-import type { AccountsReceivableItem } from "./dispatchOrders.types";
+import type { AccountsReceivableItem, CollectionStatus } from "./dispatchOrders.types";
 
 const PAGE_SIZE = 20;
 
-export function useAccountsReceivable() {
+// Sin filtro el backend devuelve solo las VENCIDAS (el listado de siempre).
+export type ReceivableFilter = CollectionStatus | "TODAS";
+
+export function useAccountsReceivable(status: ReceivableFilter = "VENCIDO") {
   const [page, setPage] = useState(1);
 
+  // Al cambiar de filtro se vuelve a la primera página.
+  useEffect(() => {
+    setPage(1);
+  }, [status]);
+
   const query = useQuery({
-    queryKey: ["accountsReceivable", "list", page],
+    queryKey: ["accountsReceivable", "list", status, page],
     queryFn: () =>
       apiFetch<{ data: AccountsReceivableItem[]; pagination: PaginationMeta }>(
-        `/accounts-receivable?page=${page}&pageSize=${PAGE_SIZE}`
+        `/accounts-receivable?page=${page}&pageSize=${PAGE_SIZE}&status=${status}`
       ),
   });
 
