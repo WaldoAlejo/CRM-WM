@@ -1,0 +1,14 @@
+# Explicit allowlist: never send databases, credentials, uploads or local tooling.
+**
+!Dockerfile
+!.dockerignore
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+!src/**
+!prisma/
+!prisma/schema.prisma
+!prisma/migrations/
+!prisma/migrations/**
+!prisma/seed.ts
