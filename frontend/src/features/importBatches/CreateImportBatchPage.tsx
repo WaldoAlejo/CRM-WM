@@ -18,7 +18,7 @@ import { ReceiveLinesTable } from "./components/ReceiveLinesTable";
 import { VariantSearchAddLine } from "./components/VariantSearchAddLine";
 import { createImportBatchDefaultValues, createImportBatchFormSchema } from "./importBatches.schema";
 import type { CreateImportBatchFormValues } from "./importBatches.schema";
-import { prorationPerUnit, totalBatchCost } from "./landedCost";
+import { costPerCbm, totalBatchCost } from "./landedCost";
 import { useImportBatchMutations } from "./useImportBatchMutations";
 import { useSupplierOptions } from "./useSupplierOptions";
 
@@ -42,6 +42,7 @@ export function CreateImportBatchPage() {
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "lines" });
   const lines = useWatch({ control: form.control, name: "lines" }) ?? [];
+  const containerCbm = useWatch({ control: form.control, name: "containerCbm" });
   const freightCost = useWatch({ control: form.control, name: "freightCost" });
   const customsCost = useWatch({ control: form.control, name: "customsCost" });
   const otherCosts = useWatch({ control: form.control, name: "otherCosts" });
@@ -53,7 +54,8 @@ export function CreateImportBatchPage() {
     customsCost: Number(customsCost) || 0,
     otherCosts: Number(otherCosts) || 0,
   });
-  const proration = prorationPerUnit(totalCost, totalUnits);
+  const proration = costPerCbm(totalCost, Number(containerCbm));
+  const volumeCbm = lines.reduce((sum, l) => sum + (Number(l?.volumeCbm) || 0), 0);
 
   function handleAddLine(result: SearchResult) {
     append({
@@ -63,6 +65,7 @@ export function CreateImportBatchPage() {
       productName: result.product.name,
       quantity: 1,
       unitCost: 0,
+      volumeCbm: 0,
       locationId: undefined,
       notes: undefined,
     });
@@ -74,6 +77,8 @@ export function CreateImportBatchPage() {
       if (!batchId) {
         const created = await createMutation.mutateAsync({
           reference: values.reference,
+          containerType: values.containerType,
+          containerCbm: values.containerCbm,
           supplierId: values.supplierId,
           arrivalDate: values.arrivalDate,
           notes: values.notes || undefined,
@@ -94,6 +99,7 @@ export function CreateImportBatchPage() {
           variantId: l.variantId,
           quantity: l.quantity,
           unitCost: l.unitCost,
+          volumeCbm: l.volumeCbm,
           locationId: l.locationId || undefined,
           notes: l.notes || undefined,
         })),
@@ -130,6 +136,20 @@ export function CreateImportBatchPage() {
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           <section className="grid grid-cols-2 gap-4 rounded-md border p-4">
             <h2 className="col-span-2 text-lg font-semibold">Lote</h2>
+            <FormField control={form.control} name="containerType" render={({ field }) => (
+              <FormItem><FormLabel>Tipo de contenedor</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange} disabled={headerLocked}>
+                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                  <SelectContent><SelectItem value="20">20 pies</SelectItem><SelectItem value="40">40 pies</SelectItem><SelectItem value="40HC">40 HC</SelectItem></SelectContent>
+                </Select><FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="containerCbm" render={({ field }) => (
+              <FormItem><FormLabel>Volumen del contenedor (CBM)</FormLabel>
+                <FormControl><Input type="number" min="0.000001" step="any" disabled={headerLocked} {...field} value={field.value || ""} /></FormControl>
+                <p className="text-xs text-muted-foreground">Indica el volumen acordado para este contenedor y su carga. No se deduce del tipo.</p><FormMessage />
+              </FormItem>
+            )} />
             <FormField
               control={form.control}
               name="reference"
@@ -205,7 +225,7 @@ export function CreateImportBatchPage() {
               de prorrateo depende de ellos — para OPERATOR ni se renderiza. */}
           {isAdmin ? (
             <section className="space-y-3 rounded-md border p-4">
-              <h2 className="text-lg font-semibold">Costos a prorratear</h2>
+              <h2 className="text-lg font-semibold">Costos del lote (USD): flete + aranceles + otros</h2>
               <div className="grid grid-cols-3 gap-4">
                 {(
                   [
@@ -241,7 +261,8 @@ export function CreateImportBatchPage() {
               <LandedCostPreview
                 totalCost={totalCost}
                 totalUnits={totalUnits}
-                prorationPerUnit={proration}
+                costPerCbm={proration}
+                volumeCbm={volumeCbm}
                 originTotal={originTotal}
               />
             </section>
@@ -255,7 +276,7 @@ export function CreateImportBatchPage() {
               errors={form.formState.errors}
               fields={fields}
               remove={remove}
-              prorationPerUnit={isAdmin ? proration : null}
+              costPerCbm={isAdmin ? proration : null}
             />
           </section>
 

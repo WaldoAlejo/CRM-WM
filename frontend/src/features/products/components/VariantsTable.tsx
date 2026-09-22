@@ -18,6 +18,7 @@ import { VariantPricingCalculatorDialog } from "./VariantPricingCalculatorDialog
 export interface PendingVariantEdit {
   variantId: string;
   retailPriceOverride?: number;
+  wholesalePriceOverride?: number;
 }
 
 interface VariantsTableProps {
@@ -37,11 +38,13 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
   const { deleteMutation } = useVariantMutations(productId);
   const [editing, setEditing] = useState<Variant | null | "new">(null);
   const [retailPriceOverride, setRetailPriceOverride] = useState<number | undefined>(undefined);
+  const [wholesalePriceOverride, setWholesalePriceOverride] = useState<number | undefined>();
   const [imagesFor, setImagesFor] = useState<Variant | null>(null);
   const [calculatorFor, setCalculatorFor] = useState<Variant | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  function openEdit(variant: Variant | "new", override?: number) {
+  function openEdit(variant: Variant | "new", override?: number, wholesaleOverride?: number) {
+    setWholesalePriceOverride(wholesaleOverride);
     setRetailPriceOverride(override);
     setEditing(variant);
   }
@@ -53,7 +56,7 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
     if (!pendingEdit) return;
     const variant = variants.find((v) => v.id === pendingEdit.variantId);
     if (!variant) return;
-    openEdit(variant, pendingEdit.retailPriceOverride);
+    openEdit(variant, pendingEdit.retailPriceOverride, pendingEdit.wholesalePriceOverride);
     onPendingEditHandled?.();
   }, [pendingEdit, variants, onPendingEditHandled]);
 
@@ -67,7 +70,8 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
     { header: "Disponible", cell: (v) => v.stock - v.reservedStock },
     ...(canSeePricing
       ? ([
-          { header: "Costo (CNY)", cell: (v) => money(v.costPriceCNY, "¥") },
+          { header: "Costo (USD)", cell: (v) => money(v.costPriceUSD, "$") },
+          { header: "Mayorista (USD)", cell: (v) => money(v.wholesalePrice, "$") },
           { header: "PVP", cell: (v) => money(v.retailPrice, "$") },
         ] satisfies CrudColumn<Variant>[])
       : []),
@@ -116,6 +120,7 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
         productStatus={productStatus}
         variant={editing === "new" ? null : editing}
         retailPriceOverride={retailPriceOverride}
+        wholesalePriceOverride={wholesalePriceOverride}
       />
 
       {imagesFor ? (
@@ -131,10 +136,10 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
         <VariantPricingCalculatorDialog
           variant={calculatorFor}
           onOpenChange={(open) => !open && setCalculatorFor(null)}
-          onUsePvp={(pvp) => {
+          onUsePvp={(pvp, wholesalePrice) => {
             const variant = calculatorFor;
             setCalculatorFor(null);
-            openEdit(variant, pvp);
+            openEdit(variant, pvp, wholesalePrice);
           }}
         />
       ) : null}

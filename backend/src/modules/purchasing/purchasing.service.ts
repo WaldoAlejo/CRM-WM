@@ -3,7 +3,7 @@
 // DATO SENSIBLE: nada de este módulo debe exponer costo ni precio, sin
 // importar el rol que consulte. Por eso las queries de acá usan un `select`
 // EXPLÍCITO y cerrado (nunca `include`, que traería todas las columnas de la
-// variante — incluidos costPriceCNY / wholesalePrice / retailPrice): los campos
+// variante — incluidos costPriceUSD / wholesalePrice / retailPrice): los campos
 // de costo no salen de la base de datos, no solo "se ocultan" después.
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";

@@ -4,7 +4,7 @@
 // por la tabla de variantes (qué columnas armar). Si el backend agrega un
 // campo de precio nuevo, se replica acá.
 export const PRICING_FIELDS = [
-  "costPriceCNY",
+  "costPriceUSD",
   "wholesalePrice",
   "wholesaleDiscountPct",
   "retailPrice",

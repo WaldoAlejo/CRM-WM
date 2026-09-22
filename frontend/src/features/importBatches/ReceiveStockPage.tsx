@@ -16,13 +16,11 @@ import { ReceiveLinesTable } from "./components/ReceiveLinesTable";
 import { VariantSearchAddLine } from "./components/VariantSearchAddLine";
 import { receiveFormDefaultValues, receiveFormSchema } from "./importBatches.schema";
 import type { ReceiveFormValues } from "./importBatches.schema";
-import { prorationPerUnit, totalBatchCost } from "./landedCost";
+import { costPerCbm, totalBatchCost } from "./landedCost";
 import { useImportBatch } from "./useImportBatches";
 import { useImportBatchMutations } from "./useImportBatchMutations";
 
-// Recepción de una tanda de mercadería sobre un lote YA creado. Un lote puede
-// recibirse en varias tandas: el prorrateo de flete/aranceles se hace solo
-// entre las unidades de ESTA tanda (definición de negocio del backend).
+// Cada recepción usa la misma tarifa por CBM del contenedor.
 export function ReceiveStockPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -42,6 +40,10 @@ export function ReceiveStockPage() {
   if (isLoading) return <Skeleton className="h-48 w-full" />;
   if (!batch) return <p className="text-muted-foreground">Lote no encontrado.</p>;
 
+  if (!batch.containerCbm || !batch.containerType) {
+    return <p>Este lote histórico no tiene CBM registrados. Crea un lote con tipo y volumen de contenedor para recibir nueva mercadería.</p>;
+  }
+
   const totalUnits = lines.reduce((sum, l) => sum + (Number(l?.quantity) || 0), 0);
   const originTotal = lines.reduce((sum, l) => sum + (Number(l?.quantity) || 0) * (Number(l?.unitCost) || 0), 0);
   // Los costos del lote vienen del propio lote (ya guardados), no del form.
@@ -50,7 +52,8 @@ export function ReceiveStockPage() {
     customsCost: Number(batch.customsCost) || 0,
     otherCosts: Number(batch.otherCosts) || 0,
   });
-  const proration = prorationPerUnit(totalCost, totalUnits);
+  const proration = costPerCbm(totalCost, Number(batch.containerCbm));
+  const volumeCbm = lines.reduce((sum, l) => sum + (Number(l?.volumeCbm) || 0), 0);
 
   function handleAddLine(result: SearchResult) {
     append({
@@ -60,12 +63,18 @@ export function ReceiveStockPage() {
       productName: result.product.name,
       quantity: 1,
       unitCost: 0,
+      volumeCbm: 0,
       locationId: undefined,
       notes: undefined,
     });
   }
 
   function handleSubmit(values: ReceiveFormValues) {
+    const receivedCbm = batch!.movements.reduce((sum, m) => sum + Number(m.volumeCbm ?? 0), 0);
+    if (receivedCbm + values.lines.reduce((sum, l) => sum + l.volumeCbm, 0) - Number(batch!.containerCbm) > 0.0000001) {
+      form.setError("lines", { message: "Los CBM superan el volumen disponible del contenedor" });
+      return;
+    }
     receiveMutation
       .mutateAsync({
         id: batch!.id,
@@ -74,6 +83,7 @@ export function ReceiveStockPage() {
           variantId: l.variantId,
           quantity: l.quantity,
           unitCost: l.unitCost,
+          volumeCbm: l.volumeCbm,
           locationId: l.locationId || undefined,
           notes: l.notes || undefined,
         })),
@@ -98,7 +108,8 @@ export function ReceiveStockPage() {
             <LandedCostPreview
               totalCost={totalCost}
               totalUnits={totalUnits}
-              prorationPerUnit={proration}
+              costPerCbm={proration}
+                volumeCbm={volumeCbm}
               originTotal={originTotal}
             />
           ) : null}
@@ -112,7 +123,7 @@ export function ReceiveStockPage() {
               errors={form.formState.errors}
               fields={fields}
               remove={remove}
-              prorationPerUnit={isAdmin ? proration : null}
+              costPerCbm={isAdmin ? proration : null}
             />
           </section>
           <div className="flex justify-end gap-2">

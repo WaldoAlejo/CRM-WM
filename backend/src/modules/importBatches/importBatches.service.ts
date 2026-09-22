@@ -7,6 +7,8 @@ import { serializeImportBatchForRole } from "./importBatches.serializer";
 import { computeReceiveRequestHash } from "./receiveRequestHash";
 
 interface CreateImportBatchInput {
+  containerType: "20" | "40" | "40HC";
+  containerCbm: number;
   reference: string;
   supplierId?: string;
   arrivalDate: Date;
@@ -98,6 +100,7 @@ interface ReceiveLine {
   variantId: string;
   quantity: number;
   unitCost: number;
+  volumeCbm: number;
   notes?: string;
   locationId?: string;
 }
@@ -165,19 +168,32 @@ export async function receiveStock(
     }
   }
 
-  // Prorrateo simple por unidad: los 3 costos totales del lote se reparten en
-  // partes iguales entre TODAS las unidades de ESTE receive (no por valor
-  // ponderado, así es como realmente se cobra el flete de un contenedor). Si
-  // el mismo lote se recibe en varias tandas, cada tanda prorratea solo entre
-  // sus propias líneas — es la definición de negocio acordada, no un
-  // descuido.
+  if (!batch.containerCbm || !batch.containerType) {
+    throw badRequest("Este lote histórico no tiene volumen de contenedor. Crea un lote con CBM para las nuevas recepciones.");
+  }
   const totalBatchCost = new Prisma.Decimal(batch.freightCost ?? 0)
-    .plus(batch.customsCost ?? 0)
-    .plus(batch.otherCosts ?? 0);
-  const totalQuantity = lines.reduce((sum, l) => sum + l.quantity, 0);
-  const landedCostPerUnit = totalQuantity > 0 ? totalBatchCost.dividedBy(totalQuantity) : new Prisma.Decimal(0);
+    .plus(batch.customsCost ?? 0).plus(batch.otherCosts ?? 0);
+  const costPerCbm = totalBatchCost.dividedBy(batch.containerCbm);
 
   const result = await prisma.$transaction(async (tx) => {
+    // Lock the container so concurrent receipts cannot exceed its volume.
+    await tx.$queryRaw`SELECT id FROM "ImportBatch" WHERE id = ${importBatchId} FOR UPDATE`;
+    if (idempotencyKey) {
+      const cached = await tx.idempotencyKey.findUnique({ where: { idempotencyKey } });
+      if (cached) {
+        if (cached.importBatchId !== importBatchId || cached.requestHash !== requestHash) {
+          throw conflict("Idempotency-Key ya utilizada con otros datos.");
+        }
+        return cached.response as unknown as ReceiveStockResponse;
+      }
+    }
+    const received = await tx.inventoryMovement.aggregate({
+      where: { importBatchId, type: MovementType.INGRESO }, _sum: { volumeCbm: true },
+    });
+    const requestedCbm = lines.reduce((sum, line) => sum.plus(line.volumeCbm), new Prisma.Decimal(0));
+    if (requestedCbm.plus(received._sum.volumeCbm ?? 0).greaterThan(batch.containerCbm!)) {
+      throw badRequest("El volumen recibido supera los CBM del contenedor", { field: "lines" });
+    }
     const movements = [];
     for (const line of lines) {
       const movement = await applyMovement(tx, {
@@ -185,7 +201,8 @@ export async function receiveStock(
         type: MovementType.INGRESO,
         quantity: line.quantity,
         unitCost: line.unitCost,
-        landedCostPerUnit: landedCostPerUnit.toNumber(),
+        landedCostPerUnit: costPerCbm.times(line.volumeCbm).dividedBy(line.quantity).toNumber(),
+        volumeCbm: line.volumeCbm,
         notes: line.notes,
         locationId: line.locationId,
         importBatchId,

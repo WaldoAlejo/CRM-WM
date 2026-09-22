@@ -3,6 +3,8 @@ import { apiFetch } from "@/lib/api";
 import type { ReceiveResponse } from "./importBatches.types";
 
 export interface CreateBatchPayload {
+  containerType: "20" | "40" | "40HC";
+  containerCbm: number;
   reference: string;
   supplierId?: string;
   arrivalDate: string;
@@ -16,6 +18,7 @@ export interface ReceiveLinePayload {
   variantId: string;
   quantity: number;
   unitCost: number;
+  volumeCbm: number;
   locationId?: string;
   notes?: string;
 }

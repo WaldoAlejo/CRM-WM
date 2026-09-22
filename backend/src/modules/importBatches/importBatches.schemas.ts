@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const createImportBatchSchema = z.object({
+  containerType: z.enum(["20", "40", "40HC"]),
+  containerCbm: z.number().positive().max(999999).multipleOf(0.000001),
   reference: z.string().min(1, "La referencia/contenedor es obligatoria").max(100),
   supplierId: z.string().min(1).optional(),
   arrivalDate: z.coerce.date(),
@@ -16,6 +18,7 @@ export const receiveStockSchema = z.object({
       z.object({
         variantId: z.string().min(1),
         quantity: z.number().int().positive("La cantidad de un ingreso debe ser mayor a 0"),
+        volumeCbm: z.number().positive().max(999999).multipleOf(0.000001),
         unitCost: z.number().nonnegative("El costo unitario no puede ser negativo"),
         notes: z.string().max(500).optional(),
         // Ubicación de destino donde queda físicamente la mercadería recibida.

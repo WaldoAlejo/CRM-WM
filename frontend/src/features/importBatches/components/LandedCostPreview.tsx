@@ -3,19 +3,20 @@ import { Card, CardContent } from "@/components/ui/card";
 interface LandedCostPreviewProps {
   totalCost: number;
   totalUnits: number;
-  prorationPerUnit: number;
+  costPerCbm: number;
   originTotal: number;
+  volumeCbm: number;
 }
 
 // Vista previa en vivo del prorrateo (solo ADMIN: OPERATOR ni siquiera ve los
 // costos del lote). Todo es estimado — el servidor calcula y guarda el valor
 // definitivo al recibir.
-export function LandedCostPreview({ totalCost, totalUnits, prorationPerUnit, originTotal }: LandedCostPreviewProps) {
+export function LandedCostPreview({ totalCost, totalUnits, costPerCbm, originTotal, volumeCbm }: LandedCostPreviewProps) {
   const cards = [
     { label: "Costos del lote", value: `$${totalCost.toFixed(2)}` },
     { label: "Unidades a recibir", value: String(totalUnits) },
-    { label: "Prorrateo por unidad", value: `$${prorationPerUnit.toFixed(2)}` },
-    { label: "Total puesto en bodega", value: `$${(originTotal + prorationPerUnit * totalUnits).toFixed(2)}` },
+    { label: "Costo por CBM (USD)", value: `$${costPerCbm.toFixed(2)}` },
+    { label: "Total puesto en bodega", value: `$${(originTotal + costPerCbm * volumeCbm).toFixed(2)}` },
   ];
 
   return (
@@ -31,8 +32,7 @@ export function LandedCostPreview({ totalCost, totalUnits, prorationPerUnit, ori
         ))}
       </div>
       <p className="text-xs text-muted-foreground">
-        Flete + aranceles + otros se reparten en partes iguales por unidad entre todas las unidades de este
-        ingreso (no por valor). Estimado: el valor final lo calcula el servidor al recibir.
+        Costo por CBM = costos del lote / CBM del contenedor. Gasto por producto = CBM de la línea × costo por CBM / cantidad. Los costos del lote no incluyen la compra de mercadería.
       </p>
     </div>
   );

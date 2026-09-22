@@ -11,7 +11,7 @@ interface VariantWritePayload {
   minStock?: number | null;
   weightKg?: number | null;
   dimensionsCm?: string | null;
-  costPriceCNY?: number | null;
+  costPriceUSD?: number | null;
   wholesalePrice?: number | null;
   wholesaleDiscountPct?: number | null;
   retailPrice?: number | null;

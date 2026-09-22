@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLocationOptions } from "@/features/locations/useLocationOptions";
 import type { ReceiveLineFormValues } from "../importBatches.schema";
-import { landedUnitCost } from "../landedCost";
+import { landedUnitCost, volumeCostPerUnit } from "../landedCost";
 
 // Tanto la pantalla de "nuevo lote" como la de "recibir más mercadería"
 // comparten esta tabla: solo cambia el form que la contiene, y ambos tienen
@@ -24,7 +24,7 @@ interface ReceiveLinesTableProps<T extends FormWithLines> {
   remove: (index: number) => void;
   // Prorrateo por unidad ya calculado (null = no mostrar costo puesto: es
   // OPERATOR, que ni siquiera ve costos del lote).
-  prorationPerUnit: number | null;
+  costPerCbm: number | null;
   disabled?: boolean;
 }
 
@@ -33,7 +33,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
   errors,
   fields,
   remove,
-  prorationPerUnit,
+  costPerCbm,
   disabled,
 }: ReceiveLinesTableProps<T>) {
   const lines = (useWatch({ control, name: "lines" as Path<T> }) as ReceiveLineFormValues[] | undefined) ?? [];
@@ -52,7 +52,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
     );
   }
 
-  const showLanded = prorationPerUnit !== null;
+  const showLanded = costPerCbm !== null;
 
   return (
     <div className="space-y-2">
@@ -61,8 +61,9 @@ export function ReceiveLinesTable<T extends FormWithLines>({
           <TableRow>
             <TableHead>Producto</TableHead>
             <TableHead className="w-24">Cantidad</TableHead>
-            <TableHead className="w-32">Costo en origen</TableHead>
-            {showLanded ? <TableHead className="w-32">Costo puesto</TableHead> : null}
+            <TableHead className="w-32">Costo unitario en origen (USD)</TableHead>
+            <TableHead>CBM totales de la línea</TableHead>
+            {showLanded ? <><TableHead>Gastos de la línea (USD)</TableHead><TableHead className="w-32">Costo puesto / unidad (USD)</TableHead></> : null}
             <TableHead className="w-48">Ubicación</TableHead>
             <TableHead className="w-12" />
           </TableRow>
@@ -70,7 +71,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
         <TableBody>
           {fields.map((field, index) => {
             const line = lines[index];
-            const landed = showLanded ? landedUnitCost(Number(line?.unitCost ?? 0) || 0, prorationPerUnit) : null;
+            const landed = showLanded ? landedUnitCost(Number(line?.unitCost ?? 0) || 0, volumeCostPerUnit(costPerCbm!, Number(line?.volumeCbm) || 0, Number(line?.quantity) || 0)) : null;
             return (
               <TableRow key={field.id}>
                 <TableCell>
@@ -108,8 +109,11 @@ export function ReceiveLinesTable<T extends FormWithLines>({
                     )}
                   />
                 </TableCell>
+                <TableCell><FormField control={control} name={`lines.${index}.volumeCbm` as Path<T>} render={({ field: f }) => (
+                  <FormItem><FormControl><Input type="number" min="0.000001" step="any" aria-label={`CBM totales ${line?.sku}`} disabled={disabled} {...f} /></FormControl><FormMessage /></FormItem>
+                )} /></TableCell>
                 {showLanded ? (
-                  <TableCell className="text-sm font-medium">${landed?.toFixed(2)}</TableCell>
+                  <><TableCell>${((costPerCbm ?? 0) * (Number(line?.volumeCbm) || 0)).toFixed(2)}</TableCell><TableCell className="text-sm font-medium">${landed?.toFixed(2)}</TableCell></>
                 ) : null}
                 <TableCell>
                   <FormField

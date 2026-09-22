@@ -30,13 +30,14 @@ interface VariantFormDialogProps {
   // precios) SIN guardar nada por sí sola: el usuario sigue teniendo que
   // tocar "Guardar" acá abajo, como cualquier otro cambio de este formulario.
   retailPriceOverride?: number;
+  wholesalePriceOverride?: number;
 }
 
 // `name` tipado como PricingField (no un string suelto): si backend agrega o
 // renombra un campo de precio en pricingFields.ts, TS marca acá cualquier
 // desajuste en vez de dejarlo pasar silencioso.
 const PRICE_FIELDS_CONFIG: { name: PricingField; label: string }[] = [
-  { name: "costPriceCNY", label: "Costo de fábrica (CNY)" },
+  { name: "costPriceUSD", label: "Costo de fábrica (USD)" },
   { name: "wholesalePrice", label: "Precio mayorista" },
   { name: "wholesaleDiscountPct", label: "% descuento mayorista" },
   { name: "retailPrice", label: "Precio público (PVP)" },
@@ -53,7 +54,7 @@ function toFormValues(variant: Variant | null, retailPriceOverride?: number): Va
     minStock: variant.minStock ?? undefined,
     weightKg: variant.weightKg ? Number(variant.weightKg) : undefined,
     dimensionsCm: variant.dimensionsCm ?? "",
-    costPriceCNY: variant.costPriceCNY ? Number(variant.costPriceCNY) : undefined,
+    costPriceUSD: variant.costPriceUSD ? Number(variant.costPriceUSD) : undefined,
     wholesalePrice: variant.wholesalePrice ? Number(variant.wholesalePrice) : undefined,
     wholesaleDiscountPct: variant.wholesaleDiscountPct ? Number(variant.wholesaleDiscountPct) : undefined,
     // El override de la calculadora gana sobre el PVP guardado: es justo lo
@@ -71,6 +72,7 @@ export function VariantFormDialog({
   productStatus,
   variant,
   retailPriceOverride,
+  wholesalePriceOverride,
 }: VariantFormDialogProps) {
   const isEdit = variant !== null;
   const canSeePricing = usePricingVisibility();
@@ -83,8 +85,8 @@ export function VariantFormDialog({
 
   useEffect(() => {
     if (!open) return;
-    form.reset(toFormValues(variant, retailPriceOverride));
-  }, [open, variant, retailPriceOverride]);
+    form.reset({ ...toFormValues(variant, retailPriceOverride), ...(wholesalePriceOverride !== undefined && { wholesalePrice: wholesalePriceOverride }) });
+  }, [open, variant, retailPriceOverride, wholesalePriceOverride]);
 
   function handleSubmit(values: VariantFormValues) {
     const attributes = pairsToAttributes(values.attributePairs);
@@ -98,7 +100,7 @@ export function VariantFormDialog({
           minStock: values.minStock ?? null,
           weightKg: values.weightKg ?? null,
           dimensionsCm: values.dimensionsCm || null,
-          costPriceCNY: values.costPriceCNY ?? null,
+          costPriceUSD: values.costPriceUSD ?? null,
           wholesalePrice: values.wholesalePrice ?? null,
           wholesaleDiscountPct: values.wholesaleDiscountPct ?? null,
           retailPrice: values.retailPrice ?? null,
@@ -112,7 +114,7 @@ export function VariantFormDialog({
           minStock: values.minStock,
           weightKg: values.weightKg,
           dimensionsCm: values.dimensionsCm || undefined,
-          costPriceCNY: values.costPriceCNY,
+          costPriceUSD: values.costPriceUSD,
           wholesalePrice: values.wholesalePrice,
           wholesaleDiscountPct: values.wholesaleDiscountPct,
           retailPrice: values.retailPrice,

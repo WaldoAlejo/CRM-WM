@@ -10,6 +10,8 @@ export interface ImportBatchSupplierRef {
 
 export interface ImportBatchListItem {
   id: string;
+  containerType?: "20" | "40" | "40HC" | null;
+  containerCbm?: string | null;
   reference: string;
   supplier: ImportBatchSupplierRef | null;
   arrivalDate: string;
@@ -25,6 +27,7 @@ export interface ImportBatchMovement {
   id: string;
   variantId: string;
   quantity: number;
+  volumeCbm?: string | null;
   notes: string | null;
   createdAt: string;
   toLocationId: string | null;

@@ -108,6 +108,8 @@ export async function createImportBatchFixture(overrides?: { supplierId?: string
     data: {
       reference: `CONT-${randomUUID().slice(0, 8).toUpperCase()}`,
       arrivalDate: new Date(),
+      containerType: "40",
+      containerCbm: 70,
       supplierId: overrides?.supplierId,
     },
   });

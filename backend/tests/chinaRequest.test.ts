@@ -42,7 +42,7 @@ async function lowStockVariantWithSecrets(stock = 3) {
   // Datos sensibles con valores reconocibles: no deben aparecer jamás.
   await prisma.productVariant.update({
     where: { id: variant.id },
-    data: { costPriceCNY: 987.65, wholesalePrice: 111.11, retailPrice: 222.22, wholesaleDiscountPct: 5, retailDiscountPct: 7 },
+    data: { costPriceUSD: 987.65, wholesalePrice: 111.11, retailPrice: 222.22, wholesaleDiscountPct: 5, retailDiscountPct: 7 },
   });
   return { product, variant };
 }

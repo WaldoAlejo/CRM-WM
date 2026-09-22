@@ -9,9 +9,7 @@ interface PricingCalculatorDialogProps {
   isLoading?: boolean;
   // null = esta variante todavía no tiene un costo aterrizado del que partir.
   landedCost: number | null;
-  initialRetailPrice?: number | null;
-  initialWholesaleDiscountPct?: number | null;
-  onUsePvp: (pvp: number) => void;
+  onUsePvp: (pvp: number, wholesalePrice: number) => void;
 }
 
 // Envoltorio de Dialog para PricingCalculatorPanel: lo único que agrega es el
@@ -25,8 +23,6 @@ export function PricingCalculatorDialog({
   title,
   isLoading,
   landedCost,
-  initialRetailPrice,
-  initialWholesaleDiscountPct,
   onUsePvp,
 }: PricingCalculatorDialogProps) {
   return (
@@ -45,10 +41,8 @@ export function PricingCalculatorDialog({
         ) : (
           <PricingCalculatorPanel
             landedCost={landedCost}
-            initialRetailPrice={initialRetailPrice}
-            initialWholesaleDiscountPct={initialWholesaleDiscountPct}
-            onUsePvp={(pvp) => {
-              onUsePvp(pvp);
+            onUsePvp={(pvp, wholesalePrice) => {
+              onUsePvp(pvp, wholesalePrice);
               onOpenChange(false);
             }}
           />

@@ -5,7 +5,7 @@ import type { Variant } from "../products.types";
 interface VariantPricingCalculatorDialogProps {
   variant: Variant;
   onOpenChange: (open: boolean) => void;
-  onUsePvp: (pvp: number) => void;
+  onUsePvp: (pvp: number, wholesalePrice: number) => void;
 }
 
 // Calculadora "standalone": no depende de estar viendo un Lote de
@@ -23,8 +23,6 @@ export function VariantPricingCalculatorDialog({ variant, onOpenChange, onUsePvp
       title={`Calculadora de precios — ${variant.sku}`}
       isLoading={isLoading}
       landedCost={landedCost ?? null}
-      initialRetailPrice={variant.retailPrice ? Number(variant.retailPrice) : null}
-      initialWholesaleDiscountPct={variant.wholesaleDiscountPct ? Number(variant.wholesaleDiscountPct) : null}
       onUsePvp={onUsePvp}
     />
   );

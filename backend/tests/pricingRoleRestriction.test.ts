@@ -6,7 +6,7 @@ import { createCategoryFixture, createProductFixture, createTestUser, resetDatab
 const app = createApp();
 
 const PRICING_FIELDS = [
-  "costPriceCNY",
+  "costPriceUSD",
   "wholesalePrice",
   "wholesaleDiscountPct",
   "retailPrice",
@@ -83,7 +83,7 @@ describe("Restricción de precios/costos por rol", () => {
     await request(app)
       .post(`/api/products/${product.id}/variants`)
       .set("Authorization", `Bearer ${adminToken}`)
-      .send({ attributes: { color: "Negro" }, costPriceCNY: 50, wholesalePrice: 30, retailPrice: 45 });
+      .send({ attributes: { color: "Negro" }, costPriceUSD: 50, wholesalePrice: 30, retailPrice: 45 });
 
     const res = await request(app)
       .get(`/api/products/${product.id}`)
@@ -104,13 +104,13 @@ describe("Restricción de precios/costos por rol", () => {
     await request(app)
       .post(`/api/products/${product.id}/variants`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ attributes: { color: "Negro" }, costPriceCNY: 50, wholesalePrice: 30, retailPrice: 45 });
+      .send({ attributes: { color: "Negro" }, costPriceUSD: 50, wholesalePrice: 30, retailPrice: 45 });
 
     const res = await request(app).get(`/api/products/${product.id}`).set("Authorization", `Bearer ${token}`);
 
     expect(res.status).toBe(200);
     const variant = res.body.variants[0];
-    expect(Number(variant.costPriceCNY)).toBe(50);
+    expect(Number(variant.costPriceUSD)).toBe(50);
     expect(Number(variant.wholesalePrice)).toBe(30);
     expect(Number(variant.retailPrice)).toBe(45);
   });

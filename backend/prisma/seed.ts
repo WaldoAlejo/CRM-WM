@@ -147,7 +147,7 @@ async function main() {
     },
   });
   const freidora4LPrecios = {
-    costPriceCNY: 85.0,
+    // El costo USD requiere un valor confirmado; no reutilizar las referencias CNY.
     wholesalePrice: 45.0,
     wholesaleDiscountPct: 5.0,
     retailPrice: 65.0,
@@ -167,7 +167,7 @@ async function main() {
     },
   });
   const freidora6LPrecios = {
-    costPriceCNY: 105.0,
+    // El costo USD requiere un valor confirmado; no reutilizar las referencias CNY.
     wholesalePrice: 55.0,
     wholesaleDiscountPct: 5.0,
     retailPrice: 79.0,
@@ -202,7 +202,7 @@ async function main() {
     },
   });
   const chapaNegraHuellaPrecios = {
-    costPriceCNY: 220.0,
+    // El costo USD requiere un valor confirmado; no reutilizar las referencias CNY.
     wholesalePrice: 95.0,
     wholesaleDiscountPct: 8.0,
     retailPrice: 139.0,
@@ -222,7 +222,7 @@ async function main() {
     },
   });
   const chapaDoradaTarjetaPrecios = {
-    costPriceCNY: 200.0,
+    // El costo USD requiere un valor confirmado; no reutilizar las referencias CNY.
     wholesalePrice: 89.0,
     wholesaleDiscountPct: 8.0,
     retailPrice: 129.0,
@@ -257,7 +257,7 @@ async function main() {
     },
   });
   const camaSPrecios = {
-    costPriceCNY: 25.0,
+    // El costo USD requiere un valor confirmado; no reutilizar las referencias CNY.
     wholesalePrice: 12.0,
     wholesaleDiscountPct: 5.0,
     retailPrice: 18.0,
@@ -277,7 +277,7 @@ async function main() {
     },
   });
   const camaMPrecios = {
-    costPriceCNY: 32.0,
+    // El costo USD requiere un valor confirmado; no reutilizar las referencias CNY.
     wholesalePrice: 15.0,
     wholesaleDiscountPct: 5.0,
     retailPrice: 22.0,
@@ -297,7 +297,7 @@ async function main() {
     },
   });
   const camaLPrecios = {
-    costPriceCNY: 40.0,
+    // El costo USD requiere un valor confirmado; no reutilizar las referencias CNY.
     wholesalePrice: 19.0,
     wholesaleDiscountPct: 5.0,
     retailPrice: 27.0,
@@ -337,7 +337,7 @@ async function main() {
 
     // unitCost = costo real (en USD, ya nacionalizado) de esa entrada específica.
     // Es lo que se usa para el costo promedio ponderado en reportes de rentabilidad;
-    // es distinto de costPriceCNY (que es solo un precio de referencia de fábrica).
+    // es distinto de costPriceUSD (que es solo un precio de referencia de fábrica).
     const ingresosIniciales = [
       { variant: freidora4L, cantidad: 20, unitCost: 22.5 },
       { variant: freidora6L, cantidad: 15, unitCost: 27.0 },

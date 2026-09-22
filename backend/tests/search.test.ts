@@ -6,7 +6,7 @@ import { createCategoryFixture, createProductFixture, createTestUser, resetDatab
 const app = createApp();
 
 const PRICING_FIELDS = [
-  "costPriceCNY",
+  "costPriceUSD",
   "wholesalePrice",
   "wholesaleDiscountPct",
   "retailPrice",
@@ -25,7 +25,7 @@ describe("GET /api/search", () => {
     await request(app)
       .post(`/api/products/${product.id}/variants`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ attributes: { color: "Negro" }, costPriceCNY: 50, wholesalePrice: 30, retailPrice: 45 });
+      .send({ attributes: { color: "Negro" }, costPriceUSD: 50, wholesalePrice: 30, retailPrice: 45 });
 
     const res = await request(app)
       .get(`/api/search?q=${product.sku}`)

@@ -4,6 +4,7 @@ interface ReceiveLine {
   variantId: string;
   quantity: number;
   unitCost: number;
+  volumeCbm?: number;
   notes?: string;
   locationId?: string;
 }
@@ -19,6 +20,7 @@ function canonicalizeLine(line: ReceiveLine): string {
     variantId: line.variantId,
     quantity: line.quantity,
     unitCost: line.unitCost,
+    ...(line.volumeCbm !== undefined && { volumeCbm: line.volumeCbm }),
     notes: line.notes ?? null,
     locationId: line.locationId ?? null,
   });

@@ -31,7 +31,7 @@ export function ImportBatchDetailPage() {
   // 3 costos del lote a OPERATOR) — nada de esto se dibuja para OPERATOR.
   const originTotal = batch.movements.reduce((sum, m) => sum + m.quantity * (Number(m.unitCost) || 0), 0);
   const landedTotal = batch.movements.reduce(
-    (sum, m) => sum + m.quantity * landedUnitCost(Number(m.unitCost) || 0, Number(m.landedCostPerUnit) || 0),
+    (sum, m) => sum + m.quantity * ((Number(m.unitCost) || 0) + (Number(m.landedCostPerUnit) || 0)),
     0
   );
   const batchCost = totalBatchCost({
@@ -41,9 +41,12 @@ export function ImportBatchDetailPage() {
   });
 
   const summary: { label: string; value: string }[] = [
+    { label: "Contenedor", value: batch.containerType ? `${batch.containerType} pies · ${batch.containerCbm} CBM` : "Histórico sin CBM" },
+    { label: "CBM recibidos", value: batch.movements.reduce((sum, m) => sum + Number(m.volumeCbm ?? 0), 0).toFixed(6) },
     { label: "Unidades recibidas", value: String(totalUnits) },
     ...(isAdmin
       ? [
+          { label: "Costo por CBM (USD)", value: Number(batch.containerCbm) > 0 ? `${(batchCost / Number(batch.containerCbm)).toFixed(2)}` : "—" },
           { label: "Costos del lote", value: `$${batchCost.toFixed(2)}` },
           { label: "Total en origen", value: `$${originTotal.toFixed(2)}` },
           { label: "Total puesto en bodega", value: `$${landedTotal.toFixed(2)}` },
@@ -92,7 +95,7 @@ export function ImportBatchDetailPage() {
             <TableRow>
               <TableHead>Producto</TableHead>
               <TableHead>Ubicación</TableHead>
-              <TableHead>Cantidad</TableHead>
+              <TableHead>Cantidad</TableHead><TableHead>CBM</TableHead>
               {isAdmin ? (
                 <>
                   <TableHead>Costo en origen</TableHead>
@@ -107,7 +110,7 @@ export function ImportBatchDetailPage() {
           <TableBody>
             {batch.movements.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 8 : 4} className="h-20 text-center text-muted-foreground">
+                <TableCell colSpan={isAdmin ? 9 : 5} className="h-20 text-center text-muted-foreground">
                   Este lote todavía no recibió mercadería.
                 </TableCell>
               </TableRow>
@@ -119,7 +122,7 @@ export function ImportBatchDetailPage() {
                     {m.variant.label ? <p className="text-xs text-muted-foreground">{m.variant.label}</p> : null}
                   </TableCell>
                   <TableCell>{m.toLocationId ? (labelById.get(m.toLocationId) ?? "Ubicación eliminada") : "—"}</TableCell>
-                  <TableCell>{m.quantity}</TableCell>
+                  <TableCell>{m.quantity}</TableCell><TableCell>{m.volumeCbm ?? "—"}</TableCell>
                   {isAdmin ? (
                     <>
                       <TableCell>${Number(m.unitCost ?? 0).toFixed(2)}</TableCell>
@@ -148,11 +151,11 @@ export function ImportBatchDetailPage() {
           onOpenChange={(open) => !open && setCalculatorFor(null)}
           title={`Calculadora de precios — ${calculatorFor.variant.sku}`}
           landedCost={landedUnitCost(Number(calculatorFor.unitCost) || 0, Number(calculatorFor.landedCostPerUnit) || 0)}
-          onUsePvp={(pvp) => {
+          onUsePvp={(pvp, wholesalePrice) => {
             const productId = calculatorFor.variant.productId;
             const variantId = calculatorFor.variantId;
             setCalculatorFor(null);
-            navigate(`/products/${productId}?editVariantId=${variantId}&suggestedRetailPrice=${pvp}`);
+            navigate(`/products/${productId}?editVariantId=${variantId}&suggestedRetailPrice=${pvp}&suggestedWholesalePrice=${wholesalePrice}`);
           }}
         />
       ) : null}

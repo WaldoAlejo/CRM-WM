@@ -200,7 +200,7 @@ describe("Variantes — atributos, precios por rol e imágenes, contra el backen
     const adminDialog = await screen.findByRole("dialog");
     expect(within(adminDialog).getByText(/costo de fábrica/i)).toBeInTheDocument();
     expect(within(adminDialog).getByText(/precio público/i)).toBeInTheDocument();
-    expect(screen.getByText(/costo \(cny\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/costo \(usd\)/i)).toBeInTheDocument();
     expect(screen.getByText(/^pvp$/i)).toBeInTheDocument();
     // Desmonta explícitamente antes de renderizar la segunda vez en el MISMO
     // test: el cleanup automático de testing-library corre entre tests
@@ -218,7 +218,7 @@ describe("Variantes — atributos, precios por rol e imágenes, contra el backen
     expect(within(operatorDialog).queryByText(/costo de fábrica/i)).not.toBeInTheDocument();
     expect(within(operatorDialog).queryByText(/precio público/i)).not.toBeInTheDocument();
     expect(within(operatorDialog).queryByText(/precios y costos/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/costo \(cny\)/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/costo \(usd\)/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^pvp$/i)).not.toBeInTheDocument();
   }, 30000);
 

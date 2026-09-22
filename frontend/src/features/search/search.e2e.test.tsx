@@ -31,7 +31,7 @@ const VARIANT_BARCODE = `${Date.now()}999`;
 // día alguien agrega un campo de precio al `select`, esta lista es la que
 // hay que ampliar también, y este test lo atraparía.
 const PRICE_FIELD_NAMES = [
-  "costPriceCNY",
+  "costPriceUSD",
   "wholesalePrice",
   "wholesaleDiscountPct",
   "retailPrice",
@@ -111,7 +111,7 @@ describe("Búsqueda global — GlobalSearchBar + SearchResultsPage, contra el ba
         sku: VARIANT_SKU,
         barcode: VARIANT_BARCODE,
         retailPrice: 25.5,
-        costPriceCNY: 10,
+        costPriceUSD: 10,
       }),
     });
     variantId = variant.id;

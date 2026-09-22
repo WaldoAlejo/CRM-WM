@@ -50,3 +50,9 @@ export function impliedMarkupPct(retailPrice: number, landedCost: number): numbe
   if (!(landedCost > 0)) return null;
   return round2((retailPrice / landedCost - 1) * 100);
 }
+
+// Each commercial price is rounded before the next markup is applied.
+export function suggestedPrices(landedCost: number, wholesaleMarkupPct = 70, retailMarkupPct = 30) {
+  const wholesalePrice = suggestedRetailPrice(landedCost, wholesaleMarkupPct);
+  return { wholesalePrice, retailPrice: suggestedRetailPrice(wholesalePrice, retailMarkupPct) };
+}

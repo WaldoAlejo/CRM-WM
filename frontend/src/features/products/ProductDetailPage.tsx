@@ -19,7 +19,8 @@ function parsePendingEdit(params: URLSearchParams): PendingVariantEdit | null {
   if (!variantId) return null;
   const raw = params.get("suggestedRetailPrice");
   const parsed = raw ? Number(raw) : undefined;
-  return { variantId, retailPriceOverride: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined };
+  const wholesale = Number(params.get("suggestedWholesalePrice"));
+  return { wholesalePriceOverride: params.has("suggestedWholesalePrice") && Number.isFinite(wholesale) && wholesale >= 0 ? wholesale : undefined, variantId, retailPriceOverride: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined };
 }
 
 export function ProductDetailPage() {

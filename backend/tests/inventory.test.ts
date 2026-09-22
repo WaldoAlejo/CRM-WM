@@ -157,7 +157,7 @@ describe("GET /api/inventory/movements", () => {
     await request(app)
       .post(`/api/import-batches/${batch.id}/receive`)
       .set("Authorization", `Bearer ${adminToken}`)
-      .send({ lines: [{ variantId: variantA.id, quantity: 5, unitCost: 9.99 }] });
+      .send({ lines: [{ variantId: variantA.id, quantity: 5, volumeCbm: 1, unitCost: 9.99 }] });
     await request(app)
       .post("/api/inventory/adjustments")
       .set("Authorization", `Bearer ${adminToken}`)

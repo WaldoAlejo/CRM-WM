@@ -10,6 +10,7 @@ export const receiveLineSchema = z.object({
   label: z.string().nullable(),
   productName: z.string(),
   quantity: z.coerce.number().int("Debe ser un entero").positive("La cantidad debe ser mayor a 0"),
+  volumeCbm: z.coerce.number().positive("Ingresa los CBM totales de esta línea").max(999999).multipleOf(0.000001),
   unitCost: z.coerce.number().nonnegative("El costo unitario no puede ser negativo"),
   locationId: optionalString(z.string().min(1)),
   notes: optionalString(z.string().max(500)),
@@ -45,6 +46,8 @@ export const receiveFormDefaultValues: ReceiveFormValues = { lines: [] };
 // solo existen para ADMIN (el backend responde 403 si OPERATOR los manda) —
 // la página simplemente no los renderiza para OPERATOR, quedan undefined.
 export const createImportBatchFormSchema = z.object({
+  containerType: z.enum(["20", "40", "40HC"]),
+  containerCbm: z.coerce.number().positive("Ingresa los CBM del contenedor").max(999999).multipleOf(0.000001),
   reference: z.string().min(1, "La referencia/contenedor es obligatoria").max(100),
   supplierId: optionalString(z.string().min(1)),
   arrivalDate: z.string().min(1, "La fecha de llegada es obligatoria"),
@@ -53,6 +56,10 @@ export const createImportBatchFormSchema = z.object({
   customsCost: optionalNumber(z.number().nonnegative("No puede ser negativo")),
   otherCosts: optionalNumber(z.number().nonnegative("No puede ser negativo")),
   lines: linesSchema,
+}).superRefine((values, ctx) => {
+  if (values.lines.reduce((sum, line) => sum + line.volumeCbm, 0) - values.containerCbm > 0.0000001) {
+    ctx.addIssue({ code: "custom", path: ["lines"], message: "Los CBM de las líneas superan el volumen del contenedor" });
+  }
 });
 
 export type CreateImportBatchFormValues = z.infer<typeof createImportBatchFormSchema>;
@@ -60,6 +67,8 @@ export type CreateImportBatchFormValues = z.infer<typeof createImportBatchFormSc
 export function createImportBatchDefaultValues(): CreateImportBatchFormValues {
   return {
     reference: "",
+    containerType: "40",
+    containerCbm: 0,
     supplierId: undefined,
     arrivalDate: new Date().toISOString().slice(0, 10),
     notes: "",

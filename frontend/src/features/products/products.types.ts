@@ -81,7 +81,7 @@ export interface Variant {
   minStock: number | null;
   warehouseLocation: string | null;
   reservedStock: number;
-  costPriceCNY?: string | null;
+  costPriceUSD?: string | null;
   wholesalePrice?: string | null;
   wholesaleDiscountPct?: string | null;
   retailPrice?: string | null;

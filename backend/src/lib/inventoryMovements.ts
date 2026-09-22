@@ -15,6 +15,7 @@ export interface ApplyMovementInput {
   notes?: string;
   unitCost?: number;
   landedCostPerUnit?: number;
+  volumeCbm?: number;
   importBatchId?: string;
   dispatchOrderItemId?: string;
   createdById?: string;
@@ -61,6 +62,7 @@ export async function applyMovement(
       notes: input.notes,
       unitCost: input.unitCost,
       landedCostPerUnit: input.landedCostPerUnit,
+      volumeCbm: input.volumeCbm,
       importBatchId: input.importBatchId,
       dispatchOrderItemId: input.dispatchOrderItemId,
       createdById: input.createdById,
