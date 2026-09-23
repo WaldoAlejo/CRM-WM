@@ -18,6 +18,20 @@ async function fixture() {
 }
 
 describe('Corrección de ubicación y datos físicos de ingresos', () => {
+  it('persiste el empaque del ingreso, deduplica reintentos y rechaza cambiarlo con la misma clave', async () => {
+    const { batch, location, variant, token } = await fixture();
+    await prisma.importBatch.update({ where: { id: batch.id }, data: { containerCbm: 10 } });
+    const packaging = { cartonCount: 35, unitsPerCarton: 6, maxStackCartons: 3, stackingConfirmed: false };
+    const line = { variantId: variant.id, locationId: location.id, quantity: 210, volumeCbm: 3.79, unitCost: 10, packaging };
+    const receive = (lines: object[]) => request(app).post(`/api/import-batches/${batch.id}/receive`).set('Authorization', `Bearer ${token}`).set('Idempotency-Key', 'carton-receipt').send({ lines });
+    const response = await receive([line]);
+    expect(response.status).toBe(201);
+    expect(response.body.movements[0].packaging).toEqual(packaging);
+    expect((await receive([line])).body.movements[0].id).toBe(response.body.movements[0].id);
+    expect((await prisma.productVariant.findUniqueOrThrow({ where: { id: variant.id } })).stock).toBe(230);
+    expect((await receive([{ ...line, packaging: { ...packaging, maxStackCartons: 4 } }])).status).toBe(422);
+    expect((await receive([{ ...line, quantity: 211 }])).status).toBe(400);
+  });
   it('asigna un ingreso sin ubicación, audita y conserva stock, CBM y costos', async () => {
     const { patch, location, variant, movement, user, token } = await fixture();
     const res = await patch({ locationId: location.id, dimensionsCm: '50x40x30', maxStackUnits: 3 });

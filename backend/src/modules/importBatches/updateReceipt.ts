@@ -4,8 +4,10 @@ import { prisma } from '../../lib/prisma';
 import { parseDimensions } from '../../lib/storageVolume';
 import { badRequest, conflict, notFound } from '../../utils/httpError';
 import { serializeMovementForRole } from '../inventory/inventory.movementSerializer';
+import { cartonPackagingSchema } from './cartonPackaging.schema';
 
 export const updateReceiptSchema = z.object({
+  packaging: cartonPackagingSchema.nullable().optional(),
   locationId: z.string().min(1).nullable().optional(),
   dimensionsCm: z.string().max(50).refine(v => parseDimensions(v) !== null, 'Usa largo x ancho x alto en cm, por ejemplo 50x40x30').nullable().optional(),
   maxStackUnits: z.number().int().min(1).max(1000).optional(),
@@ -16,6 +18,9 @@ export async function updateReceipt(batchId: string, movementId: string, data: z
     return await prisma.$transaction(async tx => {
       const movement = await tx.inventoryMovement.findFirst({ where: { id: movementId, importBatchId: batchId, type: 'INGRESO' } });
       if (!movement) throw notFound('Ingreso no encontrado en este lote');
+      if (data.packaging && data.packaging.cartonCount * data.packaging.unitsPerCarton !== movement.quantity) {
+        throw badRequest('Cartones × unidades por cartón debe coincidir con las unidades ya recibidas. Esta edición no cambia existencias.');
+      }
       // The same row lock is taken by stock/reservation writers.
       const variant = await tx.productVariant.update({ where: { id: movement.variantId }, data: { stock: { increment: 0 } } });
       if (variant.deletedAt) throw notFound('Variante no encontrada');
@@ -39,11 +44,13 @@ export async function updateReceipt(batchId: string, movementId: string, data: z
       const updatedVariant = await tx.productVariant.update({ where: { id: variant.id }, data: {
         dimensionsCm: data.dimensionsCm, maxStackUnits: data.maxStackUnits,
       } });
-      const updated = await tx.inventoryMovement.update({ where: { id: movementId }, data: { toLocationId: data.locationId },
+      const updated = await tx.inventoryMovement.update({ where: { id: movementId }, data: { toLocationId: data.locationId,
+        ...(data.packaging !== undefined && { packaging: data.packaging === null ? Prisma.DbNull : { ...data.packaging } }),
+      },
         include: { variant: { select: { sku: true, label: true, productId: true, dimensionsCm: true, maxStackUnits: true } } } });
       await tx.auditLog.create({ data: { entityType: 'InventoryMovement', entityId: movementId, action: 'UPDATE', performedById: userId,
-        changes: { variantId: variant.id, before: { locationId: movement.toLocationId, dimensionsCm: variant.dimensionsCm, maxStackUnits: variant.maxStackUnits },
-          after: { locationId: updated.toLocationId, dimensionsCm: updatedVariant.dimensionsCm, maxStackUnits: updatedVariant.maxStackUnits } } } });
+        changes: { variantId: variant.id, before: { packaging: movement.packaging ?? null, locationId: movement.toLocationId, dimensionsCm: variant.dimensionsCm, maxStackUnits: variant.maxStackUnits },
+          after: { packaging: updated.packaging ?? null, locationId: updated.toLocationId, dimensionsCm: updatedVariant.dimensionsCm, maxStackUnits: updatedVariant.maxStackUnits } } } });
       return serializeMovementForRole(updated, role);
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {

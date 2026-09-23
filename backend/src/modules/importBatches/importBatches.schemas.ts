@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cartonPackagingSchema } from './cartonPackaging.schema';
 
 export const createImportBatchSchema = z.object({
   containerType: z.enum(["20", "40", "40HC", "LCL"]),
@@ -17,13 +18,14 @@ export const receiveStockSchema = z.object({
     .array(
       z.object({
         variantId: z.string().min(1),
+        packaging: cartonPackagingSchema.optional(),
         quantity: z.number().int().positive("La cantidad de un ingreso debe ser mayor a 0"),
         volumeCbm: z.number().positive().max(999999).multipleOf(0.000001),
         unitCost: z.number().nonnegative("El costo unitario no puede ser negativo"),
         notes: z.string().max(500).optional(),
         // Ubicación de destino donde queda físicamente la mercadería recibida.
         locationId: z.string({ required_error: "Selecciona la bodega y ubicación de destino" }).trim().min(1, "Selecciona la bodega y ubicación de destino"),
-      })
+      }).refine(line => !line.packaging || line.quantity === line.packaging.cartonCount * line.packaging.unitsPerCarton, { path: ['quantity'], message: 'La cantidad debe coincidir con cartones × unidades por cartón' })
     )
     .min(1, "Debes incluir al menos una línea"),
 });

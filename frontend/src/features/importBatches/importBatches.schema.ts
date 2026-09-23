@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { optionalNumber, optionalString } from "@/lib/zodHelpers";
+import { cartonPackagingSchema } from './cartonPackaging.schema';
 
 // Espejo de receiveStockSchema (backend/importBatches.schemas.ts). sku/label/
 // productName son solo para pintar la fila y los mensajes de error, no se
 // mandan al backend.
 export const receiveLineSchema = z.object({
+  packaging: cartonPackagingSchema.optional(),
   variantId: z.string().min(1),
   sku: z.string(),
   label: z.string().nullable(),
@@ -14,7 +16,7 @@ export const receiveLineSchema = z.object({
   unitCost: z.coerce.number().nonnegative("El costo unitario no puede ser negativo"),
   locationId: z.string({ error: "Selecciona la bodega y ubicación de destino" }).trim().min(1, "Selecciona la bodega y ubicación de destino"),
   notes: optionalString(z.string().max(500)),
-});
+}).refine(line => !line.packaging || line.quantity === line.packaging.cartonCount * line.packaging.unitsPerCarton, { path: ['quantity'], message: 'La cantidad debe coincidir con cartones × unidades por cartón' });
 
 export type ReceiveLineFormValues = z.infer<typeof receiveLineSchema>;
 

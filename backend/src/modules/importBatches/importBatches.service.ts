@@ -5,6 +5,7 @@ import { badRequest, conflict, notFound, unprocessableEntity } from "../../utils
 import { serializeMovementForRole } from "../inventory/inventory.movementSerializer";
 import { serializeImportBatchForRole } from "./importBatches.serializer";
 import { computeReceiveRequestHash } from "./receiveRequestHash";
+import type { CartonPackaging } from '../../lib/cartonPackaging';
 
 interface CreateImportBatchInput {
   containerType: "20" | "40" | "40HC" | "LCL";
@@ -97,6 +98,7 @@ export async function getImportBatchById(id: string, role: Role) {
 }
 
 interface ReceiveLine {
+  packaging?: CartonPackaging;
   variantId: string;
   quantity: number;
   unitCost: number;
@@ -202,6 +204,7 @@ export async function receiveStock(
     for (const line of lines) {
       const movement = await applyMovement(tx, {
         variantId: line.variantId,
+        packaging: line.packaging,
         type: MovementType.INGRESO,
         quantity: line.quantity,
         unitCost: line.unitCost,

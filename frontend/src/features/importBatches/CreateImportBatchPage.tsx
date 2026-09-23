@@ -98,6 +98,7 @@ export function CreateImportBatchPage() {
         idempotencyKey,
         lines: values.lines.map((l) => ({
           variantId: l.variantId,
+          packaging: l.packaging,
           quantity: l.quantity,
           unitCost: l.unitCost,
           volumeCbm: l.volumeCbm,

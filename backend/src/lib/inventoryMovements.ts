@@ -4,8 +4,10 @@
 // distinta de esta lógica por módulo.
 import { InventoryMovement, MovementType, Prisma } from "@prisma/client";
 import { badRequest } from "../utils/httpError";
+import type { CartonPackaging } from './cartonPackaging';
 
 export interface ApplyMovementInput {
+  packaging?: CartonPackaging;
   variantId: string;
   type: MovementType;
   quantity: number; // con signo: + suma stock, - resta. Nunca 0.
@@ -55,6 +57,7 @@ export async function applyMovement(
   return tx.inventoryMovement.create({
     data: {
       variantId: input.variantId,
+      packaging: input.packaging ? { ...input.packaging } : undefined,
       type: input.type,
       quantity: input.quantity,
       stockAfter: variant.stock,

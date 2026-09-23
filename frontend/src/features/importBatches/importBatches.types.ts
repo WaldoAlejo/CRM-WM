@@ -24,6 +24,7 @@ export interface ImportBatchListItem {
 }
 
 export interface ImportBatchMovement {
+  packaging?: import('@/lib/cartonPackaging').CartonPackaging | null;
   id: string;
   variantId: string;
   quantity: number;

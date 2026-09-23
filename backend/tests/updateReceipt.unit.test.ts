@@ -23,6 +23,14 @@ let tx: ReturnType<typeof transaction>;
 beforeEach(() => { tx = transaction(); mocks.transaction.mockReset().mockImplementation(fn => fn(tx)); });
 
 describe('Edición de ingreso, validación local sin base de datos', () => {
+  it('guarda cartones por ingreso y audita el empaque sin modificar dimensiones de la variante', async () => {
+    const packaging = { cartonCount: 5, unitsPerCarton: 4, maxStackCartons: 3, stackingConfirmed: false };
+    const result = await updateReceipt('b', 'm', { packaging }, 'u', 'ADMIN');
+    expect(result).toMatchObject({ packaging, quantity: 20, volumeCbm: 2 });
+    expect(tx.productVariant.update).toHaveBeenLastCalledWith({ where: { id: 'v' }, data: { dimensionsCm: undefined, maxStackUnits: undefined } });
+    expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ changes: expect.objectContaining({ after: expect.objectContaining({ packaging }) }) }) }));
+    await expect(updateReceipt('b', 'm', { packaging: { ...packaging, cartonCount: 6 } }, 'u', 'ADMIN')).rejects.toThrow('unidades ya recibidas');
+  });
   it('asigna ubicación sin emitir un ingreso adicional ni cambiar costos', async () => {
     const result = await updateReceipt('b', 'm', { locationId: 'l' }, 'u', 'OPERATOR');
     expect(result).toMatchObject({ toLocationId: 'l', quantity: 20, volumeCbm: 2 });

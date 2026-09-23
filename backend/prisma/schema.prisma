@@ -580,6 +580,7 @@ enum MovementType {
 }
 
 model InventoryMovement {
+  packaging Json? // Cartones y apilamiento propios de este ingreso, independientes de la variante.
   id        String         @id @default(cuid())
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)

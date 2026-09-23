@@ -25,8 +25,9 @@ const columns: CrudColumn<StockByLocationRow>[] = [
     header: "Stock",
     cell: (item) => <span className="font-medium">{item.netStock}</span>,
   },
-  { header: 'Volumen (m³)', cell: item => item.volumeCbm?.toFixed(6) ?? 'Sin dimensiones' },
-  { header: 'Unidades por pila', cell: item => item.stackLayers ?? '—' },
+  { header: 'Volumen estimado (m³)', cell: item => item.volumeCbm?.toFixed(6) ?? 'Sin datos suficientes' },
+  { header: 'Empaque estimado', cell: item => item.cartonEstimate?.status === 'MIXED' ? 'Empaques mixtos: revisar ingresos' : item.cartonEstimate ? <span title="Equivalencia teórica si se consolidan las unidades; no es un conteo de cartones abiertos.">{item.cartonEstimate.cartons} cartones · equivalen a {item.cartonEstimate.fullCartonEquivalent} completos + {item.cartonEstimate.looseUnitEquivalent} unidades</span> : 'Sin registro de cartones' },
+  { header: 'Apilamiento estimado', cell: item => item.cartonEstimate ? item.cartonEstimate.status === 'MIXED' ? '—' : `${item.cartonEstimate.piles ?? '—'} pilas · ${item.cartonEstimate.stackCartons ?? '—'} cartones/pila (${item.cartonEstimate.stackingConfirmed ? 'confirmado' : 'provisional'})` : item.stackLayers != null ? `${item.stackLayers} unidades/pila` : '—' },
   { header: 'Superficie estimada (m²)', cell: item => item.estimatedFloorAreaM2?.toFixed(3) ?? '—' },
 ];
 
@@ -52,6 +53,7 @@ export function StockByLocationPage() {
       </div>
 
       <div className="w-64">
+        <p className="mb-3 text-xs text-muted-foreground">Los cartones son equivalencias estimadas del stock si se consolidan las unidades; no cuentan cajas abiertas. El volumen incluye el cartón parcial y usa el promedio informado de ingresos compatibles. Sin medidas no se calcula superficie.</p>
         <Select
           value={warehouseId ?? "all"}
           onValueChange={(value) => {

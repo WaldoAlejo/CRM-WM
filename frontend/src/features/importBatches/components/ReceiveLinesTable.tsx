@@ -1,7 +1,8 @@
 import { WarehouseLocationSelect } from "@/features/locations/WarehouseLocationSelect";
 import { Trash2Icon } from "lucide-react";
 import type { ArrayPath, Control, FieldArrayWithId, FieldErrors, FieldValues, Path } from "react-hook-form";
-import { useWatch } from "react-hook-form";
+import { useWatch, useFormContext } from "react-hook-form";
+import { CartonFields } from './CartonFields';
 import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
   costPerCbm,
   disabled,
 }: ReceiveLinesTableProps<T>) {
+  const form = useFormContext();
   const lines = (useWatch({ control, name: "lines" as Path<T> }) as ReceiveLineFormValues[] | undefined) ?? [];
 
   const arrayLevelError =
@@ -58,6 +60,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
         <TableHeader>
           <TableRow>
             <TableHead>Producto</TableHead>
+            <TableHead>Empaque del ingreso</TableHead>
             <TableHead className="w-24">Cantidad</TableHead>
             <TableHead className="w-32">Costo unitario en origen (USD)</TableHead>
             <TableHead>CBM totales de la línea</TableHead>
@@ -79,6 +82,12 @@ export function ReceiveLinesTable<T extends FormWithLines>({
                     {line?.label ? ` — ${line.label}` : ""}
                   </p>
                 </TableCell>
+                <TableCell><fieldset disabled={disabled}><FormField control={control} name={`lines.${index}.packaging` as Path<T>} render={({ field: f }) => <FormItem>
+                  <CartonFields value={line?.packaging} label={line?.sku} volumeCbm={Number(line?.volumeCbm) || null} onChange={packaging => {
+                    f.onChange(packaging);
+                    if (packaging) form.setValue(`lines.${index}.quantity`, packaging.cartonCount * packaging.unitsPerCarton, { shouldValidate: true, shouldDirty: true });
+                  }} /><FormMessage />
+                </FormItem>} /></fieldset></TableCell>
                 <TableCell>
                   <FormField
                     control={control}
@@ -86,7 +95,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
                     render={({ field: f }) => (
                       <FormItem>
                         <FormControl>
-                          <Input type="number" min={1} step={1} aria-label={`Cantidad ${line?.sku}`} disabled={disabled} {...f} />
+                          <Input type="number" min={1} step={1} aria-label={`Cantidad ${line?.sku}`} disabled={disabled} readOnly={!!line?.packaging} {...f} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

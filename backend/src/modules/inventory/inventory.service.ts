@@ -4,6 +4,8 @@ import { prisma } from "../../lib/prisma";
 import { notFound } from "../../utils/httpError";
 import { serializeMovementForRole } from "./inventory.movementSerializer";
 import { storageEstimate } from '../../lib/storageVolume';
+import { cartonStockPlan, type CartonPackaging } from '../../lib/cartonPackaging';
+import { cartonPackagingSchema } from '../importBatches/cartonPackaging.schema';
 import { locationStorageSpace, type LegacyLayout, type SpatialLayout } from '../warehouses/warehouseSpatialCore';
 
 interface CreateAdjustmentInput {
@@ -270,12 +272,25 @@ export async function getStockByLocation(params: StockByLocationParams) {
   ]);
   const locationById = new Map(locations.map((l) => [l.id, l]));
   const variantById = new Map(variants.map((v) => [v.id, v]));
+  const incoming = pageEntries.length ? await prisma.inventoryMovement.findMany({
+    where: { variantId: { in: varIds }, toLocationId: { in: locIds }, quantity: { gt: 0 } },
+    select: { variantId: true, toLocationId: true, quantity: true, packaging: true, volumeCbm: true },
+  }) : [];
+  const receiptsByKey = new Map<string, { quantity: number; packaging: CartonPackaging | null; volumeCbm: number | null }[]>();
+  for (const receipt of incoming) {
+    const key = `${receipt.toLocationId}|${receipt.variantId}`;
+    const parsed = cartonPackagingSchema.safeParse(receipt.packaging);
+    const receipts = receiptsByKey.get(key) ?? [];
+    receipts.push({ quantity: receipt.quantity, packaging: parsed.success ? parsed.data : null, volumeCbm: receipt.volumeCbm === null ? null : Number(receipt.volumeCbm) });
+    receiptsByKey.set(key, receipts);
+  }
 
   const data = pageEntries.map((e) => {
     const location = locationById.get(e.locationId);
     const variant = variantById.get(e.variantId);
     const space = location?.warehouse.layout ? locationStorageSpace(location.warehouse.layout as unknown as LegacyLayout | SpatialLayout, location.code) : null;
     const estimate = storageEstimate(variant?.dimensionsCm, e.netStock, variant?.maxStackUnits ?? 1, space?.heightM);
+    const cartons = cartonStockPlan(receiptsByKey.get(`${e.locationId}|${e.variantId}`) ?? [], e.netStock, space?.heightM);
     return {
       locationId: e.locationId,
       locationCode: location?.code ?? null,
@@ -286,9 +301,14 @@ export async function getStockByLocation(params: StockByLocationParams) {
       label: variant?.label ?? null,
       product: variant?.product ?? null,
       netStock: e.netStock,
-      volumeCbm: estimate?.totalCbm ?? null,
-      estimatedFloorAreaM2: estimate?.floorAreaM2 ?? null,
-      stackLayers: estimate?.layers ?? null,
+      volumeCbm: cartons.status === 'NONE' ? estimate?.totalCbm ?? null : cartons.volumeCbm ?? null,
+      estimatedFloorAreaM2: cartons.status === 'NONE' ? estimate?.floorAreaM2 ?? null : cartons.plan?.floorAreaM2 ?? null,
+      stackLayers: cartons.status === 'NONE' ? estimate?.layers ?? null : null,
+      cartonEstimate: cartons.status === 'NONE' ? null : {
+        status: cartons.status, cartons: cartons.cartons ?? null, piles: cartons.plan?.piles ?? (e.netStock === 0 ? 0 : null),
+        fullCartonEquivalent: cartons.fullCartonEquivalent ?? null, looseUnitEquivalent: cartons.looseUnitEquivalent ?? null,
+        stackCartons: cartons.plan?.layers ?? null, stackingConfirmed: cartons.plan?.stackingConfirmed ?? false,
+      },
     };
   });
 

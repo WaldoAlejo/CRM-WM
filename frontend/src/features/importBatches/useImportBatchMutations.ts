@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import type { ReceiveResponse } from "./importBatches.types";
+import type { CartonPackaging } from '@/lib/cartonPackaging';
 
 export interface CreateBatchPayload {
   containerType: "20" | "40" | "40HC" | "LCL";
@@ -15,6 +16,7 @@ export interface CreateBatchPayload {
 }
 
 export interface ReceiveLinePayload {
+  packaging?: CartonPackaging;
   variantId: string;
   quantity: number;
   unitCost: number;

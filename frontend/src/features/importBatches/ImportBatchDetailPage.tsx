@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { EditReceiptDialog } from "./components/EditReceiptDialog";
 import type { ImportBatchMovement } from "./importBatches.types";
+import { cartonPlan } from '@/lib/cartonPackaging';
+import { CartonPlanSummary } from './components/CartonFields';
 import { hasAdminAccess } from "@/lib/roles";
 import { ArrowLeftIcon } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
@@ -26,6 +28,9 @@ export function ImportBatchDetailPage() {
   if (!batch) return <p className="text-muted-foreground">Lote no encontrado.</p>;
 
   const totalUnits = batch.movements.reduce((sum, m) => sum + m.quantity, 0);
+  const cartonMovements = batch.movements.filter(m => m.packaging);
+  const totalCartons = cartonMovements.reduce((sum, m) => sum + m.packaging!.cartonCount, 0);
+  const totalPiles = cartonMovements.reduce((sum, m) => sum + (cartonPlan(m.packaging!, Number(m.volumeCbm))?.piles ?? 0), 0);
   // Costos: solo ADMIN (el backend ni manda unitCost/landedCostPerUnit ni los
   // 3 costos del lote a OPERATOR) — nada de esto se dibuja para OPERATOR.
   const originTotal = batch.movements.reduce((sum, m) => sum + m.quantity * (Number(m.unitCost) || 0), 0);
@@ -43,6 +48,8 @@ export function ImportBatchDetailPage() {
     { label: "Modalidad / volumen", value: batch.containerType ? `${batch.containerType === "LCL" ? "Carga suelta / LCL" : batch.containerType === "40HC" ? "40 HC" : `${batch.containerType} pies`} · ${batch.containerCbm} CBM` : "Histórico sin CBM" },
     { label: "CBM recibidos", value: batch.movements.reduce((sum, m) => sum + Number(m.volumeCbm ?? 0), 0).toFixed(6) },
     { label: "Unidades recibidas", value: String(totalUnits) },
+    { label: 'Cartones registrados', value: String(totalCartons) },
+    { label: 'Pilas estimadas de ingresos', value: String(totalPiles) },
     ...(isAdmin
       ? [
           { label: "Costo por CBM (USD)", value: Number(batch.containerCbm) > 0 ? `${(batchCost / Number(batch.containerCbm)).toFixed(2)}` : "—" },
@@ -89,6 +96,7 @@ export function ImportBatchDetailPage() {
 
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Movimientos de ingreso</h2>
+        <p className="text-xs text-muted-foreground">Cartones y pilas corresponden a ingresos con empaque registrado, por separado. Son una planificación inicial; no descuentan despachos ni verifican la altura disponible.</p>
         <Table>
           <TableHeader>
             <TableRow>
@@ -120,6 +128,7 @@ export function ImportBatchDetailPage() {
                   <TableCell>
                     <p className="font-medium">{m.variant.sku}</p>
                     {m.variant.label ? <p className="text-xs text-muted-foreground">{m.variant.label}</p> : null}
+                    {m.packaging ? <details className="mt-2 min-w-56 text-xs"><summary className="cursor-pointer">{m.packaging.cartonCount} cartones × {m.packaging.unitsPerCarton} unidades · ver apilamiento</summary><CartonPlanSummary packaging={m.packaging} volumeCbm={m.volumeCbm == null ? null : Number(m.volumeCbm)} /></details> : <p className="text-xs text-muted-foreground">Empaque por cartón sin registrar</p>}
                   </TableCell>
                   <TableCell>{m.toLocationId ? (labelById.get(m.toLocationId) ?? "Ubicación eliminada") : "—"}</TableCell>
                   <TableCell>{m.quantity}</TableCell><TableCell>{m.volumeCbm ?? "—"}</TableCell>

@@ -9,9 +9,12 @@ import { useLocationOptions } from '@/features/locations/useLocationOptions';
 import { useWarehouseOptions } from '@/features/warehouses/useWarehouseOptions';
 import { locationStorageSpace } from '@/features/warehouses/warehouseSpatialCore';
 import type { ImportBatchMovement } from '../importBatches.types';
+import { CartonFields } from './CartonFields';
+import { cartonPackagingSchema } from '../cartonPackaging.schema';
 
 export function EditReceiptDialog({ batchId, movement, onClose }: { batchId: string; movement: ImportBatchMovement; onClose: () => void }) {
   const [locationId, setLocationId] = useState(movement.toLocationId ?? '');
+  const [packaging, setPackaging] = useState(movement.packaging ?? undefined);
   const [dimensionsCm, setDimensionsCm] = useState(movement.variant.dimensionsCm ?? '');
   const [maxStackUnits, setMaxStackUnits] = useState(String(movement.variant.maxStackUnits ?? 1));
   const { options, isLoading } = useLocationOptions();
@@ -21,12 +24,13 @@ export function EditReceiptDialog({ batchId, movement, onClose }: { batchId: str
   const location = warehouse?.locations.find(l => l.id === locationId);
   const space = warehouse?.layout && location ? locationStorageSpace(warehouse.layout, location.code) : null;
   const estimate = storageEstimate(dimensionsCm, movement.quantity, Number(maxStackUnits), space?.heightM);
-  const valid = (!dimensionsCm.trim() || !!parseDimensions(dimensionsCm)) && Number.isInteger(Number(maxStackUnits)) && Number(maxStackUnits) >= 1 && Number(maxStackUnits) <= 1000;
+  const valid = packaging ? cartonPackagingSchema.safeParse(packaging).success && packaging.cartonCount * packaging.unitsPerCarton === movement.quantity : (!dimensionsCm.trim() || !!parseDimensions(dimensionsCm)) && Number.isInteger(Number(maxStackUnits)) && Number(maxStackUnits) >= 1 && Number(maxStackUnits) <= 1000;
   const mutation = useMutation({
     mutationFn: () => apiFetch(`/import-batches/${batchId}/movements/${movement.id}`, { method: 'PATCH', body: JSON.stringify({
       locationId: locationId || null,
-      ...(dimensionsCm !== (movement.variant.dimensionsCm ?? '') ? { dimensionsCm: dimensionsCm.trim() || null } : {}),
-      ...(Number(maxStackUnits) !== (movement.variant.maxStackUnits ?? 1) ? { maxStackUnits: Number(maxStackUnits) } : {}),
+      ...((packaging || movement.packaging) && { packaging: packaging ?? null }),
+      ...(!packaging && dimensionsCm !== (movement.variant.dimensionsCm ?? '') ? { dimensionsCm: dimensionsCm.trim() || null } : {}),
+      ...(!packaging && Number(maxStackUnits) !== (movement.variant.maxStackUnits ?? 1) ? { maxStackUnits: Number(maxStackUnits) } : {}),
     }) }),
     onSuccess: async () => {
       await queryClient.invalidateQueries();
@@ -34,7 +38,7 @@ export function EditReceiptDialog({ batchId, movement, onClose }: { batchId: str
     },
   });
   return <Dialog open onOpenChange={open => { if (!open && !mutation.isPending) onClose(); }}>
-    <DialogContent>
+    <DialogContent className="max-h-[90vh] overflow-y-auto">
       <DialogHeader><DialogTitle>Editar ubicación y dimensiones</DialogTitle><DialogDescription>{movement.variant.sku} · {movement.quantity} unidades recibidas</DialogDescription></DialogHeader>
       <form onSubmit={event => { event.preventDefault(); if (valid) mutation.mutate(); }} className="space-y-4">
         <fieldset disabled={mutation.isPending} className="space-y-4">
@@ -45,6 +49,9 @@ export function EditReceiptDialog({ batchId, movement, onClose }: { batchId: str
               {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
             </select>
           </label>
+          <CartonFields value={packaging} onChange={setPackaging} volumeCbm={movement.volumeCbm == null ? null : Number(movement.volumeCbm)} heightM={space?.heightM} />
+          {packaging && packaging.cartonCount * packaging.unitsPerCarton !== movement.quantity && <p role="alert" className="text-sm text-destructive">Cartones × unidades por cartón debe dar {movement.quantity} unidades recibidas. Esta edición no cambia el stock.</p>}
+          {!packaging && <>
           <label className="grid gap-2 text-sm font-medium">Dimensiones del empaque por unidad (cm)
             <Input placeholder="Largo x ancho x alto; ej. 50x40x30" value={dimensionsCm} onChange={e => setDimensionsCm(e.target.value)} />
           </label>
@@ -62,6 +69,8 @@ export function EditReceiptDialog({ batchId, movement, onClose }: { batchId: str
             {space && (estimate.layers === 0 || (estimate.floorAreaM2 ?? 0) > space.areaM2) && <p className="text-amber-700">Esta cantidad supera el espacio estimado de la ubicación.</p>}
             <p className="text-xs text-muted-foreground">Estimación de este ingreso; no descuenta otras existencias ni pasillos de maniobra. La distribución real también depende de cómo encajen los empaques.</p>
           </div>}
+          </>}
+          {packaging && <p className="text-xs text-muted-foreground">Los datos del cartón se guardan solo en este ingreso. Las dimensiones del producto, los CBM informados y los costos se conservan.</p>}
         </fieldset>
         {mutation.error && <p role="alert" className="text-sm text-destructive">{mutation.error.message}</p>}
         <DialogFooter><Button type="button" variant="outline" disabled={mutation.isPending} onClick={onClose}>Cancelar</Button><Button type="submit" disabled={mutation.isPending || isLoading || !valid}>{mutation.isPending ? 'Guardando…' : 'Guardar cambios'}</Button></DialogFooter>

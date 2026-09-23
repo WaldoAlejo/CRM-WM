@@ -1,6 +1,8 @@
 import { createHash } from "crypto";
+import type { CartonPackaging } from '../../lib/cartonPackaging';
 
 interface ReceiveLine {
+  packaging?: CartonPackaging;
   variantId: string;
   quantity: number;
   unitCost: number;
@@ -18,6 +20,11 @@ interface ReceiveLine {
 function canonicalizeLine(line: ReceiveLine): string {
   return JSON.stringify({
     variantId: line.variantId,
+    ...(line.packaging && { packaging: {
+      cartonCount: line.packaging.cartonCount, unitsPerCarton: line.packaging.unitsPerCarton,
+      maxStackCartons: line.packaging.maxStackCartons, stackingConfirmed: line.packaging.stackingConfirmed,
+      cartonDimensionsCm: line.packaging.cartonDimensionsCm ?? null,
+    } }),
     quantity: line.quantity,
     unitCost: line.unitCost,
     ...(line.volumeCbm !== undefined && { volumeCbm: line.volumeCbm }),

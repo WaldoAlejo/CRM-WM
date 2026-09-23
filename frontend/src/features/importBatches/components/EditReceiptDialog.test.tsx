@@ -15,6 +15,16 @@ function show() {
 }
 beforeEach(() => { mocks.api.mockReset().mockResolvedValue({}); });
 describe('Editar un ingreso sin ubicación', () => {
+  it('añade empaque al ingreso existente y conserva las unidades y dimensiones del producto', async () => {
+    const close = show();
+    fireEvent.click(screen.getByLabelText('Registrar cartones'));
+    fireEvent.change(screen.getByLabelText('Cartones'), { target: { value: '5' } });
+    fireEvent.change(screen.getByLabelText('Unidades por cartón'), { target: { value: '4' } });
+    expect(screen.queryByLabelText('Dimensiones del empaque por unidad (cm)')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+    await waitFor(() => expect(close).toHaveBeenCalled());
+    expect(JSON.parse(mocks.api.mock.calls[0][1].body)).toEqual({ locationId: null, packaging: { cartonCount: 5, unitsPerCarton: 4, maxStackCartons: 3, stackingConfirmed: false } });
+  });
   it('muestra CBM y apilamiento, guarda datos físicos sin cambiar CBM facturados', async () => {
     const close = show();
     fireEvent.change(screen.getByLabelText('Ubicación del ingreso'), { target: { value: 'l' } });
