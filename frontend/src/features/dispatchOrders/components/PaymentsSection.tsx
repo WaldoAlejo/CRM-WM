@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DownloadDocumentButton } from "@/components/DownloadDocumentButton";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCanManagePayments } from "../useCanManagePayments";
@@ -45,6 +46,7 @@ export function PaymentsSection({ orderId, payments, amountPaid, orderTotal }: P
               <TableHead>Método</TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Notas</TableHead>
+              <TableHead>Recibo para el cliente</TableHead>
               {canManage ? <TableHead>Comprobante</TableHead> : null}
             </TableRow>
           </TableHeader>
@@ -55,6 +57,11 @@ export function PaymentsSection({ orderId, payments, amountPaid, orderTotal }: P
                 <TableCell>{payment.method}</TableCell>
                 <TableCell>{new Date(payment.paidAt).toLocaleDateString("es-EC")}</TableCell>
                 <TableCell>{payment.notes ?? "—"}</TableCell>
+                <TableCell>
+                  <DownloadDocumentButton path={`/dispatch-orders/${orderId}/payments/${payment.id}`} filename={`recibo-${payment.id}`}>
+                    PDF recibo de pago
+                  </DownloadDocumentButton>
+                </TableCell>
                 {canManage ? (
                   <TableCell>
                     {payment.hasProof ? (

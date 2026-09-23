@@ -68,7 +68,7 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
     { header: "Disponible", cell: (v) => v.stock - v.reservedStock },
     ...(canSeePricing
       ? ([
-          { header: "Costo (USD)", cell: (v) => money(v.costPriceUSD, "$") },
+          { header: "Costo promedio ponderado (USD)", cell: (v) => money(v.weightedAverageCost, "$") },
         ] satisfies CrudColumn<Variant>[])
       : []),
   ];

@@ -10,7 +10,7 @@ import {
 
 export async function listProductsController(req: Request, res: Response) {
   const query = listProductsQuerySchema.parse(req.query);
-  res.json(await listProducts(query));
+  res.json(await listProducts(query, req.user!.role));
 }
 
 export async function getProductController(req: Request, res: Response) {

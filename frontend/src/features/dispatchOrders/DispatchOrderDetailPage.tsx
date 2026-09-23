@@ -1,4 +1,5 @@
 import { ArrowLeftIcon } from "lucide-react";
+import { DownloadDocumentButton } from "@/components/DownloadDocumentButton";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -84,6 +85,25 @@ export function DispatchOrderDetailPage() {
             <Button onClick={() => setConfirmOpen(true)}>Confirmar</Button>
           </div>
         ) : null}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <DownloadDocumentButton path={`/dispatch-orders/${order.id}`} filename={`despacho-${order.orderNumber}`}>
+          {isPending ? "PDF orden pendiente" : order.origin && order.origin !== "NORMAL" ? "PDF cargo / liquidación" : "PDF despacho"}
+        </DownloadDocumentButton>
+        {order.status === "DESPACHADO" && order.origin === "NORMAL" ? (
+          <DownloadDocumentButton path={`/dispatch-orders/${order.id}/warehouse-out`} filename={`salida-${order.orderNumber}`}>
+            PDF salida de bodega
+          </DownloadDocumentButton>
+        ) : null}
+        {order.shipment?.status === "RECHAZADO" ? <>
+          <DownloadDocumentButton path={`/dispatch-orders/${order.id}/return`} filename={`devolucion-${order.orderNumber}`}>
+            PDF devolución
+          </DownloadDocumentButton>
+          <DownloadDocumentButton path={`/dispatch-orders/${order.id}/return-entry`} filename={`reingreso-${order.orderNumber}`}>
+            PDF reingresos aceptados
+          </DownloadDocumentButton>
+        </> : null}
       </div>
 
       <section className="grid grid-cols-2 gap-4 rounded-md border p-4 text-sm">

@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { usePricingVisibility } from "@/hooks/usePricingVisibility";
-import { useNegotiatedCost } from "@/features/dispatchOrders/useNegotiatedCost";
 import { AttributesFieldArray } from "./components/AttributesFieldArray";
 import type { ProductStatus, Variant } from "./products.types";
 import { useVariantMutations } from "./useVariantMutations";
@@ -65,7 +64,7 @@ export function VariantFormDialog({
 }: VariantFormDialogProps) {
   const isEdit = variant !== null;
   const canSeePricing = usePricingVisibility();
-  const { data: realCost } = useNegotiatedCost(variant?.id ?? "", open && canSeePricing && !!variant);
+  const realCost = variant?.weightedAverageCost == null ? null : Number(variant.weightedAverageCost);
   const { createMutation, updateMutation } = useVariantMutations(productId);
 
   const form = useForm<VariantFormValues>({
@@ -213,19 +212,10 @@ export function VariantFormDialog({
                   La importación registra el costo. En cada despacho ingresa el porcentaje de ganancia
                   negociado sobre el costo real, tanto para mayoristas como para clientes finales.
                 </p>
-                {!variant?.costPriceUSD ? (
+                {realCost === null ? (
                   <p className="text-sm">Pendiente de recibir una importación con costo y CBM.</p>
                 ) : null}
-                <div className="grid grid-cols-2 gap-4">
-                  {([
-                    ["costPriceUSD", "Costo de fábrica (USD)"],
-                  ] as const).map(([name, label]) => (
-                    <FormField key={name} control={form.control} name={name} render={({ field }) => (
-                      <FormItem><FormLabel>{label}</FormLabel><FormControl>
-                        <Input readOnly placeholder="Pendiente de importación" {...field} value={field.value ?? ""} />
-                      </FormControl></FormItem>
-                    )} />
-                  ))}
+                <div>
                   <div className="text-sm"><p>Costo real promedio ponderado (USD)</p><p className="font-medium">{realCost != null ? '$' + realCost.toFixed(2) : "Pendiente de importación"}</p></div>
                 </div>
               </section>

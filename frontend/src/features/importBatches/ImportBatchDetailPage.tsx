@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DownloadDocumentButton } from "@/components/DownloadDocumentButton";
 import { EditReceiptDialog } from "./components/EditReceiptDialog";
 import type { ImportBatchMovement } from "./importBatches.types";
 import { cartonPlan } from '@/lib/cartonPackaging';
@@ -83,6 +84,10 @@ export function ImportBatchDetailPage() {
         </Button>
       </div>
 
+      {batch.movements.length > 0 ? <DownloadDocumentButton path={`/import-batches/${batch.id}`} filename={`ingresos-${batch.reference}`}>
+        PDF ingresos de bodega
+      </DownloadDocumentButton> : null}
+
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {summary.map((card) => (
           <Card key={card.label}>
@@ -145,7 +150,10 @@ export function ImportBatchDetailPage() {
                     </>
                   ) : null}
                   <TableCell>{new Date(m.createdAt).toLocaleString("es-EC")}</TableCell>
-                  <TableCell><Button variant="outline" size="sm" onClick={() => setEditing(m)}>Editar ubicación y dimensiones</Button></TableCell>
+                  <TableCell><div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setEditing(m)}>Editar ubicación y dimensiones</Button>
+                    <DownloadDocumentButton path={`/movements/${m.id}`} filename={`ingreso-${m.id}`}>PDF ingreso</DownloadDocumentButton>
+                  </div></TableCell>
                 </TableRow>
               ))
             )}

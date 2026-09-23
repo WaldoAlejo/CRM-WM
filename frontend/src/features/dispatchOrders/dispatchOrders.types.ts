@@ -101,6 +101,7 @@ export interface Shipment {
 // paymentStatus al registrar un pago) — nunca se reimplementa la suma acá.
 export interface DispatchOrderDetail {
   id: string;
+  origin?: "NORMAL" | "CONSIGNACION_LIQUIDACION" | "CONSIGNACION_DEVOLUCION_NO_CONFORME";
   orderNumber: string;
   buyerType: BuyerType;
   wholesaler: WholesalerRef | null;

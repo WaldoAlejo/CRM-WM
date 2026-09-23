@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import { documentsRouter } from "./modules/documents/documents.routes";
 import { buildCorsOptions } from "./lib/corsOptions";
 import { prisma } from "./lib/prisma";
 import { UPLOADS_ROOT } from "./lib/upload";
@@ -49,6 +50,7 @@ export function createApp() {
   app.use("/uploads", express.static(UPLOADS_ROOT));
 
   app.use("/api/auth", authRouter);
+  app.use("/api/documents", documentsRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/purchasing", purchasingRouter);
   app.use("/api/consignment", consignmentRouter);

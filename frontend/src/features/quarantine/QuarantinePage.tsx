@@ -1,5 +1,6 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
+import { DownloadDocumentButton } from "@/components/DownloadDocumentButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -91,6 +92,7 @@ export function QuarantinePage() {
                 </TableCell>
                 <TableCell className="text-sm">{new Date(line.receivedAt).toLocaleDateString("es-EC")}</TableCell>
                 <TableCell className="text-right">
+                  <DownloadDocumentButton path={`/returns/${line.batchId}`} filename={`devolucion-${line.batchId}`}>PDF devolución</DownloadDocumentButton>
                   <Button size="sm" onClick={() => setSelected(line)}>
                     Revisar
                   </Button>

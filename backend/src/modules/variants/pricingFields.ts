@@ -3,6 +3,7 @@
 // (serializeVariantForRole). Si el día de mañana se agrega un campo de precio
 // nuevo, se edita en un solo lugar y ambas protecciones quedan al día.
 export const PRICING_FIELDS = [
+  "weightedAverageCost",
   "costPriceUSD",
   "wholesalePrice",
   "wholesaleDiscountPct",

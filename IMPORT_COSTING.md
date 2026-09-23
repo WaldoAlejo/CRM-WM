@@ -6,6 +6,21 @@ Los gastos del lote son flete + aranceles + otros gastos, sin incluir la compra 
 
 La importación registra costos y stock; no fija porcentajes ni precios de venta. La recepción actualiza costPriceUSD y conserva referencias anteriores, sin usarlas para negociar despachos.
 
+## Costos en productos y variantes
+
+Las listas de productos y variantes y el formulario de variante muestran el
+costo real promedio ponderado en USD, incluyendo los gastos de importación:
+`suma(cantidad recibida × (costo de origen + gasto unitario)) / suma(cantidad recibida)`.
+Se usan los ingresos históricos con costo registrado, como en la negociación
+de despachos; no el stock restante ni el último costo de fábrica.
+
+En productos se ponderan todas las unidades recibidas de sus variantes no
+eliminadas, sin promediar los promedios de las variantes. Sin ingresos con costo
+se muestra `—` en las listas y pendiente en el formulario. Un costo registrado
+de cero se muestra como `$0.00`. Los campos calculados solo se exponen a ADMIN/CEO.
+El costo de fábrica se conserva como dato de origen, pero no se muestra como
+costo del catálogo. Esta visualización no requiere migración de base de datos.
+
 ## Despacho
 
 ADMIN/CEO pueden consultar el costo real promedio ponderado de las recepciones y escribir un incremento por línea, sin porcentaje predeterminado. Tanto mayoristas como clientes finales se calculan directamente sobre ese costo: precio = costo real × (1 + porcentaje / 100). 100% duplica el costo; 120% lo multiplica por 2.20. No es margen sobre ventas ni descuento.

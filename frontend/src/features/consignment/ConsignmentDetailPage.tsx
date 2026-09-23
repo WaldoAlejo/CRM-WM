@@ -1,4 +1,5 @@
 import { ArrowLeftIcon } from "lucide-react";
+import { DownloadDocumentButton } from "@/components/DownloadDocumentButton";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,11 @@ export function ConsignmentDetailPage() {
           ) : null}
         </div>
         {!closed ? <Button onClick={() => setReviewOpen(true)}>Registrar revisión</Button> : null}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <DownloadDocumentButton path={`/consignments/${lot.id}`} filename={`consignacion-${lot.code}`}>PDF consignación</DownloadDocumentButton>
+        <DownloadDocumentButton path={`/consignments/${lot.id}/warehouse-out`} filename={`salida-${lot.code}`}>PDF salida de bodega</DownloadDocumentButton>
       </div>
 
       {lot.isReviewOverdue ? (
@@ -95,6 +101,13 @@ export function ConsignmentDetailPage() {
           <ul className="space-y-2">
             {lot.reviews.map((r) => (
               <li key={r.id} className="rounded-md border p-3 text-sm">
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <DownloadDocumentButton path={`/reviews/${r.id}`} filename={`revision-${lot.code}-${r.id}`}>PDF revisión</DownloadDocumentButton>
+                  {r.returnBatch ? <>
+                    <DownloadDocumentButton path={`/returns/${r.returnBatch.id}`} filename={`devolucion-${r.returnBatch.id}`}>PDF devolución</DownloadDocumentButton>
+                    <DownloadDocumentButton path={`/returns/${r.returnBatch.id}/warehouse-in`} filename={`reingreso-${r.returnBatch.id}`}>PDF reingresos aceptados</DownloadDocumentButton>
+                  </> : null}
+                </div>
                 <p className="font-medium">
                   {fmtDate(r.reviewedAt)} — {r.action === "LIQUIDAR" ? "Liquidación" : "Extensión de plazo"}
                 </p>

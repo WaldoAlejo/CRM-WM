@@ -17,6 +17,7 @@ export interface BrandRef {
 
 // Fila del listado (GET /api/products): plano, sin variantes anidadas.
 export interface ProductListItem {
+  weightedAverageCost?: string | null;
   id: string;
   sku: string;
   name: string;
@@ -69,6 +70,7 @@ export interface ProductAttachment {
 // OPCIONALES en el tipo (no `| null`) porque para OPERATOR el backend los
 // omite del JSON por completo — no vienen como `null`, no existen como key.
 export interface Variant {
+  weightedAverageCost?: string | null;
   id: string;
   productId: string;
   sku: string;

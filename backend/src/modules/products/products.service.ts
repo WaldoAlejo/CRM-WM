@@ -2,6 +2,8 @@ import { Prisma, ProductStatus, Role } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { serializeVariantForRole } from "../variants/variants.serializer";
 import { badRequest, conflict, notFound } from "../../utils/httpError";
+import { hasAdminAccess } from '../../lib/roles';
+import { catalogWeightedCosts } from '../../lib/weightedLandedCost';
 
 // P2002 (unique constraint) puede ser por `sku` o por `barcode`: se traduce
 // a un mensaje específico con el campo exacto, nunca un "ya existe" genérico.
@@ -43,10 +45,8 @@ interface ListProductsParams {
   q?: string;
 }
 
-// Listado = solo campos planos del producto (sin variantes anidadas ni
-// precios/costos, ver conteo `variantCount`): por diseño, no hay nada que
-// enmascarar por rol en este endpoint, a diferencia del detalle.
-export async function listProducts(params: ListProductsParams) {
+// Costos calculados en una consulta por página y expuestos solo a ADMIN/CEO.
+export async function listProducts(params: ListProductsParams, role: Role) {
   const { page, pageSize, categoryId, subcategoryId, status, brandId, q } = params;
 
   const where: Prisma.ProductWhereInput = {
@@ -80,8 +80,11 @@ export async function listProducts(params: ListProductsParams) {
     prisma.product.count({ where }),
   ]);
 
+  const costs = hasAdminAccess(role) ? await catalogWeightedCosts(prisma, rows.map(p => p.id)) : null;
   return {
-    data: rows.map(({ _count, ...product }) => ({ ...product, variantCount: _count.variants })),
+    data: rows.map(({ _count, ...product }) => ({ ...product, variantCount: _count.variants,
+      ...(costs && { weightedAverageCost: costs.products.get(product.id) ?? null }),
+    })),
     pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
   };
 }
@@ -104,10 +107,13 @@ export async function getProductById(id: string, role: Role) {
     },
   });
   if (!product) throw notFound("Producto no encontrado");
-
+  const costs = hasAdminAccess(role) ? await catalogWeightedCosts(prisma, [id]) : null;
   return {
     ...product,
-    variants: product.variants.map((variant) => serializeVariantForRole(variant, role)),
+    ...(costs && { weightedAverageCost: costs.products.get(id) ?? null }),
+    variants: product.variants.map((variant) => serializeVariantForRole({ ...variant,
+      ...(costs && { weightedAverageCost: costs.variants.get(variant.id) ?? null }),
+    }, role)),
   };
 }
 

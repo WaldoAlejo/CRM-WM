@@ -12,6 +12,7 @@ import { useCategoryOptions } from "./useCategoryOptions";
 import type { ProductFilters } from "./useProducts";
 import { useProducts } from "./useProducts";
 import type { ProductListItem } from "./products.types";
+import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 
 const ALL = "__all__"; // Radix Select no permite value="" en SelectItem; se traduce a "sin filtro" acá.
 
@@ -42,6 +43,10 @@ const columns: CrudColumn<ProductListItem>[] = [
 ];
 
 export function ProductsPage() {
+  const canSeePricing = usePricingVisibility();
+  const visibleColumns: CrudColumn<ProductListItem>[] = [...columns, ...(canSeePricing ? [{
+    header: 'Costo promedio ponderado (USD)', cell: (item: ProductListItem) => item.weightedAverageCost != null ? `$${item.weightedAverageCost}` : '—',
+  }] : [])];
   const [filters, setFilters] = useState<ProductFilters>({});
   const [searchInput, setSearchInput] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -141,7 +146,8 @@ export function ProductsPage() {
         </Select>
       </div>
 
-      <DataTable columns={columns} data={items} isLoading={query.isLoading} getRowId={(item) => item.id} />
+      {canSeePricing && <p className="text-xs text-muted-foreground">Costo real por unidad: incluye gastos de importación y pondera las unidades recibidas de las variantes. Sin ingresos con costo se muestra —.</p>}
+      <DataTable columns={visibleColumns} data={items} isLoading={query.isLoading} getRowId={(item) => item.id} />
 
       {pagination ? (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
