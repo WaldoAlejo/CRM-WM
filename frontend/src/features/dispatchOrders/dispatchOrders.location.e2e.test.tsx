@@ -3,7 +3,7 @@
 // formulario real de creación de orden y verificar que llega como
 // item.locationId en la orden creada.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { fetch as undiciFetch } from "undici";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -168,16 +168,10 @@ describe("Selector de ubicación en el formulario real de creación de orden", (
     const unitPriceInput = screen.getByLabelText(`Incremento sobre costo ${VARIANT_SKU}`);
     fireEvent.change(unitPriceInput, { target: { value: "50" } });
 
-    // Selector de ubicación de la fila: no tiene FormLabel (a diferencia de
-    // "Provincia"), así que no se puede abrir por accesible-name — se abre
-    // por posición: es el ÚLTIMO combobox del DOM en este punto (provincia,
-    // método de pago, tipo de precio de la fila, y recién al final
-    // ubicación). Clickear directo el texto del placeholder no dispara la
-    // apertura de Radix de forma confiable en happy-dom (a diferencia de
-    // clickear el trigger por role, que sí es el patrón ya probado en el
-    // resto de la suite).
-    const combos = screen.getAllByRole("combobox");
-    fireEvent.click(combos[combos.length - 1]);
+    await waitFor(() => expect(screen.getByRole("combobox", { name: `Bodega ${VARIANT_SKU}` })).toBeEnabled());
+    fireEvent.click(screen.getByRole("combobox", { name: `Bodega ${VARIANT_SKU}` }));
+    fireEvent.click(await findLastByTextEventually(WAREHOUSE_NAME));
+    fireEvent.click(screen.getByRole("combobox", { name: `Ubicación ${VARIANT_SKU}` }));
     fireEvent.click(await findLastByTextEventually(LOCATION_LABEL));
 
     // happy-dom calcula incorrectamente stepMismatch para 50 con step=0.01.

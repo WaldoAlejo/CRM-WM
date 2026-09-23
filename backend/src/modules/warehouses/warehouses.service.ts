@@ -2,6 +2,7 @@ import { LocationType, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { WAREHOUSE_MANAGER_ROLES } from "../../lib/roles";
 import { badRequest, conflict, notFound } from "../../utils/httpError";
+import { layoutLocations, syncWarehouseLayout, WarehouseLayout } from "./warehouseLayout";
 
 // `Warehouse.name` es un @unique normal (no parcial): igual que Courier, este
 // modelo no tiene `deletedAt` — usa `isActive` como su equivalente de soft
@@ -57,6 +58,7 @@ export async function getWarehouseById(id: string) {
 }
 
 interface WarehouseInput {
+  layout?: WarehouseLayout;
   name?: string;
   address?: string | null;
   capacity?: number | null;
@@ -76,11 +78,12 @@ export async function createWarehouse(data: WarehouseInput) {
       data: {
         name: data.name!,
         address: data.address,
-        capacity: data.capacity,
+        capacity: data.layout ? layoutLocations(data.layout).length : data.capacity,
+        layout: data.layout,
         phone: data.phone,
         notes: data.notes,
         managerId: data.managerId,
-        locations: { create: { code: "Cuarentena", type: LocationType.CUARENTENA } },
+        locations: { create: [{ code: "Cuarentena", type: LocationType.CUARENTENA }, ...(data.layout ? layoutLocations(data.layout) : [])] },
       },
       include: { locations: { where: { type: LocationType.STANDARD } }, manager: { select: MANAGER_SELECT } },
     });
@@ -95,11 +98,17 @@ export async function updateWarehouse(id: string, data: WarehouseInput) {
   await assertValidManager(data.managerId);
 
   try {
-    return await prisma.warehouse.update({
-      where: { id },
-      data,
-      include: { locations: { where: { isActive: true, type: LocationType.STANDARD } }, manager: { select: MANAGER_SELECT } },
-    });
+    return await prisma.$transaction(async tx => {
+      // Serialize concurrent edits of the same plan in the configured DB schema.
+      const warehouse = await tx.warehouse.update({ where: { id }, data: { id } });
+      if (data.layout) await syncWarehouseLayout(tx, id, data.layout, warehouse.layout as WarehouseLayout | null);
+      const layout = data.layout ?? warehouse.layout as WarehouseLayout | null;
+      return tx.warehouse.update({
+        where: { id },
+        data: { ...data, ...(layout ? { capacity: layoutLocations(layout).length } : {}) },
+        include: { locations: { where: { isActive: true, type: LocationType.STANDARD } }, manager: { select: MANAGER_SELECT } },
+      });
+    }, { timeout: 30000 });
   } catch (err) {
     mapUniqueConstraintError(err);
   }

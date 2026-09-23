@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { optionalNumber, optionalString } from "@/lib/zodHelpers";
+import { warehouseLayoutSchema } from "./warehouseLayout";
 
 // Espejo de backend/src/modules/warehouses/warehouses.schemas.ts.
 export const warehouseFormSchema = z.object({
@@ -14,6 +15,7 @@ export const warehouseFormSchema = z.object({
   // Opcional (no solo en el form): el payload real a la API también puede
   // omitirlo por completo (crear una bodega sin responsable).
   managerId: z.string().optional(),
+  layout: warehouseLayoutSchema.optional(),
 });
 
 export type WarehouseFormValues = z.infer<typeof warehouseFormSchema>;

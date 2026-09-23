@@ -102,7 +102,7 @@ interface ReceiveLine {
   unitCost: number;
   volumeCbm: number;
   notes?: string;
-  locationId?: string;
+  locationId: string;
 }
 
 interface ReceiveStockResponse {
@@ -158,7 +158,7 @@ export async function receiveStock(
   const locationIds = [...new Set(lines.map((l) => l.locationId).filter((id): id is string => !!id))];
   if (locationIds.length > 0) {
     const foundLocations = await prisma.location.findMany({
-      where: { id: { in: locationIds }, isActive: true, type: LocationType.STANDARD },
+      where: { id: { in: locationIds }, isActive: true, type: LocationType.STANDARD, warehouse: { isActive: true } },
       select: { id: true },
     });
     const foundLocationIds = new Set(foundLocations.map((l) => l.id));

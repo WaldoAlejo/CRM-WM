@@ -64,7 +64,7 @@ export function ReceiveStockPage() {
       quantity: 1,
       unitCost: 0,
       volumeCbm: 0,
-      locationId: undefined,
+      locationId: "",
       notes: undefined,
     });
   }
@@ -84,7 +84,7 @@ export function ReceiveStockPage() {
           quantity: l.quantity,
           unitCost: l.unitCost,
           volumeCbm: l.volumeCbm,
-          locationId: l.locationId || undefined,
+          locationId: l.locationId,
           notes: l.notes || undefined,
         })),
       })

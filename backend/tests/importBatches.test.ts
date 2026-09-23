@@ -1,5 +1,5 @@
 import request from "supertest";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import {
   createCategoryFixture,
@@ -14,6 +14,8 @@ import {
 } from "./helpers";
 
 const app = createApp();
+let receiptLocationId: string;
+beforeEach(async () => { receiptLocationId = (await createLocationFixture()).id; });
 
 afterEach(async () => {
   await resetDatabase();
@@ -96,6 +98,32 @@ describe("GET /api/import-batches", () => {
 });
 
 describe("POST /api/import-batches/:id/receive", () => {
+  it.each([undefined, null, "", "   "])("rechaza ubicación omitida o vacía %s sin modificar inventario", async locationId => {
+    const { token } = await createTestUser("ADMIN");
+    const { variant } = await setupProductWithVariant();
+    const batch = await createImportBatchFixture();
+    const res = await request(app).post(`/api/import-batches/${batch.id}/receive`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ lines: [{ variantId: variant.id, quantity: 2, unitCost: 10, volumeCbm: 1, locationId }] });
+    expect(res.status).toBe(400);
+    expect(await prisma.inventoryMovement.count()).toBe(0);
+    expect((await prisma.productVariant.findUniqueOrThrow({ where: { id: variant.id } })).stock).toBe(0);
+  });
+
+  it.each(["location", "warehouse", "quarantine"])("rechaza destino no operativo: %s", async invalid => {
+    const { token } = await createTestUser("ADMIN");
+    const { variant } = await setupProductWithVariant();
+    const batch = await createImportBatchFixture();
+    let location = await createLocationFixture();
+    if (invalid === "location") await prisma.location.update({ where: { id: location.id }, data: { isActive: false } });
+    if (invalid === "warehouse") await prisma.warehouse.update({ where: { id: location.warehouseId }, data: { isActive: false } });
+    if (invalid === "quarantine") location = await prisma.location.findFirstOrThrow({ where: { warehouseId: location.warehouseId, type: "CUARENTENA" } });
+    const res = await request(app).post(`/api/import-batches/${batch.id}/receive`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ lines: [{ variantId: variant.id, quantity: 2, unitCost: 10, volumeCbm: 1, locationId: location.id }] });
+    expect(res.status).toBe(400);
+    expect(await prisma.inventoryMovement.count()).toBe(0);
+  });
   it("crea un InventoryMovement INGRESO por línea y suma el stock cacheado", async () => {
     const { token, user } = await createTestUser("ADMIN");
     const { variant: variantA } = await setupProductWithVariant(10);
@@ -107,8 +135,8 @@ describe("POST /api/import-batches/:id/receive", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({
         lines: [
-          { variantId: variantA.id, quantity: 20, volumeCbm: 1, unitCost: 22.5 },
-          { variantId: variantB.id, quantity: 15, volumeCbm: 1, unitCost: 27 },
+          { locationId: receiptLocationId, variantId: variantA.id, quantity: 20, volumeCbm: 1, unitCost: 22.5 },
+          { locationId: receiptLocationId, variantId: variantB.id, quantity: 15, volumeCbm: 1, unitCost: 27 },
         ],
       });
 
@@ -134,7 +162,7 @@ describe("POST /api/import-batches/:id/receive", () => {
     const res = await request(app)
       .post(`/api/import-batches/${batch.id}/receive`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ lines: [{ variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 15 }] });
+      .send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 15 }] });
 
     expect(res.status).toBe(201);
   });
@@ -147,7 +175,7 @@ describe("POST /api/import-batches/:id/receive", () => {
     const res = await request(app)
       .post(`/api/import-batches/${batch.id}/receive`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ lines: [{ variantId: variant.id, quantity: 0, volumeCbm: 1, unitCost: 10 }] });
+      .send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 0, volumeCbm: 1, unitCost: 10 }] });
 
     expect(res.status).toBe(400);
   });
@@ -162,8 +190,8 @@ describe("POST /api/import-batches/:id/receive", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({
         lines: [
-          { variantId: variant.id, quantity: 20, volumeCbm: 1, unitCost: 22.5 },
-          { variantId: "id-que-no-existe", quantity: 5, volumeCbm: 1, unitCost: 10 },
+          { locationId: receiptLocationId, variantId: variant.id, quantity: 20, volumeCbm: 1, unitCost: 22.5 },
+          { locationId: receiptLocationId, variantId: "id-que-no-existe", quantity: 5, volumeCbm: 1, unitCost: 10 },
         ],
       });
 
@@ -183,7 +211,7 @@ describe("POST /api/import-batches/:id/receive", () => {
     const res = await request(app)
       .post("/api/import-batches/id-inexistente/receive")
       .set("Authorization", `Bearer ${token}`)
-      .send({ lines: [{ variantId: variant.id, quantity: 5, volumeCbm: 1, unitCost: 10 }] });
+      .send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 5, volumeCbm: 1, unitCost: 10 }] });
 
     expect(res.status).toBe(404);
   });
@@ -193,7 +221,7 @@ describe("POST /api/import-batches/:id/receive", () => {
       const { token } = await createTestUser("ADMIN");
       const { variant } = await setupProductWithVariant(10);
       const batch = await createImportBatchFixture();
-      const body = { lines: [{ variantId: variant.id, quantity: 20, volumeCbm: 1, unitCost: 22.5 }] };
+      const body = { lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 20, volumeCbm: 1, unitCost: 22.5 }] };
 
       const first = await request(app)
         .post(`/api/import-batches/${batch.id}/receive`)
@@ -225,13 +253,13 @@ describe("POST /api/import-batches/:id/receive", () => {
         .post(`/api/import-batches/${batch.id}/receive`)
         .set("Authorization", `Bearer ${token}`)
         .set("Idempotency-Key", "retry-key-2")
-        .send({ lines: [{ variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 5 }] });
+        .send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 5 }] });
 
       const res = await request(app)
         .post(`/api/import-batches/${batch.id}/receive`)
         .set("Authorization", `Bearer ${token}`)
         .set("Idempotency-Key", "retry-key-2")
-        .send({ lines: [{ variantId: variant.id, quantity: 999, volumeCbm: 1, unitCost: 5 }] });
+        .send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 999, volumeCbm: 1, unitCost: 5 }] });
 
       expect(res.status).toBe(422);
       expect(res.body.field).toBe("Idempotency-Key");
@@ -242,7 +270,7 @@ describe("POST /api/import-batches/:id/receive", () => {
       const { variant } = await setupProductWithVariant();
       const batchA = await createImportBatchFixture();
       const batchB = await createImportBatchFixture();
-      const body = { lines: [{ variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 5 }] };
+      const body = { lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 5 }] };
 
       await request(app)
         .post(`/api/import-batches/${batchA.id}/receive`)
@@ -271,8 +299,8 @@ describe("POST /api/import-batches/:id/receive", () => {
         .set("Idempotency-Key", "retry-key-order")
         .send({
           lines: [
-            { variantId: v1.id, quantity: 10, volumeCbm: 1, unitCost: 5 },
-            { variantId: v2.id, quantity: 20, volumeCbm: 1, unitCost: 8 },
+            { locationId: receiptLocationId, variantId: v1.id, quantity: 10, volumeCbm: 1, unitCost: 5 },
+            { locationId: receiptLocationId, variantId: v2.id, quantity: 20, volumeCbm: 1, unitCost: 8 },
           ],
         });
 
@@ -283,8 +311,8 @@ describe("POST /api/import-batches/:id/receive", () => {
         .set("Idempotency-Key", "retry-key-order")
         .send({
           lines: [
-            { variantId: v2.id, quantity: 20, volumeCbm: 1, unitCost: 8 },
-            { variantId: v1.id, quantity: 10, volumeCbm: 1, unitCost: 5 },
+            { locationId: receiptLocationId, variantId: v2.id, quantity: 20, volumeCbm: 1, unitCost: 8 },
+            { locationId: receiptLocationId, variantId: v1.id, quantity: 10, volumeCbm: 1, unitCost: 5 },
           ],
         });
 
@@ -348,8 +376,8 @@ describe("Prorrateo de landedCostPerUnit en /receive", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({
         lines: [
-          { variantId: variantA.id, quantity: 12, volumeCbm: 1, unitCost: 10 },
-          { variantId: variantB.id, quantity: 8, volumeCbm: 1, unitCost: 15 },
+          { locationId: receiptLocationId, variantId: variantA.id, quantity: 12, volumeCbm: 1, unitCost: 10 },
+          { locationId: receiptLocationId, variantId: variantB.id, quantity: 8, volumeCbm: 1, unitCost: 15 },
         ],
       });
 
@@ -369,7 +397,7 @@ describe("Prorrateo de landedCostPerUnit en /receive", () => {
     await request(app)
       .post(`/api/import-batches/${batch.id}/receive`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ lines: [{ variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 5 }] });
+      .send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 5 }] });
 
     const movement = await prisma.inventoryMovement.findFirstOrThrow({
       where: { importBatchId: batch.id },
@@ -388,7 +416,7 @@ describe("Prorrateo de landedCostPerUnit en /receive", () => {
     await request(app)
       .post(`/api/import-batches/${batch.id}/receive`)
       .set("Authorization", `Bearer ${adminToken}`)
-      .send({ lines: [{ variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 5 }] });
+      .send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 5 }] });
 
     const asAdmin = await request(app)
       .get(`/api/import-batches/${batch.id}`)
@@ -414,7 +442,7 @@ describe("GET /api/import-batches/:id", () => {
     await request(app)
       .post(`/api/import-batches/${batch.id}/receive`)
       .set("Authorization", `Bearer ${adminToken}`)
-      .send({ lines: [{ variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 12.34 }] });
+      .send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 10, volumeCbm: 1, unitCost: 12.34 }] });
 
     const asAdmin = await request(app)
       .get(`/api/import-batches/${batch.id}`)
@@ -439,7 +467,7 @@ describe("Costeo CBM", () => {
     const { token } = await createTestUser("ADMIN");
     const { variant } = await setupProductWithVariant();
     const batch = await prisma.importBatch.create({ data: { reference: "CBM-EXAMPLE", arrivalDate: new Date(), containerType: "40", containerCbm: 70, freightCost: 30000, customsCost: 10000, otherCosts: 5000 } });
-    const send = (quantity: number, volumeCbm: number, key: string) => request(app).post(`/api/import-batches/${batch.id}/receive`).set("Authorization", `Bearer ${token}`).set("Idempotency-Key", key).send({ lines: [{ variantId: variant.id, quantity, volumeCbm, unitCost: 18 }] });
+    const send = (quantity: number, volumeCbm: number, key: string) => request(app).post(`/api/import-batches/${batch.id}/receive`).set("Authorization", `Bearer ${token}`).set("Idempotency-Key", key).send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity, volumeCbm, unitCost: 18 }] });
     const first = await send(204, 4.68, "cbm-1");
     expect(first.status).toBe(201);
     expect(Number(first.body.movements[0].volumeCbm)).toBe(4.68);
@@ -456,7 +484,7 @@ describe("Costeo CBM", () => {
     const { token } = await createTestUser("ADMIN");
     const { variant } = await setupProductWithVariant();
     const batch = await createImportBatchFixture();
-    const res = await request(app).post(`/api/import-batches/${batch.id}/receive`).set("Authorization", `Bearer ${token}`).send({ lines: [{ variantId: variant.id, quantity: 1, unitCost: 18, volumeCbm }] });
+    const res = await request(app).post(`/api/import-batches/${batch.id}/receive`).set("Authorization", `Bearer ${token}`).send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 1, unitCost: 18, volumeCbm }] });
     expect(res.status).toBe(400);
     expect(await prisma.inventoryMovement.count({ where: { importBatchId: batch.id } })).toBe(0);
   });
@@ -464,7 +492,7 @@ describe("Costeo CBM", () => {
     const { token } = await createTestUser("ADMIN");
     const { variant } = await setupProductWithVariant();
     const batch = await createImportBatchFixture();
-    const send = (key: string) => request(app).post(`/api/import-batches/${batch.id}/receive`).set("Authorization", `Bearer ${token}`).set("Idempotency-Key", key).send({ lines: [{ variantId: variant.id, quantity: 1, volumeCbm: 40, unitCost: 18 }] });
+    const send = (key: string) => request(app).post(`/api/import-batches/${batch.id}/receive`).set("Authorization", `Bearer ${token}`).set("Idempotency-Key", key).send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 1, volumeCbm: 40, unitCost: 18 }] });
     const results = await Promise.all([send("race-1"), send("race-2")]);
     expect(results.map(r => r.status).sort()).toEqual([201, 400]);
     expect(await prisma.inventoryMovement.count({ where: { importBatchId: batch.id } })).toBe(1);
@@ -484,7 +512,7 @@ describe("Carga suelta LCL", () => {
     expect(created.body.containerType).toBe("LCL");
     expect(Number(created.body.containerCbm)).toBe(26);
     const receive = (variantId: string, quantity: number, volumeCbm: number, unitCost: number) =>
-      request(app).post(`/api/import-batches/${created.body.id}/receive`).set("Authorization", `Bearer ${token}`).send({ lines: [{ variantId, quantity, volumeCbm, unitCost }] });
+      request(app).post(`/api/import-batches/${created.body.id}/receive`).set("Authorization", `Bearer ${token}`).send({ lines: [{ locationId: receiptLocationId, variantId, quantity, volumeCbm, unitCost }] });
     const first = await receive(powerStationA.id, 10, 6, 150);
     expect(first.status).toBe(201);
     expect(Number(first.body.movements[0].landedCostPerUnit)).toBe(120);
@@ -508,7 +536,7 @@ describe("La importación registra costos sin fijar precios de venta", () => {
     const { variant } = await setupProductWithVariant();
     await prisma.productVariant.update({ where: { id: variant.id }, data: { wholesalePrice: 55, retailPrice: 75 } });
     const batch = await createImportBatchFixture();
-    const res = await request(app).post(`/api/import-batches/${batch.id}/receive`).set("Authorization", `Bearer ${token}`).send({ lines: [{ variantId: variant.id, quantity: 10, volumeCbm: 4, unitCost: 18 }] });
+    const res = await request(app).post(`/api/import-batches/${batch.id}/receive`).set("Authorization", `Bearer ${token}`).send({ lines: [{ locationId: receiptLocationId, variantId: variant.id, quantity: 10, volumeCbm: 4, unitCost: 18 }] });
     expect(res.status).toBe(201);
     const updated = await prisma.productVariant.findUniqueOrThrow({ where: { id: variant.id } });
     expect(Number(updated.costPriceUSD)).toBe(18);

@@ -98,9 +98,11 @@ describe("Calculadora de precios — de punta a punta contra el backend real", (
       body: JSON.stringify({ reference: `E2E-PRICING-CONT-${STAMP}`, containerType: "40", containerCbm: 70, freightCost: 45000, arrivalDate: new Date().toISOString() }),
     });
     batchId = batch.id;
+    const warehouse = await apiFetch<{ id: string }>("/warehouses", { method: "POST", body: JSON.stringify({ name: `E2E Recepción ${variant.id}` }) });
+    const location = await apiFetch<{ id: string }>(`/warehouses/${warehouse.id}/locations`, { method: "POST", body: JSON.stringify({ code: "Recepción" }) });
     await apiFetch(`/import-batches/${batchId}/receive`, {
       method: "POST",
-      body: JSON.stringify({ lines: [{ variantId, quantity: 204, volumeCbm: 4.68, unitCost: 18 }] }),
+      body: JSON.stringify({ lines: [{ locationId: location.id, variantId, quantity: 204, volumeCbm: 4.68, unitCost: 18 }] }),
     });
   }, 30000);
 

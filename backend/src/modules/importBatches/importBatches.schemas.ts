@@ -22,7 +22,7 @@ export const receiveStockSchema = z.object({
         unitCost: z.number().nonnegative("El costo unitario no puede ser negativo"),
         notes: z.string().max(500).optional(),
         // Ubicación de destino donde queda físicamente la mercadería recibida.
-        locationId: z.string().min(1).optional(),
+        locationId: z.string({ required_error: "Selecciona la bodega y ubicación de destino" }).trim().min(1, "Selecciona la bodega y ubicación de destino"),
       })
     )
     .min(1, "Debes incluir al menos una línea"),

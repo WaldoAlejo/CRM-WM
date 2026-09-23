@@ -120,6 +120,7 @@ model Warehouse {
   id      String  @id @default(cuid())
   name    String  @unique
   address String? // Dirección completa (texto libre).
+  layout Json? // Plano de posiciones de piso/racks, en metros.
 
   capacity Int? // Capacidad total en posiciones/pallets (unidad de negocio, no validada acá).
   phone    String? // Teléfono de contacto.
@@ -166,6 +167,7 @@ model Location {
   level String? // Nivel (opcional).
 
   type LocationType @default(STANDARD)
+  layoutManaged Boolean @default(false)
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())

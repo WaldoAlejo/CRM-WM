@@ -29,7 +29,7 @@ describe("CBM → costo real → mayorista → PVP", () => {
 
 describe("Formulario de importación", () => {
   const data = { reference: "CONT", arrivalDate: "2026-09-22", containerType: "40", containerCbm: 70,
-    lines: [{ variantId: "v1", sku: "AIR", label: null, productName: "Freidora", quantity: 204, unitCost: 18, volumeCbm: 4.68 }] };
+    lines: [{ locationId: "location-1", variantId: "v1", sku: "AIR", label: null, productName: "Freidora", quantity: 204, unitCost: 18, volumeCbm: 4.68 }] };
   it.each(["20", "40", "40HC", "LCL"])("permite volumen indicado para contenedor %s", (containerType) => {
     expect(createImportBatchFormSchema.safeParse({ ...data, containerType }).success).toBe(true);
   });
@@ -37,6 +37,9 @@ describe("Formulario de importación", () => {
     expect(createImportBatchFormSchema.safeParse({ ...data, containerCbm: 0 }).success).toBe(false);
     expect(createImportBatchFormSchema.safeParse({ ...data, containerCbm: 4 }).success).toBe(false);
     expect(createImportBatchFormSchema.safeParse({ ...data, lines: [{ ...data.lines[0], volumeCbm: 0 }] }).success).toBe(false);
+  });
+  it.each([undefined, null, "", "   "])("exige ubicación en cada línea: %s", locationId => {
+    expect(createImportBatchFormSchema.safeParse({ ...data, lines: [{ ...data.lines[0], locationId }] }).success).toBe(false);
   });
 });
 

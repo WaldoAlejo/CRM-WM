@@ -12,7 +12,7 @@ export const receiveLineSchema = z.object({
   quantity: z.coerce.number().int("Debe ser un entero").positive("La cantidad debe ser mayor a 0"),
   volumeCbm: z.coerce.number().positive("Ingresa los CBM totales de esta línea").max(999999).multipleOf(0.000001),
   unitCost: z.coerce.number().nonnegative("El costo unitario no puede ser negativo"),
-  locationId: optionalString(z.string().min(1)),
+  locationId: z.string({ error: "Selecciona la bodega y ubicación de destino" }).trim().min(1, "Selecciona la bodega y ubicación de destino"),
   notes: optionalString(z.string().max(500)),
 });
 

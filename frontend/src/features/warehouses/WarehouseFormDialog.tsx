@@ -1,10 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import type { Resolver } from "react-hook-form";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { applyApiErrorToForm } from "@/components/crud/applyApiErrorToForm";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +15,8 @@ import type { WarehouseWritePayload } from "./useWarehouseMutations";
 import { warehouseDefaultValues, warehouseFormSchema } from "./warehouses.schema";
 import type { WarehouseFormValues } from "./warehouses.schema";
 import type { Warehouse } from "./warehouses.types";
+import { WarehouseLayoutEditor } from "./WarehouseLayoutEditor";
+import { layoutCapacity, newWarehouseLayout } from "./warehouseLayout";
 
 interface WarehouseFormDialogProps {
   open: boolean;
@@ -36,6 +38,7 @@ function toFormValues(warehouse: Warehouse | null): WarehouseFormValues {
     phone: warehouse.phone ?? "",
     notes: warehouse.notes ?? "",
     managerId: warehouse.manager?.id ?? NO_MANAGER,
+    layout: warehouse.layout ?? undefined,
   };
 }
 
@@ -48,11 +51,12 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
     resolver: zodResolver(warehouseFormSchema) as Resolver<WarehouseFormValues>,
     defaultValues: warehouseDefaultValues,
   });
+  const layout = useWatch({ control: form.control, name: "layout" });
 
   useEffect(() => {
     if (!open) return;
     form.reset(toFormValues(warehouse));
-  }, [open, warehouse]);
+  }, [open, warehouse, form]);
 
   function handleSubmit(values: WarehouseFormValues) {
     const managerId = values.managerId === NO_MANAGER || values.managerId === "" ? null : values.managerId;
@@ -64,7 +68,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
       ? {
           name: values.name,
           address: values.address || null,
-          capacity: values.capacity ?? null,
+          capacity: values.layout ? layoutCapacity(values.layout) : values.capacity ?? null,
           phone: values.phone || null,
           notes: values.notes || null,
           managerId,
@@ -72,11 +76,12 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
       : {
           name: values.name,
           address: values.address || undefined,
-          capacity: values.capacity,
+          capacity: values.layout ? layoutCapacity(values.layout) : values.capacity,
           phone: values.phone || undefined,
           notes: values.notes || undefined,
           managerId: managerId ?? undefined,
         };
+    if (values.layout) payload.layout = values.layout;
 
     const action = isEdit
       ? updateMutation.mutateAsync({ id: warehouse.id, values: payload })
@@ -89,12 +94,15 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`max-h-[90vh] overflow-y-auto ${layout ? "max-w-[1180px]" : ""}`}>
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar bodega" : "Nueva bodega"}</DialogTitle>
+          <DialogDescription>Configura los datos de la bodega y diseña sus ubicaciones de almacenamiento.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4">
+          <form noValidate onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4">
+            <div className={layout ? "grid min-w-0 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]" : ""}>
+            <fieldset disabled={isPending} className="grid min-w-0 content-start gap-4">
             <FormField
               control={form.control}
               name="name"
@@ -131,7 +139,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                   <FormItem>
                     <FormLabel>Capacidad (posiciones/pallets)</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step={1} placeholder="Opcional" {...field} value={field.value ?? ""} />
+                      <Input type="number" min={0} step={1} placeholder="Opcional" {...field} readOnly={Boolean(layout)} value={layout ? layoutCapacity(layout) : field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -160,7 +168,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                   <FormLabel>Responsable de bodega</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value || NO_MANAGER}>
                     <FormControl>
-                      <SelectTrigger disabled={loadingManagers}>
+                      <SelectTrigger disabled={loadingManagers || isPending}>
                         <SelectValue placeholder="Sin responsable" />
                       </SelectTrigger>
                     </FormControl>
@@ -191,9 +199,18 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                 </FormItem>
               )}
             />
-
+            {layout ? <p className="text-xs text-muted-foreground">La capacidad se calcula con las posiciones y niveles del plano.</p> : <Button type="button" variant="outline" onClick={() => form.setValue("layout", newWarehouseLayout(), { shouldDirty: true })}>Diseñar ubicaciones en un plano</Button>}
+            </fieldset>
+            {layout ? <div className="min-w-0">
+              <WarehouseLayoutEditor value={layout} disabled={isPending} onChange={value => {
+                form.setValue("layout", value, { shouldDirty: true, shouldValidate: true });
+              }} />
+              <LayoutErrors error={form.formState.errors.layout} />
+              {!warehouse?.layout && layout.positions.length === 0 ? <Button type="button" variant="ghost" disabled={isPending} onClick={() => form.setValue("layout", undefined, { shouldDirty: true, shouldValidate: true })}>Continuar sin plano</Button> : null}
+            </div> : null}
+            </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" disabled={isPending} onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isPending}>
@@ -205,4 +222,15 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
       </DialogContent>
     </Dialog>
   );
+}
+
+function LayoutErrors({ error }: { error: unknown }) {
+  function messages(value: unknown): string[] {
+    if (!value || typeof value !== "object") return [];
+    const record = value as Record<string, unknown>;
+    if (typeof record.message === "string") return [record.message];
+    return Object.entries(record).filter(([key]) => key !== "ref").flatMap(([, child]) => messages(child));
+  }
+  const all = [...new Set(messages(error))];
+  return all.length ? <div role="alert" className="mt-2 text-sm text-destructive">{all.map(message => <p key={message}>{message}</p>)}</div> : null;
 }

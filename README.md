@@ -114,7 +114,7 @@ Los 4 siguen el mismo shape (`GET` paginado + detalle abierto a `ADMIN`/`OPERATO
 - `POST /api/import-batches` — crea un lote de importación. Admin u operador, pero `freightCost`/`customsCost`/`otherCosts` son admin-only (403 explícito para operador, mismo patrón que precios de variante).
 - `GET /api/import-batches` — listado paginado, con `movementsCount` (cantidad de líneas de ingreso recibidas) y los 3 campos de costo ocultos (ausentes, no `null`) para operador.
 - `GET /api/import-batches/:id` — detalle con todos los `InventoryMovement` de tipo `INGRESO` vinculados; `unitCost` de cada uno oculto para operador.
-- `POST /api/import-batches/:id/receive` — registra el ingreso de una o más líneas (`{ variantId, quantity, unitCost, locationId?, notes? }`; `locationId` opcional = ubicación de destino, ver "Bodegas y Ubicaciones"). Todo o nada: si una sola línea referencia un `variantId` inexistente, no se aplica ninguna. `unitCost` sí lo puede cargar operador (es un hecho de la recepción física, no una decisión de precio de venta). Además calcula `landedCostPerUnit` por línea: prorrateo simple, por unidad y en partes iguales, de `freightCost + customsCost + otherCosts` del `ImportBatch` entre TODAS las unidades de ESTE mismo `/receive` (no de todo el historial del lote, si se recibe en varias tandas) — `0` si el lote no tiene ningún costo cargado, nunca `null`.
+- `POST /api/import-batches/:id/receive` — registra líneas `{ variantId, quantity, unitCost, volumeCbm, locationId, notes? }`. Cada línea exige una ubicación operativa activa dentro de una bodega activa; Cuarentena no es un destino válido. La recepción es atómica: si alguna línea es inválida, no se modifica el inventario. Los gastos se distribuyen por CBM contratado del lote; ver `IMPORT_COSTING.md`.
   - **Idempotencia opcional**: header `Idempotency-Key`. Si se repite la misma key con el mismo body (comparado por un hash sha256 determinístico, sin importar el orden de las líneas), devuelve la respuesta ya guardada sin tocar el stock de nuevo. Si se repite con un body distinto, `422`. Si se repite apuntando a otro lote, `409`. Sin el header, el endpoint funciona igual, sin protección contra reintentos.
 - `POST /api/inventory/adjustments` — ajuste manual (**solo ADMIN**: puede ocultar mermas/errores, por eso el rol más restrictivo). `reason` obligatorio, `quantity` con signo. Rechaza con 400 si el resultado dejaría el stock en negativo.
 - `GET /api/inventory/movements` — historial paginado, filtros `variantId`/`type`/`importBatchId`/`dateFrom`/`dateTo`. `unitCost` oculto para operador.
@@ -303,7 +303,21 @@ páginas con acciones propias (Usuarios, Importaciones) usan `DataTable` con
 hooks a medida. Los widgets restringidos por rol **no se renderizan** para
 OPERATOR (no se muestra "$0" ni un placeholder).
 
-### Tests end-to-end
+### Plano de ubicaciones de bodega
+
+En Nueva bodega o Editar bodega, **Diseñar ubicaciones en un plano** permite
+definir largo, ancho y altura en metros, el tamaño de cada posición y los
+niveles de racks. Se marcan posiciones con clic o arrastre y se dejan libres
+los pasillos. La cuadrícula admite hasta 20 filas y 20 columnas.
+
+Guardar crea ubicaciones reales `P-01-01` en piso o `R-01-01-N01` por nivel
+de rack, disponibles en los selectores de bodega/ubicación. La capacidad se
+calcula desde el plano. La operación es transaccional; conserva Cuarentena,
+ubicaciones manuales y los identificadores de posiciones existentes. No
+permite quitar posiciones con movimientos o documentos asociados, ni cambiar
+sus dimensiones de base. Las ubicaciones del plano se editan desde la bodega.
+
+### Ejecución de tests end-to-end
 
 Los tests del frontend corren contra el **backend real** (sin mocks) y contra
 la base de **desarrollo**, no una aislada:

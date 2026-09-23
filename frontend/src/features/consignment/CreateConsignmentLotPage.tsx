@@ -1,3 +1,4 @@
+import { WarehouseLocationSelect } from "@/features/locations/WarehouseLocationSelect";
 import { ArrowLeftIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -12,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { VariantSearchAdd } from "@/features/dispatchOrders/components/VariantSearchAdd";
 import { useWholesalerOptions } from "@/features/dispatchOrders/useWholesalerOptions";
 import type { SearchResult } from "@/features/search/search.types";
-import { useWarehouseOptions } from "@/features/warehouses/useWarehouseOptions";
 import type { Wholesaler } from "@/features/wholesalers/wholesalers.types";
 import { ApiError } from "@/lib/api";
 import { ECUADOR_PROVINCES } from "@/lib/ecuadorProvinces";
@@ -35,7 +35,6 @@ const NO_LOCATION = "__none__";
 export function CreateConsignmentLotPage() {
   const navigate = useNavigate();
   const createMutation = useCreateConsignmentLot();
-  const { data: warehouses } = useWarehouseOptions();
 
   const [wholesalerQuery, setWholesalerQuery] = useState("");
   const [wholesaler, setWholesaler] = useState<Wholesaler | null>(null);
@@ -47,9 +46,6 @@ export function CreateConsignmentLotPage() {
   const [error, setError] = useState<string | null>(null);
 
   const wholesalers = useWholesalerOptions(wholesaler ? "" : wholesalerQuery);
-  const locationOptions = (warehouses ?? []).flatMap((w) =>
-    w.locations.map((l) => ({ id: l.id, label: `${w.name} · ${l.code}` }))
-  );
 
   function handleAddLine(result: SearchResult) {
     setLines((prev) => [
@@ -205,7 +201,7 @@ export function CreateConsignmentLotPage() {
                   <TableHead>Producto</TableHead>
                   <TableHead className="w-28">Cantidad</TableHead>
                   <TableHead className="w-36">Precio unitario</TableHead>
-                  <TableHead>Ubicación de origen</TableHead>
+                  <TableHead>Bodega y ubicación de origen</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -245,19 +241,7 @@ export function CreateConsignmentLotPage() {
                         />
                       </TableCell>
                       <TableCell>
-                        <Select value={line.locationId} onValueChange={(v) => patchLine(index, { locationId: v })}>
-                          <SelectTrigger aria-label={`Ubicación ${line.sku}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={NO_LOCATION}>Sin ubicación</SelectItem>
-                            {locationOptions.map((loc) => (
-                              <SelectItem key={loc.id} value={loc.id}>
-                                {loc.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <WarehouseLocationSelect value={line.locationId === NO_LOCATION ? undefined : line.locationId} onChange={v => patchLine(index, { locationId: v ?? NO_LOCATION })} label={line.sku} disabled={createMutation.isPending} />
                       </TableCell>
                       <TableCell>
                         <Button

@@ -1,12 +1,11 @@
+import { WarehouseLocationSelect } from "@/features/locations/WarehouseLocationSelect";
 import { Trash2Icon } from "lucide-react";
 import type { ArrayPath, Control, FieldArrayWithId, FieldErrors, FieldValues, Path } from "react-hook-form";
 import { useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useLocationOptions } from "@/features/locations/useLocationOptions";
 import type { ReceiveLineFormValues } from "../importBatches.schema";
 import { landedUnitCost, volumeCostPerUnit } from "../landedCost";
 
@@ -37,7 +36,6 @@ export function ReceiveLinesTable<T extends FormWithLines>({
   disabled,
 }: ReceiveLinesTableProps<T>) {
   const lines = (useWatch({ control, name: "lines" as Path<T> }) as ReceiveLineFormValues[] | undefined) ?? [];
-  const { options: locationOptions } = useLocationOptions();
 
   const arrayLevelError =
     (errors.lines as { root?: { message?: string }; message?: string } | undefined)?.root?.message ??
@@ -64,7 +62,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
             <TableHead className="w-32">Costo unitario en origen (USD)</TableHead>
             <TableHead>CBM totales de la línea</TableHead>
             {showLanded ? <><TableHead>Gastos de la línea (USD)</TableHead><TableHead className="w-32">Costo puesto / unidad (USD)</TableHead></> : null}
-            <TableHead className="w-48">Ubicación</TableHead>
+            <TableHead className="w-48">Bodega y ubicación</TableHead>
             <TableHead className="w-12" />
           </TableRow>
         </TableHeader>
@@ -121,25 +119,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
                     name={`lines.${index}.locationId` as Path<T>}
                     render={({ field: f }) => (
                       <FormItem>
-                        <Select
-                          value={(f.value as string | undefined) ?? "none"}
-                          onValueChange={(value) => f.onChange(value === "none" ? undefined : value)}
-                          disabled={disabled}
-                        >
-                          <FormControl>
-                            <SelectTrigger aria-label={`Ubicación ${line?.sku}`}>
-                              <SelectValue placeholder="Sin especificar" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">Sin especificar</SelectItem>
-                            {locationOptions.map((loc) => (
-                              <SelectItem key={loc.id} value={loc.id}>
-                                {loc.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <WarehouseLocationSelect value={f.value as string | undefined} onChange={id => f.onChange(id ?? "")} required label={line?.sku ?? "producto"} disabled={disabled} />
                         <FormMessage />
                       </FormItem>
                     )}

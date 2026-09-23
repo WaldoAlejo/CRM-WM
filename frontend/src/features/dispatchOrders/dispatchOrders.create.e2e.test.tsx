@@ -131,8 +131,10 @@ describe("Crear orden de despacho — formulario real, contra el backend real", 
     const batch = await apiFetch<{ id: string }>("/import-batches", {
       method: "POST", body: JSON.stringify({ reference: "E2E-COST-" + VARIANT_SKU, arrivalDate: new Date().toISOString(), containerType: "LCL", containerCbm: 1 }),
     });
+    const warehouse = await apiFetch<{ id: string }>("/warehouses", { method: "POST", body: JSON.stringify({ name: `E2E Recepción ${variant.id}` }) });
+    const location = await apiFetch<{ id: string }>(`/warehouses/${warehouse.id}/locations`, { method: "POST", body: JSON.stringify({ code: "Recepción" }) });
     await apiFetch(`/import-batches/${batch.id}/receive`, {
-      method: "POST", body: JSON.stringify({ lines: [{ variantId: variant.id, quantity: 50, unitCost: 10, volumeCbm: 1 }] }),
+      method: "POST", body: JSON.stringify({ lines: [{ locationId: location.id, variantId: variant.id, quantity: 50, unitCost: 10, volumeCbm: 1 }] }),
     });
 
     const customer = await apiFetch<{ id: string }>("/final-customers", {

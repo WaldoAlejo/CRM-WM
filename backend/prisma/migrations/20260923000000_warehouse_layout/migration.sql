@@ -1,0 +1,2 @@
+ALTER TABLE "Warehouse" ADD COLUMN "layout" JSONB;
+ALTER TABLE "Location" ADD COLUMN "layoutManaged" BOOLEAN NOT NULL DEFAULT false;

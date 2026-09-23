@@ -48,7 +48,8 @@ export async function createLocation(warehouseId: string, data: LocationInput) {
 }
 
 export async function updateLocation(id: string, data: LocationInput) {
-  await getLocationOrThrow(id);
+  const location = await getLocationOrThrow(id);
+  if (location.layoutManaged) throw conflict("Esta ubicación pertenece al plano. Modifícala desde Editar bodega.");
   try {
     return await prisma.location.update({ where: { id }, data });
   } catch (err) {
@@ -72,6 +73,7 @@ export async function updateLocation(id: string, data: LocationInput) {
 //    camino que dependen de ella.
 export async function deactivateLocation(id: string) {
   const location = await getLocationOrThrow(id);
+  if (location.layoutManaged) throw conflict("Esta ubicación pertenece al plano. Quítala desde Editar bodega.");
 
   const [stockAgg, pendingItemCount] = await Promise.all([
     prisma.inventoryMovement.aggregate({

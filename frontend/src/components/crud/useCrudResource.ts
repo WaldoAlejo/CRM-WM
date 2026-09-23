@@ -28,6 +28,9 @@ export function useCrudResource<TItem extends { id: string }, TFormValues extend
 
   function invalidateList() {
     queryClient.invalidateQueries({ queryKey: [config.resourceKey, "list"] });
+    if (config.resourceKey === "warehouses" || config.resourceKey.startsWith("locations-")) {
+      queryClient.invalidateQueries({ queryKey: ["warehouses"] });
+    }
   }
 
   const createMutation = useMutation({

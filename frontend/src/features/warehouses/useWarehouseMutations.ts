@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, apiFetch } from "@/lib/api";
 import type { Warehouse } from "./warehouses.types";
+import type { WarehouseLayout } from "./warehouseLayout";
 
 // Payload real de la API (backend/src/modules/warehouses/warehouses.schemas.ts):
 // distinto del tipo de RHF (WarehouseFormValues, todo strings/sentinels de
@@ -14,6 +15,7 @@ export interface WarehouseWritePayload {
   phone?: string | null;
   notes?: string | null;
   managerId?: string | null;
+  layout?: WarehouseLayout;
 }
 
 export function useWarehouseMutations() {
@@ -23,6 +25,7 @@ export function useWarehouseMutations() {
   // como cualquier detalle cacheado (["warehouses", id]).
   function invalidateWarehouses() {
     queryClient.invalidateQueries({ queryKey: ["warehouses"] });
+    queryClient.invalidateQueries({ predicate: query => typeof query.queryKey[0] === "string" && (query.queryKey[0] === "locations" || query.queryKey[0].startsWith("locations-")) });
   }
 
   const createMutation = useMutation({

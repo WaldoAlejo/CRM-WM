@@ -2,7 +2,7 @@
 // (con vista previa de prorrateo), verificar el stock por ubicación, recibir
 // una segunda tanda sobre el mismo lote, y la vista de OPERATOR (sin costos).
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { fetch as undiciFetch } from "undici";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -81,6 +81,9 @@ async function addLine(quantity: string, unitCost: string) {
   fireEvent.change(await screen.findByLabelText(`Cantidad ${VARIANT_SKU}`), { target: { value: quantity } });
   fireEvent.change(screen.getByLabelText(`CBM totales ${VARIANT_SKU}`), { target: { value: String(Number(quantity) / 10) } });
   fireEvent.change(screen.getByLabelText(`Costo unitario ${VARIANT_SKU}`), { target: { value: unitCost } });
+  await waitFor(() => expect(screen.getByRole("combobox", { name: `Bodega ${VARIANT_SKU}` })).toBeEnabled());
+    fireEvent.click(screen.getByRole("combobox", { name: `Bodega ${VARIANT_SKU}` }));
+  fireEvent.click(await findLastByTextEventually(WAREHOUSE_NAME));
   fireEvent.click(screen.getByRole("combobox", { name: `Ubicación ${VARIANT_SKU}` }));
   fireEvent.click(await findLastByTextEventually(LOCATION_LABEL));
 }

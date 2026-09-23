@@ -39,7 +39,6 @@ function toFormValues(variant: Variant | null, retailPriceOverride?: number): Va
     attributePairs: attributesToPairs(variant.attributes),
     sku: variant.sku,
     barcode: variant.barcode ?? "",
-    warehouseLocation: variant.warehouseLocation ?? "",
     minStock: variant.minStock ?? undefined,
     weightKg: variant.weightKg ? Number(variant.weightKg) : undefined,
     dimensionsCm: variant.dimensionsCm ?? "",
@@ -86,7 +85,6 @@ export function VariantFormDialog({
           attributes,
           sku: values.sku || undefined, // sku nunca se "limpia", solo se cambia u omite
           barcode: values.barcode || null,
-          warehouseLocation: values.warehouseLocation || null,
           minStock: values.minStock ?? null,
           weightKg: values.weightKg ?? null,
           dimensionsCm: values.dimensionsCm || null,
@@ -97,7 +95,6 @@ export function VariantFormDialog({
           attributes,
           sku: values.sku || undefined,
           barcode: values.barcode || undefined,
-          warehouseLocation: values.warehouseLocation || undefined,
           minStock: values.minStock,
           weightKg: values.weightKg,
           dimensionsCm: values.dimensionsCm || undefined,
@@ -146,26 +143,13 @@ export function VariantFormDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4">
               <FormField
                 control={form.control}
                 name="barcode"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Código de barras</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Opcional" {...field} value={field.value ?? ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="warehouseLocation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ubicación en bodega</FormLabel>
                     <FormControl>
                       <Input placeholder="Opcional" {...field} value={field.value ?? ""} />
                     </FormControl>
