@@ -175,6 +175,7 @@ export function spatialMetrics(layout: SpatialLayout) {
   const usableAreaM2 = Math.max(0, totalAreaM2 - excludedAreaM2);
   return { totalAreaM2, excludedAreaM2, usableAreaM2, reservedAreaM2, storageAreaM2,
     freeAreaM2: Math.max(0, usableAreaM2 - reservedAreaM2 - storageAreaM2),
+    capacityCbm: storage.reduce((sum, e) => sum + e.slots.length * e.palletWidthM * e.palletDepthM * e.levels * e.levelHeightM, 0),
     palletCapacity: storage.reduce((sum, e) => sum + e.slots.length * e.levels, 0), locationCount: spatialLocationCount(layout) };
 }
 export function validateSpatialLayout(layout: SpatialLayout): string[] {
@@ -239,4 +240,23 @@ export function locationFingerprints(layout: LegacyLayout | SpatialLayout): Map<
     }
   }
   return result;
+}
+
+export function layoutVolumeCbm(layout: LegacyLayout | SpatialLayout): number {
+  if (isSpatialLayout(layout)) return spatialMetrics(layout).capacityCbm;
+  return layout.positions.length * layout.cellLengthM * layout.cellWidthM * (layout.hasRacks ? layout.rackLevels * layout.levelHeightM : Math.min(layout.levelHeightM, layout.heightM));
+}
+
+/** Geometric capacity for one generated location, excluding circulation gaps. */
+export function locationStorageSpace(layout: LegacyLayout | SpatialLayout, code: string): { areaM2: number; heightM: number } | null {
+  if (!isSpatialLayout(layout)) {
+    const converted = toSpatialLayout(layout);
+    return locationStorageSpace(converted, code);
+  }
+  for (const element of layout.elements) {
+    if (element.type !== 'STORAGE') continue;
+    if (!spatialLocations({ ...layout, elements: [element] }).some(l => l.code === code)) continue;
+    return { areaM2: element.palletWidthM * element.palletDepthM * (element.mode === 'RACK' ? 1 : element.slots.length), heightM: element.levelHeightM };
+  }
+  return null;
 }

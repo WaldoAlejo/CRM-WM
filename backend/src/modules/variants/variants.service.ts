@@ -26,6 +26,7 @@ interface CreateVariantInput {
   warehouseLocation?: string;
   minStock?: number;
   weightKg?: number;
+  maxStackUnits?: number;
   dimensionsCm?: string;
   costPriceUSD?: number;
   wholesalePrice?: number;
@@ -69,6 +70,7 @@ interface UpdateVariantInput {
   warehouseLocation?: string | null;
   minStock?: number | null;
   weightKg?: number | null;
+  maxStackUnits?: number;
   dimensionsCm?: string | null;
   costPriceUSD?: number | null;
   wholesalePrice?: number | null;

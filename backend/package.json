@@ -14,6 +14,7 @@
     "seed": "ts-node prisma/seed.ts",
     "reminders:run": "ts-node src/jobs/runDueReminders.ts",
     "test": "vitest run",
+    "test:unit": "vitest run --config vitest.unit.config.mts",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "migrate:test": "dotenv -e .env.test -- prisma migrate deploy"
   },

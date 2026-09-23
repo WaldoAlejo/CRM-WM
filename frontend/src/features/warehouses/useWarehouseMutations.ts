@@ -12,6 +12,7 @@ import type { SpatialLayout } from "./warehouseSpatialCore";
 export interface WarehouseWritePayload {
   name?: string;
   address?: string | null;
+  capacityCbm?: number | null;
   capacity?: number | null;
   phone?: string | null;
   notes?: string | null;

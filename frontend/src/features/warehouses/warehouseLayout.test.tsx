@@ -94,15 +94,15 @@ describe("Guardar una bodega con plano", () => {
     expect(mutations.create).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText("Altura libre (m)"), { target: { value: "8" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
-    await waitFor(() => expect(mutations.create).toHaveBeenCalledWith(expect.objectContaining({ capacity: 10, layout: expect.objectContaining({ version: 2, heightM: 8, elements: [expect.objectContaining({ levels: 5, mode: "RACK", slots: [{ row: 0, column: 0 }, { row: 0, column: 1 }] })] }) })));
+    await waitFor(() => expect(mutations.create).toHaveBeenCalledWith(expect.objectContaining({ capacityCbm: 18, layout: expect.objectContaining({ version: 2, heightM: 8, elements: [expect.objectContaining({ levels: 5, mode: "RACK", slots: [{ row: 0, column: 0 }, { row: 0, column: 1 }] })] }) })));
   });
   it("mantiene el formulario sin plano y su capacidad manual", async () => {
     render(<WarehouseFormDialog open onOpenChange={vi.fn()} warehouse={null} />);
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Bodega nueva" } });
     fireEvent.click(screen.getByRole("button", { name: "Continuar sin plano" }));
-    fireEvent.change(screen.getByLabelText("Capacidad (posiciones/pallets)"), { target: { value: "17" } });
+    fireEvent.change(screen.getByLabelText("Capacidad útil (m³)"), { target: { value: "17" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
-    await waitFor(() => expect(mutations.create).toHaveBeenCalledWith(expect.objectContaining({ name: "Bodega nueva", capacity: 17 })));
+    await waitFor(() => expect(mutations.create).toHaveBeenCalledWith(expect.objectContaining({ name: "Bodega nueva", capacityCbm: 17 })));
     expect(mutations.create.mock.calls[0][0]).not.toHaveProperty("layout");
   });
 

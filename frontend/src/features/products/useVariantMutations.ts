@@ -10,6 +10,7 @@ interface VariantWritePayload {
   warehouseLocation?: string | null;
   minStock?: number | null;
   weightKg?: number | null;
+  maxStackUnits?: number;
   dimensionsCm?: string | null;
   costPriceUSD?: number | null;
   wholesalePrice?: number | null;

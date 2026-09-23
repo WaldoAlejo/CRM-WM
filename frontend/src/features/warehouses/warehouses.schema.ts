@@ -7,6 +7,7 @@ import { spatialLayoutSchema } from "./warehouseSpatial.schemas";
 export const warehouseFormSchema = z.object({
   name: z.string().min(1, "El nombre es obligatorio").max(200),
   address: optionalString(z.string().max(500)),
+  capacityCbm: optionalNumber(z.number().nonnegative().max(99999999)),
   capacity: optionalNumber(z.number().int().nonnegative("No puede ser negativo")),
   phone: optionalString(z.string().max(30)),
   notes: optionalString(z.string().max(2000)),

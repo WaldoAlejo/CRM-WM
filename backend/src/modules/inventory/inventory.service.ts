@@ -3,6 +3,8 @@ import { applyMovement } from "../../lib/inventoryMovements";
 import { prisma } from "../../lib/prisma";
 import { notFound } from "../../utils/httpError";
 import { serializeMovementForRole } from "./inventory.movementSerializer";
+import { storageEstimate } from '../../lib/storageVolume';
+import { locationStorageSpace, type LegacyLayout, type SpatialLayout } from '../warehouses/warehouseSpatialCore';
 
 interface CreateAdjustmentInput {
   variantId: string;
@@ -259,11 +261,11 @@ export async function getStockByLocation(params: StockByLocationParams) {
   const [locations, variants] = await Promise.all([
     prisma.location.findMany({
       where: { id: { in: locIds } },
-      include: { warehouse: { select: { id: true, name: true } } },
+      include: { warehouse: { select: { id: true, name: true, layout: true } } },
     }),
     prisma.productVariant.findMany({
       where: { id: { in: varIds } },
-      select: { id: true, sku: true, label: true, product: { select: { id: true, sku: true, name: true } } },
+      select: { id: true, sku: true, label: true, dimensionsCm: true, maxStackUnits: true, product: { select: { id: true, sku: true, name: true } } },
     }),
   ]);
   const locationById = new Map(locations.map((l) => [l.id, l]));
@@ -272,6 +274,8 @@ export async function getStockByLocation(params: StockByLocationParams) {
   const data = pageEntries.map((e) => {
     const location = locationById.get(e.locationId);
     const variant = variantById.get(e.variantId);
+    const space = location?.warehouse.layout ? locationStorageSpace(location.warehouse.layout as unknown as LegacyLayout | SpatialLayout, location.code) : null;
+    const estimate = storageEstimate(variant?.dimensionsCm, e.netStock, variant?.maxStackUnits ?? 1, space?.heightM);
     return {
       locationId: e.locationId,
       locationCode: location?.code ?? null,
@@ -282,6 +286,9 @@ export async function getStockByLocation(params: StockByLocationParams) {
       label: variant?.label ?? null,
       product: variant?.product ?? null,
       netStock: e.netStock,
+      volumeCbm: estimate?.totalCbm ?? null,
+      estimatedFloorAreaM2: estimate?.floorAreaM2 ?? null,
+      stackLayers: estimate?.layers ?? null,
     };
   });
 

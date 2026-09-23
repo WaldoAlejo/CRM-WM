@@ -25,6 +25,9 @@ const columns: CrudColumn<StockByLocationRow>[] = [
     header: "Stock",
     cell: (item) => <span className="font-medium">{item.netStock}</span>,
   },
+  { header: 'Volumen (m³)', cell: item => item.volumeCbm?.toFixed(6) ?? 'Sin dimensiones' },
+  { header: 'Unidades por pila', cell: item => item.stackLayers ?? '—' },
+  { header: 'Superficie estimada (m²)', cell: item => item.estimatedFloorAreaM2?.toFixed(3) ?? '—' },
 ];
 
 // Stock actual por ubicación, agregado en vivo desde el ledger de

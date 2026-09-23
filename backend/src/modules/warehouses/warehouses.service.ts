@@ -1,3 +1,4 @@
+import { layoutVolumeCbm } from "./warehouseSpatialCore";
 import { LocationType, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { WAREHOUSE_MANAGER_ROLES } from "../../lib/roles";
@@ -35,7 +36,7 @@ async function assertValidManager(managerId: string | null | undefined) {
 }
 
 export async function listWarehouses() {
-  return prisma.warehouse.findMany({
+  const warehouses = await prisma.warehouse.findMany({
     where: { isActive: true },
     orderBy: { name: "asc" },
     include: {
@@ -43,6 +44,7 @@ export async function listWarehouses() {
       manager: { select: MANAGER_SELECT },
     },
   });
+  return warehouses.map(w => ({ ...w, capacityCbm: w.layout ? layoutVolumeCbm(w.layout as WarehouseLayout) : w.capacityCbm }));
 }
 
 export async function getWarehouseById(id: string) {
@@ -54,10 +56,11 @@ export async function getWarehouseById(id: string) {
     },
   });
   if (!warehouse) throw notFound("Bodega no encontrada");
-  return warehouse;
+  return { ...warehouse, capacityCbm: warehouse.layout ? layoutVolumeCbm(warehouse.layout as WarehouseLayout) : warehouse.capacityCbm };
 }
 
 interface WarehouseInput {
+  capacityCbm?: number | null;
   layout?: WarehouseLayout;
   name?: string;
   address?: string | null;
@@ -78,6 +81,7 @@ export async function createWarehouse(data: WarehouseInput) {
       data: {
         name: data.name!,
         address: data.address,
+        capacityCbm: data.layout ? layoutVolumeCbm(data.layout) : data.capacityCbm,
         capacity: data.layout ? layoutCapacity(data.layout) : data.capacity,
         layout: data.layout,
         phone: data.phone,
@@ -105,7 +109,7 @@ export async function updateWarehouse(id: string, data: WarehouseInput) {
       const layout = data.layout ?? warehouse.layout as WarehouseLayout | null;
       return tx.warehouse.update({
         where: { id },
-        data: { ...data, ...(layout ? { capacity: layoutCapacity(layout) } : {}) },
+        data: { ...data, ...(layout ? { capacity: layoutCapacity(layout), capacityCbm: layoutVolumeCbm(layout) } : {}) },
         include: { locations: { where: { isActive: true, type: LocationType.STANDARD } }, manager: { select: MANAGER_SELECT } },
       });
     }, { timeout: 30000 });

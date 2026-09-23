@@ -13,6 +13,7 @@ export interface Warehouse {
   id: string;
   name: string;
   address: string | null;
+  capacityCbm?: number | string | null;
   capacity: number | null;
   phone: string | null;
   notes: string | null;

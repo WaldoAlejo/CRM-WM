@@ -28,7 +28,7 @@ export const warehousesConfig: CrudResourceConfig<Warehouse, WarehouseFormValues
   columns: [
     { header: "Nombre", cell: (item) => item.name },
     { header: "Dirección", cell: (item) => item.address ?? "—" },
-    { header: "Capacidad", cell: (item) => (item.capacity != null ? `${item.capacity} posiciones` : "—") },
+    { header: "Capacidad", cell: (item) => (item.capacityCbm != null ? `${Number(item.capacityCbm).toLocaleString("es-EC", { maximumFractionDigits: 3 })} m³` : "—") },
     { header: "Teléfono", cell: (item) => item.phone ?? "—" },
     {
       header: "Responsable",

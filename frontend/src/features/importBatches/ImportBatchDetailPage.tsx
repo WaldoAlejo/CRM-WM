@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { EditReceiptDialog } from "./components/EditReceiptDialog";
+import type { ImportBatchMovement } from "./importBatches.types";
 import { hasAdminAccess } from "@/lib/roles";
 import { ArrowLeftIcon } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
@@ -14,6 +17,7 @@ import { useImportBatch } from "./useImportBatches";
 export function ImportBatchDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
+  const [editing, setEditing] = useState<ImportBatchMovement | null>(null);
   const isAdmin = hasAdminAccess(role);
   const { data: batch, isLoading } = useImportBatch(id);
   const { labelById } = useLocationOptions();
@@ -100,13 +104,13 @@ export function ImportBatchDetailPage() {
                   <TableHead>Precio de venta</TableHead>
                 </>
               ) : null}
-              <TableHead>Fecha</TableHead>
+              <TableHead>Fecha</TableHead><TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {batch.movements.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 9 : 5} className="h-20 text-center text-muted-foreground">
+                <TableCell colSpan={isAdmin ? 10 : 6} className="h-20 text-center text-muted-foreground">
                   Este lote todavía no recibió mercadería.
                 </TableCell>
               </TableRow>
@@ -132,12 +136,14 @@ export function ImportBatchDetailPage() {
                     </>
                   ) : null}
                   <TableCell>{new Date(m.createdAt).toLocaleString("es-EC")}</TableCell>
+                  <TableCell><Button variant="outline" size="sm" onClick={() => setEditing(m)}>Editar ubicación y dimensiones</Button></TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </section>
+      {editing && <EditReceiptDialog batchId={batch.id} movement={editing} onClose={() => setEditing(null)} />}
 
 
     </div>

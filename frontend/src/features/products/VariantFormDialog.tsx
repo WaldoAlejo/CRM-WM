@@ -41,6 +41,7 @@ function toFormValues(variant: Variant | null, retailPriceOverride?: number): Va
     barcode: variant.barcode ?? "",
     minStock: variant.minStock ?? undefined,
     weightKg: variant.weightKg ? Number(variant.weightKg) : undefined,
+    maxStackUnits: variant.maxStackUnits ?? 1,
     dimensionsCm: variant.dimensionsCm ?? "",
     costPriceUSD: variant.costPriceUSD ? Number(variant.costPriceUSD) : undefined,
     wholesalePrice: variant.wholesalePrice ? Number(variant.wholesalePrice) : undefined,
@@ -87,6 +88,7 @@ export function VariantFormDialog({
           barcode: values.barcode || null,
           minStock: values.minStock ?? null,
           weightKg: values.weightKg ?? null,
+          maxStackUnits: values.maxStackUnits ?? 1,
           dimensionsCm: values.dimensionsCm || null,
           ...(retailPriceOverride !== undefined && { retailPrice: values.retailPrice }),
           ...(wholesalePriceOverride !== undefined && { wholesalePrice: values.wholesalePrice }),
@@ -97,6 +99,7 @@ export function VariantFormDialog({
           barcode: values.barcode || undefined,
           minStock: values.minStock,
           weightKg: values.weightKg,
+          maxStackUnits: values.maxStackUnits ?? 1,
           dimensionsCm: values.dimensionsCm || undefined,
           force: values.force,
         };
@@ -200,6 +203,8 @@ export function VariantFormDialog({
                 )}
               />
             </div>
+
+            <FormField control={form.control} name="maxStackUnits" render={({ field }) => <FormItem><FormLabel>Máximo de unidades por pila (incluye la base)</FormLabel><FormControl><Input type="number" min={1} max={1000} step={1} {...field} value={field.value ?? 1} /></FormControl><p className="text-xs text-muted-foreground">1 = no apilable. Dimensiones del empaque por unidad: largo × ancho × alto.</p><FormMessage /></FormItem>} />
 
             {canSeePricing ? (
               <section className="space-y-3 rounded-md border p-3">

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { layoutCapacity, layoutGrid, positionCode, warehouseLayoutSchema } from "./warehouseLayout";
 import type { WarehouseLayout } from "./warehouseLayout";
+import { layoutVolumeCbm } from './warehouseSpatialCore';
 
 interface Props {
   value: WarehouseLayout;
@@ -108,7 +109,7 @@ export function WarehouseLayoutEditor({ value, onChange, disabled }: Props) {
         <dl className="grid grid-cols-3 divide-x border-y py-3 text-center">
           <div><dt className="text-xs text-slate-600">Superficie</dt><dd className="text-lg font-semibold tabular-nums">{(value.lengthM * value.widthM).toLocaleString("es-EC", { maximumFractionDigits: 2 })} m²</dd></div>
           <div><dt className="text-xs text-slate-600">Posiciones marcadas</dt><dd className="text-lg font-semibold tabular-nums">{value.positions.length}</dd></div>
-          <div><dt className="text-xs text-slate-600">Ubicaciones del plano</dt><dd className="text-lg font-semibold tabular-nums" aria-label="Capacidad del plano">{layoutCapacity(value)}</dd></div>
+          <div><dt className="text-xs text-slate-600">Capacidad útil</dt><dd className="text-lg font-semibold tabular-nums">{layoutVolumeCbm(value).toFixed(3)} m³</dd><p className="text-xs text-slate-600" aria-label="Capacidad del plano">{layoutCapacity(value)} ubicaciones</p></div>
         </dl>
         <p className="text-xs leading-relaxed text-slate-600">Al guardar se crearán las ubicaciones {value.hasRacks ? "R-01-01-N01, R-01-01-N02… (una por nivel)" : "P-01-01, P-01-02…"}. Las ubicaciones manuales y Cuarentena se conservan. No se pueden quitar ubicaciones con movimientos o existencias.</p>
         <p className="text-xs font-medium text-teal-800">Vista previa. Los cambios se aplican al pulsar Guardar.</p>

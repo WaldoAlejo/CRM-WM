@@ -141,7 +141,7 @@ describe("Formulario de Bodegas — responsable, de punta a punta contra el back
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 8000 });
 
     const row = await findRow(WAREHOUSE_NAME);
-    expect(row.textContent).toContain("300 posiciones");
+    expect(row.textContent).toContain("300 m³");
     expect(row.textContent).toContain("0991112233");
     expect(row.textContent).toContain(MANAGER_NAME);
     expect(row.textContent).toContain("OPERATOR");

@@ -76,6 +76,7 @@ export interface Variant {
   attributes: Record<string, string>;
   label: string | null;
   weightKg: string | null;
+  maxStackUnits?: number;
   dimensionsCm: string | null;
   stock: number;
   minStock: number | null;

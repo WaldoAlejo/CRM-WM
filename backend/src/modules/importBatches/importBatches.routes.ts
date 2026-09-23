@@ -11,6 +11,8 @@ import {
   receiveStockController,
 } from "./importBatches.controller";
 
+import { updateReceipt, updateReceiptSchema } from "./updateReceipt";
+
 export const importBatchesRouter = Router();
 
 importBatchesRouter.use(requireAuth);
@@ -30,3 +32,7 @@ importBatchesRouter.post(
 // Recibir mercadería: admin y operador, SIN restricción de campo — unitCost
 // acá es un hecho operativo de la recepción física, no estrategia de venta.
 importBatchesRouter.post("/:id/receive", asyncHandler(receiveStockController));
+
+importBatchesRouter.patch("/:id/movements/:movementId", asyncHandler(async (req, res) => {
+  res.json(await updateReceipt(req.params.id, req.params.movementId, updateReceiptSchema.parse(req.body), req.user!.id, req.user!.role));
+}));

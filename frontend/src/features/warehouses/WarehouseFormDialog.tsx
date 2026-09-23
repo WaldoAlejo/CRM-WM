@@ -16,10 +16,10 @@ import { warehouseDefaultValues, warehouseFormSchema } from "./warehouses.schema
 import type { WarehouseFormValues } from "./warehouses.schema";
 import type { Warehouse } from "./warehouses.types";
 import { WarehouseLayoutEditor } from "./WarehouseLayoutEditor";
-import { layoutCapacity } from "./warehouseLayout";
+import { layoutVolumeCbm } from "./warehouseSpatialCore";
 import { isSpatialLayout, newSpatialLayout, toSpatialLayout } from "./warehouseSpatialCore";
 import { SpatialWarehouseEditor } from "./SpatialWarehouseEditor";
-const capacityOf = (layout: NonNullable<WarehouseFormValues["layout"]>) => isSpatialLayout(layout) ? layout.elements.reduce((total, element) => total + (element.type === "STORAGE" ? element.slots.length * element.levels : 0), 0) : layoutCapacity(layout);
+const capacityOf = layoutVolumeCbm;
 
 interface WarehouseFormDialogProps {
   open: boolean;
@@ -37,7 +37,7 @@ function toFormValues(warehouse: Warehouse | null): WarehouseFormValues {
   return {
     name: warehouse.name,
     address: warehouse.address ?? "",
-    capacity: warehouse.capacity ?? undefined,
+    capacityCbm: warehouse.capacityCbm != null ? Number(warehouse.capacityCbm) : undefined,
     phone: warehouse.phone ?? "",
     notes: warehouse.notes ?? "",
     managerId: warehouse.manager?.id ?? NO_MANAGER,
@@ -71,7 +71,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
       ? {
           name: values.name,
           address: values.address || null,
-          capacity: values.layout ? capacityOf(values.layout) : values.capacity ?? null,
+          capacityCbm: values.layout ? capacityOf(values.layout) : values.capacityCbm ?? null,
           phone: values.phone || null,
           notes: values.notes || null,
           managerId,
@@ -79,7 +79,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
       : {
           name: values.name,
           address: values.address || undefined,
-          capacity: values.layout ? capacityOf(values.layout) : values.capacity,
+          capacityCbm: values.layout ? capacityOf(values.layout) : values.capacityCbm,
           phone: values.phone || undefined,
           notes: values.notes || undefined,
           managerId: managerId ?? undefined,
@@ -137,12 +137,12 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="capacity"
+                name="capacityCbm"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Capacidad (posiciones/pallets)</FormLabel>
+                    <FormLabel>Capacidad útil (m³)</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step={1} placeholder="Opcional" {...field} readOnly={Boolean(layout)} value={layout ? capacityOf(layout) : field.value ?? ""} />
+                      <Input type="number" min={0} step="any" placeholder="Opcional" {...field} readOnly={Boolean(layout)} value={layout ? capacityOf(layout) : field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -202,7 +202,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                 </FormItem>
               )}
             />
-            {layout ? <p className="text-xs text-muted-foreground">La capacidad se calcula con las posiciones y niveles del plano.</p> : <Button type="button" variant="outline" onClick={() => form.setValue("layout", newSpatialLayout(), { shouldDirty: true })}>Diseñar ubicaciones en un plano</Button>}
+            {layout ? <p className="text-xs text-muted-foreground">Volumen útil = superficie de almacenamiento × altura disponible. El límite de apilamiento se configura por producto.</p> : <Button type="button" variant="outline" onClick={() => form.setValue("layout", newSpatialLayout(), { shouldDirty: true })}>Diseñar ubicaciones en un plano</Button>}
             </fieldset>
             {layout ? <div className="min-w-0">
               <>{isSpatialLayout(layout) ? <SpatialWarehouseEditor value={layout} disabled={isPending} onChange={value => form.setValue("layout", value, { shouldDirty: true, shouldValidate: true })} /> : <><Button type="button" variant="outline" className="mb-3" disabled={isPending} onClick={() => form.setValue("layout", toSpatialLayout(layout), { shouldDirty: true, shouldValidate: true })}>Editar como plano de espacios</Button><WarehouseLayoutEditor value={layout} disabled={isPending} onChange={value => {

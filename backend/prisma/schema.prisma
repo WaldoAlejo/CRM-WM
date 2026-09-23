@@ -122,6 +122,7 @@ model Warehouse {
   address String? // Dirección completa (texto libre).
   layout Json? // Plano de posiciones de piso/racks, en metros.
 
+  capacityCbm Decimal? @db.Decimal(14, 6) // Volumen útil; no convertir posiciones históricas.
   capacity Int? // Capacidad total en posiciones/pallets (unidad de negocio, no validada acá).
   phone    String? // Teléfono de contacto.
   notes    String? // Notas libres.
@@ -427,6 +428,7 @@ model ProductVariant {
   // mismo producto pueden pesar/medir distinto (ej: freidora 4L vs 6L). Sirve
   // para calcular CBM al cotizar o planear un contenedor nuevo.
   weightKg     Decimal? @db.Decimal(10, 3) // Kilos, con 3 decimales para artículos livianos.
+  maxStackUnits Int @default(1) // Incluye la base; 1 = no apilable.
   dimensionsCm String? // Ej: "20x15x10" (largo x ancho x alto en cm).
 
   // --- Stock ---

@@ -8,6 +8,9 @@ export interface StockByLocationRow {
   label: string | null;
   product: { id: string; sku: string; name: string } | null;
   netStock: number;
+  volumeCbm?: number | null;
+  estimatedFloorAreaM2?: number | null;
+  stackLayers?: number | null;
 }
 
 // Espejo de toStockSummaryRow en inventory.service.ts.
