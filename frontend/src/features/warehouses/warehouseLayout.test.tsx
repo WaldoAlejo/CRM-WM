@@ -83,28 +83,27 @@ describe("Diseñador de ubicaciones", () => {
 });
 
 describe("Guardar una bodega con plano", () => {
+  it("envía zonas con pallets agrupados y bloquea altura inválida", async () => {
+    render(<WarehouseFormDialog open onOpenChange={vi.fn()} warehouse={null} />);
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Bodega nueva" } });
+    fireEvent.click(screen.getByRole("button", { name: "Agregar al plano" }));
+    fireEvent.change(screen.getByLabelText("Organización"), { target: { value: "RACK" } });
+    fireEvent.change(screen.getByLabelText("Niveles"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(screen.getAllByRole("alert").length).toBeGreaterThan(0));
+    expect(mutations.create).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Altura libre (m)"), { target: { value: "8" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(mutations.create).toHaveBeenCalledWith(expect.objectContaining({ capacity: 10, layout: expect.objectContaining({ version: 2, heightM: 8, elements: [expect.objectContaining({ levels: 5, mode: "RACK", slots: [{ row: 0, column: 0 }, { row: 0, column: 1 }] })] }) })));
+  });
   it("mantiene el formulario sin plano y su capacidad manual", async () => {
     render(<WarehouseFormDialog open onOpenChange={vi.fn()} warehouse={null} />);
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Bodega nueva" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar sin plano" }));
     fireEvent.change(screen.getByLabelText("Capacidad (posiciones/pallets)"), { target: { value: "17" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
     await waitFor(() => expect(mutations.create).toHaveBeenCalledWith(expect.objectContaining({ name: "Bodega nueva", capacity: 17 })));
     expect(mutations.create.mock.calls[0][0]).not.toHaveProperty("layout");
-  });
-
-  it("envía dimensiones y posiciones, calcula capacidad y bloquea altura inválida", async () => {
-    render(<WarehouseFormDialog open onOpenChange={vi.fn()} warehouse={null} />);
-    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Bodega nueva" } });
-    fireEvent.click(screen.getByRole("button", { name: "Diseñar ubicaciones en un plano" }));
-    fireEvent.click(screen.getByRole("button", { name: "Posición P-01-01" }));
-    fireEvent.click(screen.getByLabelText("Esta bodega tiene racks"));
-    fireEvent.change(screen.getByLabelText("Niveles por rack"), { target: { value: "3" } });
-    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
-    await waitFor(() => expect(screen.getAllByText("Los niveles del rack superan la altura de la bodega.").length).toBeGreaterThan(0));
-    expect(mutations.create).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Altura (m)"), { target: { value: "6" } });
-    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
-    await waitFor(() => expect(mutations.create).toHaveBeenCalledWith(expect.objectContaining({ capacity: 3, layout: expect.objectContaining({ rackLevels: 3, heightM: 6, positions: [{ row: 0, column: 0 }] }) })));
   });
 
   it("reabre el plano guardado y muestra el error de ubicación utilizada sin cerrar", async () => {

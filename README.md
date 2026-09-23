@@ -303,19 +303,51 @@ páginas con acciones propias (Usuarios, Importaciones) usan `DataTable` con
 hooks a medida. Los widgets restringidos por rol **no se renderizan** para
 OPERATOR (no se muestra "$0" ni un placeholder).
 
-### Plano de ubicaciones de bodega
+### Plano de espacios y ubicaciones de bodega
 
-En Nueva bodega o Editar bodega, **Diseñar ubicaciones en un plano** permite
-definir largo, ancho y altura en metros, el tamaño de cada posición y los
-niveles de racks. Se marcan posiciones con clic o arrastre y se dejan libres
-los pasillos. La cuadrícula admite hasta 20 filas y 20 columnas.
+Nueva bodega incluye un plano editable; se puede continuar sin plano. En una
+bodega existente, **Diseñar ubicaciones en un plano** habilita el editor.
+El contorno puede dibujarse con vértices, editarse en metros o partir de una
+forma rectangular o en L. Admite diagonales, entrantes y áreas excluidas.
 
-Guardar crea ubicaciones reales `P-01-01` en piso o `R-01-01-N01` por nivel
-de rack, disponibles en los selectores de bodega/ubicación. La capacidad se
-calcula desde el plano. La operación es transaccional; conserva Cuarentena,
-ubicaciones manuales y los identificadores de posiciones existentes. No
-permite quitar posiciones con movimientos o documentos asociados, ni cambiar
-sus dimensiones de base. Las ubicaciones del plano se editan desde la bodega.
+Cada zona tiene nombre, posición, dimensiones y giro. Se pueden agregar
+paredes, puertas, ventanas, columnas, pasillos, escritorios, mesas de despacho
+y áreas de trabajo. El área de puerta representa el espacio reservado de
+circulación; puertas y ventanas pueden superponerse con paredes y las puertas
+pueden abrir sobre pasillos. Un área de trabajo puede contener escritorios,
+mesas y columnas sin duplicar la superficie reservada. Los demás elementos
+deben estar dentro del contorno y no superponerse. Las zonas de
+almacenamiento tienen su propio formato de pallet, separación y uso previsto:
+
+| Organización | Direcciones de inventario | Capacidad en pallets |
+| --- | --- | --- |
+| Piso | Una ubicación agrupa los pallets seleccionados | Posiciones seleccionadas |
+| Apilado | Una ubicación agrupada por nivel | Posiciones × niveles |
+| Rack | Una dirección por posición y nivel | Posiciones × niveles |
+
+Los formatos incluidos son EPAL 3 (1,20 × 1,00 m), EPAL Euro (1,20 × 0,80 m)
+y medidas personalizadas. Los racks admiten hasta 50 niveles, siempre sujetos
+a la altura disponible. El plano representa capacidad de diseño, no ocupación
+real ni certificación de resistencia. El uso previsto es una nota de planificación;
+la recepción de importación sigue siendo la que asigna inventario a una ubicación.
+
+Las métricas distinguen superficie total, área estructural/excluida, superficie
+útil, áreas reservadas, almacenamiento y superficie libre. No se suman dos veces
+las intersecciones permitidas entre paredes y aberturas. No calcula rutas de
+maniobra ni convierte automáticamente mercancía en pallets.
+
+Guardar es transaccional: genera las ubicaciones reales de almacenamiento y
+conserva Cuarentena, ubicaciones manuales e IDs existentes. No se pueden quitar,
+mover ni redefinir direcciones con movimientos o documentos asociados. Cambiar
+el nombre o uso previsto sí está permitido. Los planos anteriores continúan
+funcionando y pueden convertirse explícitamente con **Editar como plano de
+espacios**, manteniendo códigos y direcciones físicas. El formato espacial
+se guarda como `version: 2` en el JSON existente; no requiere nueva migración.
+
+Límites del editor: perímetro de 3–64 vértices, hasta 150 elementos, posiciones
+de pallet en 20 filas × 20 columnas por zona y hasta 5000 direcciones de
+inventario por plano. Frontend y backend usan copias idénticas del módulo puro
+`warehouseSpatialCore.ts`; cualquier cambio geométrico debe actualizar ambas.
 
 ### Ejecución de tests end-to-end
 

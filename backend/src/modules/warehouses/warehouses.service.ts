@@ -2,7 +2,7 @@ import { LocationType, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { WAREHOUSE_MANAGER_ROLES } from "../../lib/roles";
 import { badRequest, conflict, notFound } from "../../utils/httpError";
-import { layoutLocations, syncWarehouseLayout, WarehouseLayout } from "./warehouseLayout";
+import { layoutCapacity, layoutLocations, syncWarehouseLayout, WarehouseLayout } from "./warehouseLayout";
 
 // `Warehouse.name` es un @unique normal (no parcial): igual que Courier, este
 // modelo no tiene `deletedAt` — usa `isActive` como su equivalente de soft
@@ -78,7 +78,7 @@ export async function createWarehouse(data: WarehouseInput) {
       data: {
         name: data.name!,
         address: data.address,
-        capacity: data.layout ? layoutLocations(data.layout).length : data.capacity,
+        capacity: data.layout ? layoutCapacity(data.layout) : data.capacity,
         layout: data.layout,
         phone: data.phone,
         notes: data.notes,
@@ -105,7 +105,7 @@ export async function updateWarehouse(id: string, data: WarehouseInput) {
       const layout = data.layout ?? warehouse.layout as WarehouseLayout | null;
       return tx.warehouse.update({
         where: { id },
-        data: { ...data, ...(layout ? { capacity: layoutLocations(layout).length } : {}) },
+        data: { ...data, ...(layout ? { capacity: layoutCapacity(layout) } : {}) },
         include: { locations: { where: { isActive: true, type: LocationType.STANDARD } }, manager: { select: MANAGER_SELECT } },
       });
     }, { timeout: 30000 });

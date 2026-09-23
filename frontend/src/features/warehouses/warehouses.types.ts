@@ -1,5 +1,6 @@
 import type { Role } from "@/types/auth";
 import type { WarehouseLayout } from "./warehouseLayout";
+import type { SpatialLayout } from "./warehouseSpatialCore";
 import type { Location } from "../locations/locations.types";
 
 export interface WarehouseManagerRef {
@@ -19,5 +20,5 @@ export interface Warehouse {
   isActive: boolean;
   createdAt: string;
   locations: Location[];
-  layout?: WarehouseLayout | null;
+  layout?: WarehouseLayout | SpatialLayout | null;
 }

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { ApiError, apiFetch } from "@/lib/api";
 import type { Warehouse } from "./warehouses.types";
 import type { WarehouseLayout } from "./warehouseLayout";
+import type { SpatialLayout } from "./warehouseSpatialCore";
 
 // Payload real de la API (backend/src/modules/warehouses/warehouses.schemas.ts):
 // distinto del tipo de RHF (WarehouseFormValues, todo strings/sentinels de
@@ -15,7 +16,7 @@ export interface WarehouseWritePayload {
   phone?: string | null;
   notes?: string | null;
   managerId?: string | null;
-  layout?: WarehouseLayout;
+  layout?: WarehouseLayout | SpatialLayout;
 }
 
 export function useWarehouseMutations() {

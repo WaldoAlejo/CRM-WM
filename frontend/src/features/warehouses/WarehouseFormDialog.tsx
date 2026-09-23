@@ -16,7 +16,10 @@ import { warehouseDefaultValues, warehouseFormSchema } from "./warehouses.schema
 import type { WarehouseFormValues } from "./warehouses.schema";
 import type { Warehouse } from "./warehouses.types";
 import { WarehouseLayoutEditor } from "./WarehouseLayoutEditor";
-import { layoutCapacity, newWarehouseLayout } from "./warehouseLayout";
+import { layoutCapacity } from "./warehouseLayout";
+import { isSpatialLayout, newSpatialLayout, toSpatialLayout } from "./warehouseSpatialCore";
+import { SpatialWarehouseEditor } from "./SpatialWarehouseEditor";
+const capacityOf = (layout: NonNullable<WarehouseFormValues["layout"]>) => isSpatialLayout(layout) ? layout.elements.reduce((total, element) => total + (element.type === "STORAGE" ? element.slots.length * element.levels : 0), 0) : layoutCapacity(layout);
 
 interface WarehouseFormDialogProps {
   open: boolean;
@@ -30,7 +33,7 @@ interface WarehouseFormDialogProps {
 const NO_MANAGER = "__none__";
 
 function toFormValues(warehouse: Warehouse | null): WarehouseFormValues {
-  if (!warehouse) return warehouseDefaultValues;
+  if (!warehouse) return { ...warehouseDefaultValues, layout: newSpatialLayout() };
   return {
     name: warehouse.name,
     address: warehouse.address ?? "",
@@ -68,7 +71,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
       ? {
           name: values.name,
           address: values.address || null,
-          capacity: values.layout ? layoutCapacity(values.layout) : values.capacity ?? null,
+          capacity: values.layout ? capacityOf(values.layout) : values.capacity ?? null,
           phone: values.phone || null,
           notes: values.notes || null,
           managerId,
@@ -76,7 +79,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
       : {
           name: values.name,
           address: values.address || undefined,
-          capacity: values.layout ? layoutCapacity(values.layout) : values.capacity,
+          capacity: values.layout ? capacityOf(values.layout) : values.capacity,
           phone: values.phone || undefined,
           notes: values.notes || undefined,
           managerId: managerId ?? undefined,
@@ -94,14 +97,14 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-h-[90vh] overflow-y-auto ${layout ? "max-w-[1180px]" : ""}`}>
+      <DialogContent className={`max-h-[90vh] overflow-y-auto ${layout ? "max-w-[1500px] w-[96vw]" : ""}`}>
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar bodega" : "Nueva bodega"}</DialogTitle>
           <DialogDescription>Configura los datos de la bodega y diseña sus ubicaciones de almacenamiento.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form noValidate onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4">
-            <div className={layout ? "grid min-w-0 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]" : ""}>
+            <div className={layout ? "grid min-w-0 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]" : ""}>
             <fieldset disabled={isPending} className="grid min-w-0 content-start gap-4">
             <FormField
               control={form.control}
@@ -139,7 +142,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                   <FormItem>
                     <FormLabel>Capacidad (posiciones/pallets)</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step={1} placeholder="Opcional" {...field} readOnly={Boolean(layout)} value={layout ? layoutCapacity(layout) : field.value ?? ""} />
+                      <Input type="number" min={0} step={1} placeholder="Opcional" {...field} readOnly={Boolean(layout)} value={layout ? capacityOf(layout) : field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -199,17 +202,17 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                 </FormItem>
               )}
             />
-            {layout ? <p className="text-xs text-muted-foreground">La capacidad se calcula con las posiciones y niveles del plano.</p> : <Button type="button" variant="outline" onClick={() => form.setValue("layout", newWarehouseLayout(), { shouldDirty: true })}>Diseñar ubicaciones en un plano</Button>}
+            {layout ? <p className="text-xs text-muted-foreground">La capacidad se calcula con las posiciones y niveles del plano.</p> : <Button type="button" variant="outline" onClick={() => form.setValue("layout", newSpatialLayout(), { shouldDirty: true })}>Diseñar ubicaciones en un plano</Button>}
             </fieldset>
             {layout ? <div className="min-w-0">
-              <WarehouseLayoutEditor value={layout} disabled={isPending} onChange={value => {
+              <>{isSpatialLayout(layout) ? <SpatialWarehouseEditor value={layout} disabled={isPending} onChange={value => form.setValue("layout", value, { shouldDirty: true, shouldValidate: true })} /> : <><Button type="button" variant="outline" className="mb-3" disabled={isPending} onClick={() => form.setValue("layout", toSpatialLayout(layout), { shouldDirty: true, shouldValidate: true })}>Editar como plano de espacios</Button><WarehouseLayoutEditor value={layout} disabled={isPending} onChange={value => {
                 form.setValue("layout", value, { shouldDirty: true, shouldValidate: true });
-              }} />
+              }} /></>}</>
               <LayoutErrors error={form.formState.errors.layout} />
-              {!warehouse?.layout && layout.positions.length === 0 ? <Button type="button" variant="ghost" disabled={isPending} onClick={() => form.setValue("layout", undefined, { shouldDirty: true, shouldValidate: true })}>Continuar sin plano</Button> : null}
+              {!warehouse?.layout && (isSpatialLayout(layout) ? layout.elements.length === 0 : layout.positions.length === 0) ? <Button type="button" variant="ghost" disabled={isPending} onClick={() => form.setValue("layout", undefined, { shouldDirty: true, shouldValidate: true })}>Continuar sin plano</Button> : null}
             </div> : null}
             </div>
-            <DialogFooter>
+            <DialogFooter className="sticky bottom-0 z-10 border-t bg-background py-3">
               <Button type="button" variant="outline" disabled={isPending} onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>

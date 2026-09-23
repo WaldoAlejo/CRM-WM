@@ -129,6 +129,7 @@ describe("Formulario de Bodegas — responsable, de punta a punta contra el back
     const dialog = await screen.findByRole("dialog");
 
     fireEvent.change(within(dialog).getByLabelText(/^nombre$/i), { target: { value: WAREHOUSE_NAME } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Continuar sin plano" }));
     fireEvent.change(within(dialog).getByLabelText(/dirección/i), { target: { value: "Av. Siempre Viva 742" } });
     fireEvent.change(within(dialog).getByLabelText(/capacidad/i), { target: { value: "300" } });
     fireEvent.change(within(dialog).getByLabelText(/teléfono/i), { target: { value: "0991112233" } });
