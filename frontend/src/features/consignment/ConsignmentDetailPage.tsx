@@ -23,8 +23,8 @@ export function ConsignmentDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Link to="/consignment" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline">
-        <ArrowLeftIcon className="size-4" /> Consignación
+      <Link to="/dispatch-orders?view=consignment" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline">
+        <ArrowLeftIcon className="size-4" /> Despachos · Seguimiento de consignación
       </Link>
 
       <div className="flex items-start justify-between gap-4">

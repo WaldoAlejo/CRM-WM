@@ -11,7 +11,7 @@ const columns: CrudColumn<ConsignmentLotListItem>[] = [
   {
     header: "Lote",
     cell: (lot) => (
-      <Link to={`/consignment/${lot.id}`} className="font-medium hover:underline">
+      <Link to={`/dispatch-orders/consignment/${lot.id}`} className="font-medium hover:underline">
         {lot.code}
       </Link>
     ),
@@ -46,7 +46,7 @@ export function ConsignmentPage() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Consignación</h1>
+          <h1 className="text-2xl font-semibold">Seguimiento de consignación</h1>
           <p className="text-sm text-muted-foreground">
             {overdueOnly
               ? "Lotes con la revisión vencida: contacta al mayorista y registra qué pasó."
@@ -61,7 +61,7 @@ export function ConsignmentPage() {
       </div>
 
       {overdueOnly ? (
-        <Link to="/consignment" className="text-sm text-muted-foreground hover:underline">
+        <Link to="/dispatch-orders?view=consignment" className="text-sm text-muted-foreground hover:underline">
           Ver todos los lotes
         </Link>
       ) : null}

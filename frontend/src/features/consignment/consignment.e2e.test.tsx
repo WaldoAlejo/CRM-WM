@@ -407,7 +407,7 @@ describe("Consignación y Cuarentena — de punta a punta contra el backend real
     }
   }, 60000);
 
-  it("permisos: OPERATOR ve Cuarentena pero NO Consignación en el menú, y por URL directa es redirigido; ADMIN ve ambas", async () => {
+  it("permisos: OPERATOR ve Cuarentena pero NO Consignación en el menú, y por URL directa es redirigido; ADMIN accede al seguimiento desde Despachos", async () => {
     await signInAs("operator");
     const operatorMenu = renderSidebar();
     expect(await screen.findByText("Cuarentena")).toBeInTheDocument();
@@ -427,7 +427,8 @@ describe("Consignación y Cuarentena — de punta a punta contra el backend real
 
     await signInAs("admin");
     renderSidebar();
-    expect(await screen.findByText("Consignación")).toBeInTheDocument();
+    expect(await screen.findByText("Despachos")).toBeInTheDocument();
+    expect(screen.queryByText("Consignación")).not.toBeInTheDocument();
     expect(screen.getByText("Cuarentena")).toBeInTheDocument();
   }, 60000);
 });

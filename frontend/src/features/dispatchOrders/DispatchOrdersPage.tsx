@@ -1,6 +1,6 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { DataTable } from "@/components/crud/DataTable";
 import type { CrudColumn } from "@/components/crud/types";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,9 @@ import { PaymentStatusBadge } from "./components/PaymentStatusBadge";
 import type { DispatchOrderListItem } from "./dispatchOrders.types";
 import type { DispatchOrderFilters } from "./useDispatchOrders";
 import { useDispatchOrders } from "./useDispatchOrders";
+
+import { usePricingVisibility } from "@/hooks/usePricingVisibility";
+import { ConsignmentPage } from "@/features/consignment/ConsignmentPage";
 
 const ALL = "__all__"; // Radix Select no permite value="" en SelectItem; se traduce a "sin filtro" acá.
 
@@ -39,6 +42,23 @@ const columns: CrudColumn<DispatchOrderListItem>[] = [
 ];
 
 export function DispatchOrdersPage() {
+  const [searchParams] = useSearchParams();
+  const canManageConsignment = usePricingVisibility();
+  const showConsignment = canManageConsignment && searchParams.get("view") === "consignment";
+  return <div className="space-y-4">
+    {canManageConsignment ? <nav aria-label="Vistas de despachos" className="flex flex-wrap gap-2">
+      <Button asChild variant={showConsignment ? "outline" : "default"}>
+        <Link to="/dispatch-orders" aria-current={!showConsignment ? "page" : undefined}>Órdenes de despacho</Link>
+      </Button>
+      <Button asChild variant={showConsignment ? "default" : "outline"}>
+        <Link to="/dispatch-orders?view=consignment" aria-current={showConsignment ? "page" : undefined}>Seguimiento de consignación</Link>
+      </Button>
+    </nav> : null}
+    {showConsignment ? <ConsignmentPage /> : <DispatchOrdersList />}
+  </div>;
+}
+
+function DispatchOrdersList() {
   const [filters, setFilters] = useState<DispatchOrderFilters>({});
   const { page, setPage, query } = useDispatchOrders(filters);
 

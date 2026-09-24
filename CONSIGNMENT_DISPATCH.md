@@ -8,6 +8,8 @@ En **Nueva orden de despacho**, ADMIN/CEO puede seleccionar **Consignación** pa
 - La entrega no genera deuda, no admite pagos y no cuenta en ventas ni rentabilidad. Su PDF muestra valor referencial.
 - La pantalla Consignación mantiene revisiones, liquidaciones parciales y devoluciones a cuarentena. Cada liquidación conserva el cargo a crédito existente y no vuelve a descontar stock.
 
+El menú lateral tiene una sola entrada: **Despachos**. Dentro de ella, **Seguimiento de consignación** permite revisar y liquidar los lotes. Los enlaces antiguos a `/consignment` y a sus detalles redirigen a Despachos y conservan el filtro de revisiones vencidas.
+
 Los lotes anteriores permanecen disponibles con su historial y sin despacho de origen. No se reconstruyen entregas históricas ni se modifica su inventario. El enlace antiguo `/consignment/new` redirige al formulario de despachos. El endpoint de creación directa de lotes se conserva por compatibilidad con integraciones anteriores.
 
 ## Publicación

@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { BrandsPage } from "@/features/brands/BrandsPage";
 import { CategoriesPage } from "@/features/categories/CategoriesPage";
 import { ConsignmentDetailPage } from "@/features/consignment/ConsignmentDetailPage";
-import { ConsignmentPage } from "@/features/consignment/ConsignmentPage";
+import { ConsignmentRedirect } from "@/features/consignment/ConsignmentRedirect";
 import { CreateConsignmentLotPage } from "@/features/consignment/CreateConsignmentLotPage";
 import { CouriersPage } from "@/features/couriers/CouriersPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
@@ -68,9 +68,10 @@ export const router = createBrowserRouter([
             element: <RequireRole roles={["ADMIN"]} />,
             children: [
               { path: "accounts-receivable", element: <AccountsReceivablePage /> },
-              { path: "consignment", element: <ConsignmentPage /> },
+              { path: "consignment", element: <ConsignmentRedirect /> },
               { path: "consignment/new", element: <CreateConsignmentLotPage /> },
-              { path: "consignment/:id", element: <ConsignmentDetailPage /> },
+              { path: "consignment/:id", element: <ConsignmentRedirect /> },
+              { path: "dispatch-orders/consignment/:id", element: <ConsignmentDetailPage /> },
               { path: "insurance-claims", element: <InsuranceClaimsPage /> },
               { path: "reports", element: <ProfitabilityDashboardPage /> },
               { path: "reports/profitability", element: <ProfitabilityDetailPage /> },

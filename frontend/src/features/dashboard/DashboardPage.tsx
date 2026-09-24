@@ -65,7 +65,7 @@ export function DashboardPage() {
             label="Consignación: revisión vencida"
             value={data.consignment.overdueReviewCount}
             subvalue="Lotes sin liquidar ni extender"
-            to="/consignment?overdue=true"
+            to="/dispatch-orders?view=consignment&overdue=true"
             highlight={data.consignment.overdueReviewCount > 0}
           />
         ) : null}

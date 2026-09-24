@@ -147,7 +147,7 @@ export function DispatchOrderDetailPage() {
 
       {isConsignment ? <section className="space-y-2 rounded-md border p-4 text-sm">
         <p>Valor referencial de los productos; esta entrega no genera deuda. Revisión cada {order.reviewIntervalDays ?? 20} días desde la confirmación.</p>
-        {order.consignmentLot && canManageConsignment ? <Link className="font-medium underline" to={`/consignment/${order.consignmentLot.id}`}>Revisar y liquidar {order.consignmentLot.code}</Link> : null}
+        {order.consignmentLot && canManageConsignment ? <Link className="font-medium underline" to={`/dispatch-orders/consignment/${order.consignmentLot.id}`}>Revisar y liquidar {order.consignmentLot.code}</Link> : null}
       </section> : <PaymentsSection
         orderId={order.id}
         payments={order.payments}

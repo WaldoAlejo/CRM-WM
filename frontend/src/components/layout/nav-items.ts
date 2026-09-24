@@ -2,7 +2,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   Boxes,
   ClipboardCheck,
-  Handshake,
   LayoutDashboard,
   Layers,
   Package,
@@ -35,7 +34,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Importaciones", path: "/import-batches", icon: PackagePlus },
   { label: "Despachos", path: "/dispatch-orders", icon: Truck },
   { label: "Cuentas por cobrar", path: "/accounts-receivable", icon: Wallet, roles: ["ADMIN"] },
-  { label: "Consignación", path: "/consignment", icon: Handshake, roles: ["ADMIN"] },
   // Sin `roles`: Cuarentena es trabajo de OPERATOR (y superiores) — todos los roles la ven.
   { label: "Cuarentena", path: "/quarantine", icon: ClipboardCheck },
   {
