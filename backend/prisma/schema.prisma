@@ -686,10 +686,12 @@ enum PaymentStatus {
 
 // Cómo se espera cobrar la orden. CONTRA_ENTREGA dispara la lógica de
 // courier/Shipment (ver más abajo); CREDITO habilita creditDays/dueDate.
+// CONSIGNACION entrega sin deuda y crea un lote para liquidar después.
 enum PaymentMethod {
   CONTADO
   CREDITO
   CONTRA_ENTREGA
+  CONSIGNACION
 }
 
 // Quién compra: define cuál de las dos relaciones de comprador debe estar
@@ -725,6 +727,10 @@ enum DispatchOrderOrigin {
 model DispatchOrder {
   id          String @id @default(cuid())
   orderNumber String @unique // Autogenerado, ej: OD-000123.
+
+  // Solo para entregas en consignación: el lote nace al confirmar el despacho.
+  consignmentLot     ConsignmentLot?
+  reviewIntervalDays Int             @default(20)
 
   origin              DispatchOrderOrigin @default(NORMAL)
   consignmentReviewId String?             @unique
@@ -1034,6 +1040,10 @@ enum ConsignmentStatus {
 model ConsignmentLot {
   id   String @id @default(cuid())
   code String @unique // Autogenerado, ej: CON-000001.
+
+  // Opcional para conservar lotes históricos creados antes de integrar despachos.
+  dispatchOrderId String?        @unique
+  dispatchOrder   DispatchOrder? @relation(fields: [dispatchOrderId], references: [id], onDelete: Restrict)
 
   wholesalerId String
   wholesaler   Wholesaler @relation(fields: [wholesalerId], references: [id], onDelete: Restrict)

@@ -1,6 +1,6 @@
 export type BuyerType = "MAYORISTA" | "CLIENTE_FINAL";
 export type DispatchStatus = "PENDIENTE" | "DESPACHADO" | "CANCELADO";
-export type PaymentMethod = "CONTADO" | "CREDITO" | "CONTRA_ENTREGA";
+export type PaymentMethod = "CONTADO" | "CREDITO" | "CONTRA_ENTREGA" | "CONSIGNACION";
 export type PaymentStatus = "PENDIENTE" | "PAGADO" | "PARCIAL";
 export type PriceType = "MAYORISTA" | "PVP";
 // Semáforo de una cuenta a crédito: lo deriva el BACKEND al consultar (nunca se guarda).
@@ -100,6 +100,8 @@ export interface Shipment {
 // calculado por el backend (computeOrderTotal, la misma función que recalcula
 // paymentStatus al registrar un pago) — nunca se reimplementa la suma acá.
 export interface DispatchOrderDetail {
+  consignmentLot?: { id: string; code: string } | null;
+  reviewIntervalDays?: number;
   id: string;
   origin?: "NORMAL" | "CONSIGNACION_LIQUIDACION" | "CONSIGNACION_DEVOLUCION_NO_CONFORME";
   orderNumber: string;

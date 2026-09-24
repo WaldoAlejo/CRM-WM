@@ -34,7 +34,7 @@ const balances = (total: Prisma.Decimal, paid: Prisma.Decimal): [string, string]
   ...(paid.gt(total) ? [["Excedente registrado", money(paid.minus(total))] as [string, string]] : []),
 ];
 const terms = (o: Pick<Order, "paymentMethod" | "creditDays" | "dueDate">): [string, string][] => [
-  ["Condición", o.paymentMethod === "CREDITO" ? `Crédito de ${o.creditDays ?? 0} días` : o.paymentMethod === "CONTRA_ENTREGA" ? "Contra entrega" : "Contado"],
+  ["Condición", o.paymentMethod === "CREDITO" ? `Crédito de ${o.creditDays ?? 0} días` : o.paymentMethod === "CONTRA_ENTREGA" ? "Contra entrega" : o.paymentMethod === "CONSIGNACION" ? "Consignación" : "Contado"],
   ...(o.paymentMethod === "CREDITO" ? [["Vencimiento", o.dueDate ? date(o.dueDate) : "Se establece al confirmar el despacho"] as [string, string]] : []),
 ];
 async function getOrder(id: string) {
@@ -55,10 +55,10 @@ export function dispatchDocument(o: Order): OperationalDocument {
       ...(o.shipment ? [["Envío", `${o.shipment.courier.name} · ${o.shipment.status} · Guía: ${o.shipment.trackingNumber ?? "Sin registrar"}`] as [string, string]] : [])],
     columns: ["Producto", "Unidades", "Precio unitario", "Importe"],
     rows: o.items.map(i => [product(i.variant), String(i.quantity), money(i.unitPrice), money(i.unitPrice.times(i.quantity))]),
-    totals: balances(computeOrderTotal(o.items), sumPaid(o.payments)).map(([label, value]) => [
+    totals: o.paymentMethod === "CONSIGNACION" ? [["Valor referencial en consignación", money(computeOrderTotal(o.items))]] : balances(computeOrderTotal(o.items), sumPaid(o.payments)).map(([label, value]) => [
       label === "Saldo pendiente" && (pending || canceled) ? "Diferencia contable (no exigible por este documento)" : label, value,
     ]),
-    notices: ["Precios finales acordados en USD; los descuentos ya están incluidos.",
+    notices: [...(o.paymentMethod === "CONSIGNACION" ? ["La entrega en consignación no genera deuda. Solo se cobra lo liquidado posteriormente."] : []), "Precios finales acordados en USD; los descuentos ya están incluidos.",
       ...(pending ? ["Pendiente de confirmación: no acredita salida ni entrega de mercadería."] : []),
       ...(canceled ? ["Orden cancelada: este documento no constituye una solicitud de pago."] : []),
       ...(o.origin !== "NORMAL" ? ["Este cargo corresponde a mercadería entregada previamente en consignación. No representa una nueva salida de bodega."] : []),
@@ -126,7 +126,7 @@ export async function getDispatchDocument(id: string) { return dispatchDocument(
 export async function getPaymentDocument(id: string, paymentId: string) { return paymentDocument(await getOrder(id), paymentId); }
 export async function getDispatchExitDocument(id: string) {
   const order = await getOrder(id);
-  const movements = await prisma.inventoryMovement.findMany({ where: { type: "SALIDA", dispatchOrderItem: { dispatchOrderId: id } }, select: movementSelect, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+  const movements = await prisma.inventoryMovement.findMany({ where: { type: { in: ["SALIDA", "CONSIGNACION"] }, dispatchOrderItem: { dispatchOrderId: id } }, select: movementSelect, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
   const doc = warehouseDocument(order.orderNumber, movements, "Comprobante de salida de bodega");
   doc.fields.push(["Cliente", party(order)], ["Destino", `${order.shippingCity}, ${order.shippingProvince}`]);
   return doc;

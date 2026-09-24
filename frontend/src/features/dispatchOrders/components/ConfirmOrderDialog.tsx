@@ -63,6 +63,7 @@ export function ConfirmOrderDialog({ open, onOpenChange, orderId, paymentMethod 
             <AlertDialogTitle>¿Confirmar esta orden?</AlertDialogTitle>
             <AlertDialogDescription>
               Se descuenta el stock reservado y la orden pasa a DESPACHADO.
+              {paymentMethod === "CONSIGNACION" ? " Se crea el lote de consignación y comienza el plazo de revisión, sin generar deuda." : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -48,6 +48,7 @@ export function ConsignmentDetailPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
+        {lot.dispatchOrderId ? <Button variant="outline" asChild><Link to={`/dispatch-orders/${lot.dispatchOrderId}`}>Ver despacho de origen</Link></Button> : null}
         <DownloadDocumentButton path={`/consignments/${lot.id}`} filename={`consignacion-${lot.code}`}>PDF consignación</DownloadDocumentButton>
         <DownloadDocumentButton path={`/consignments/${lot.id}/warehouse-out`} filename={`salida-${lot.code}`}>PDF salida de bodega</DownloadDocumentButton>
       </div>

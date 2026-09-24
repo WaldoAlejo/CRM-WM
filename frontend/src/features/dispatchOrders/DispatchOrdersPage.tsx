@@ -29,7 +29,7 @@ const columns: CrudColumn<DispatchOrderListItem>[] = [
     cell: (item) => item.wholesaler?.businessName ?? item.finalCustomer?.fullName ?? "—",
   },
   { header: "Estado", cell: (item) => <DispatchStatusBadge status={item.status} /> },
-  { header: "Pago", cell: (item) => <PaymentStatusBadge status={item.paymentStatus} /> },
+  { header: "Pago", cell: (item) => item.paymentMethod === "CONSIGNACION" ? "Sin cargo · Consignación" : <PaymentStatusBadge status={item.paymentStatus} /> },
   { header: "Envío", cell: (item) => `${item.shippingProvince}, ${item.shippingCity}` },
   { header: "Ítems", cell: (item) => item.itemsCount },
   {
@@ -86,6 +86,7 @@ export function DispatchOrdersPage() {
             <SelectItem value={ALL}>Todos los métodos</SelectItem>
             <SelectItem value="CONTADO">Contado</SelectItem>
             <SelectItem value="CREDITO">Crédito</SelectItem>
+            <SelectItem value="CONSIGNACION">Consignación</SelectItem>
             <SelectItem value="CONTRA_ENTREGA">Contra entrega</SelectItem>
           </SelectContent>
         </Select>

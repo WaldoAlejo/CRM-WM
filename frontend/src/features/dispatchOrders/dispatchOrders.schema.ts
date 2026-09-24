@@ -59,7 +59,8 @@ export const dispatchOrderFormSchema = z
     finalCustomerId: optionalString(z.string().min(1)),
     shippingProvince: z.string().min(1, "La provincia de despacho es obligatoria"),
     shippingCity: z.string().min(1, "La ciudad de despacho es obligatoria"),
-    paymentMethod: z.enum(["CONTADO", "CREDITO", "CONTRA_ENTREGA"]),
+    paymentMethod: z.enum(["CONTADO", "CREDITO", "CONTRA_ENTREGA", "CONSIGNACION"]),
+    reviewIntervalDays: optionalNumber(z.number().int().min(1).max(90)),
     creditDays: optionalNumber(z.number().int().positive()),
     notes: optionalString(z.string().max(2000)),
     items: itemsArraySchema,
@@ -75,17 +76,17 @@ export const dispatchOrderFormSchema = z
         path: ["finalCustomerId"],
       });
     }
-    if (values.paymentMethod === "CREDITO" && values.buyerType === "CLIENTE_FINAL") {
+    if ((values.paymentMethod === "CREDITO" || values.paymentMethod === "CONSIGNACION") && values.buyerType === "CLIENTE_FINAL") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "El crédito solo está disponible para compradores tipo mayorista",
+        message: "El crédito y la consignación solo están disponibles para compradores tipo mayorista",
         path: ["paymentMethod"],
       });
     }
-    if (values.paymentMethod === "CREDITO" && !values.creditDays) {
+    if ((values.paymentMethod === "CREDITO" || values.paymentMethod === "CONSIGNACION") && !values.creditDays) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Los días de crédito son obligatorios para pago a crédito",
+        message: "Indica los días de crédito para el cobro o la liquidación",
         path: ["creditDays"],
       });
     }
@@ -101,6 +102,7 @@ export const dispatchOrderDefaultValues: DispatchOrderFormValues = {
   shippingCity: "",
   paymentMethod: "CONTADO",
   creditDays: undefined,
+  reviewIntervalDays: 20,
   notes: "",
   items: [],
 };

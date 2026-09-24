@@ -38,7 +38,7 @@ function startOfUTCMonth(date: Date): Date {
 async function getSalesRevenueOnly(dateFrom: Date, dateTo: Date) {
   const items = await prisma.dispatchOrderItem.findMany({
     where: {
-      dispatchOrder: { deletedAt: null, status: DispatchStatus.DESPACHADO, dispatchDate: { gte: dateFrom, lte: dateTo } },
+      dispatchOrder: { deletedAt: null, status: DispatchStatus.DESPACHADO, paymentMethod: { not: "CONSIGNACION" }, dispatchDate: { gte: dateFrom, lte: dateTo } },
     },
     select: {
       quantity: true,
@@ -61,7 +61,7 @@ async function getSalesRevenueOnly(dateFrom: Date, dateTo: Date) {
 async function getSalesWithCost(dateFrom: Date, dateTo: Date) {
   const items = await prisma.dispatchOrderItem.findMany({
     where: {
-      dispatchOrder: { deletedAt: null, status: DispatchStatus.DESPACHADO, dispatchDate: { gte: dateFrom, lte: dateTo } },
+      dispatchOrder: { deletedAt: null, status: DispatchStatus.DESPACHADO, paymentMethod: { not: "CONSIGNACION" }, dispatchDate: { gte: dateFrom, lte: dateTo } },
     },
     select: {
       quantity: true,

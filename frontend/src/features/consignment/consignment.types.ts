@@ -42,6 +42,7 @@ export interface ConsignmentReview {
 }
 
 export interface ConsignmentLotDetail {
+  dispatchOrderId?: string | null;
   id: string;
   code: string;
   wholesaler: { id: string; businessName: string };

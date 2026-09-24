@@ -30,6 +30,13 @@ function pdfText(buffer: Buffer) {
 }
 
 describe("Documentos operativos", () => {
+  it("documenta la entrega en consignación sin saldo por cobrar", () => {
+    const o = order(); o.paymentMethod = "CONSIGNACION"; o.dueDate = null; o.payments = [];
+    const doc = dispatchDocument(o);
+    expect(doc.fields).toContainEqual(["Condición", "Consignación"]);
+    expect(doc.totals).toEqual([["Valor referencial en consignación", "USD 402.00"]]);
+    expect(doc.notices.join(" ")).toContain("no genera deuda");
+  });
   it("usa precios finales y condiciones sin publicar costos ni notas privadas", async () => {
     const o = order();
     Object.assign(o, { notes: "PRIVATE-NOTE", amountPaid: d(99999) });

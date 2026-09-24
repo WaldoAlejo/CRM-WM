@@ -10,7 +10,7 @@ import {
   ShipmentStatus,
 } from "@prisma/client";
 import { applyMovement, computeLandedCost, computeWeightedAverageCost } from "../../lib/inventoryMovements";
-import { generateOrderNumber } from "../../lib/orderNumber";
+import { generateConsignmentCode, generateOrderNumber } from "../../lib/orderNumber";
 import { computeOrderTotal, recalculatePaymentStatus } from "../../lib/paymentRecalculation";
 import { classifyReceivable, dueSoonUpperBound, type CollectionStatus } from "../../lib/receivableStatus";
 import { prisma } from "../../lib/prisma";
@@ -39,11 +39,15 @@ interface CreateOrderInput {
   shippingCity: string;
   paymentMethod: PaymentMethod;
   creditDays?: number;
+  reviewIntervalDays?: number;
   notes?: string;
   items: CreateOrderItemInput[];
 }
 
 export async function createDispatchOrder(data: CreateOrderInput, userId: string | undefined, role: Role) {
+  if (data.paymentMethod === PaymentMethod.CONSIGNACION && !hasAdminAccess(role)) {
+    throw forbidden("La consignación requiere acceso de administrador.");
+  }
   if (!hasAdminAccess(role) && data.items.some(item => item.markupPct !== undefined)) {
     throw forbidden("La negociación sobre costo requiere acceso a costos.");
   }
@@ -62,8 +66,8 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
 
   // El crédito es exclusivo de mayoristas por diseño de negocio (no
   // simplemente porque FinalCustomer carezca de defaultCreditDays).
-  if (data.paymentMethod === PaymentMethod.CREDITO && data.buyerType === BuyerType.CLIENTE_FINAL) {
-    throw badRequest("El crédito solo está disponible para compradores tipo MAYORISTA");
+  if ((data.paymentMethod === PaymentMethod.CREDITO || data.paymentMethod === PaymentMethod.CONSIGNACION) && data.buyerType === BuyerType.CLIENTE_FINAL) {
+    throw badRequest("El crédito y la consignación solo están disponibles para compradores tipo MAYORISTA");
   }
 
   let wholesaler = null;
@@ -122,11 +126,11 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
   }
 
   let creditDays: number | undefined;
-  if (data.paymentMethod === PaymentMethod.CREDITO) {
+  if (data.paymentMethod === PaymentMethod.CREDITO || data.paymentMethod === PaymentMethod.CONSIGNACION) {
     creditDays = data.creditDays ?? wholesaler?.defaultCreditDays ?? undefined;
     if (!creditDays) {
       throw badRequest(
-        "creditDays es obligatorio para paymentMethod=CREDITO (el mayorista no tiene un valor por defecto)"
+        "Los días de crédito son obligatorios para crédito o liquidación de consignación (el mayorista no tiene un valor por defecto)"
       );
     }
   }
@@ -159,6 +163,7 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
           shippingCity: data.shippingCity,
           paymentMethod: data.paymentMethod,
           creditDays,
+          reviewIntervalDays: data.reviewIntervalDays ?? 20,
           notes: data.notes,
           createdById: userId,
           items: {
@@ -227,6 +232,9 @@ export async function confirmDispatchOrder(
     if (!courier) throw notFound("Courier no encontrado");
   }
 
+  if (order.paymentMethod === PaymentMethod.CONSIGNACION && !hasAdminAccess(role)) {
+    throw forbidden("La consignación requiere acceso de administrador.");
+  }
   const dispatchDate = new Date();
   const dueDate =
     order.paymentMethod === PaymentMethod.CREDITO && order.creditDays
@@ -234,6 +242,21 @@ export async function confirmDispatchOrder(
       : null;
 
   const result = await prisma.$transaction(async (tx) => {
+    // Reclamar la transición antes de tocar reservas evita confirmaciones/cancelaciones dobles.
+    const claimed = await tx.dispatchOrder.updateMany({
+      where: { id: orderId, status: DispatchStatus.PENDIENTE },
+      data: { status: DispatchStatus.DESPACHADO },
+    });
+    if (!claimed.count) throw conflict("La orden ya no está pendiente.");
+    const lot = order.paymentMethod === PaymentMethod.CONSIGNACION
+      ? await tx.consignmentLot.create({ data: {
+          code: await generateConsignmentCode(tx), dispatchOrderId: order.id,
+          wholesalerId: order.wholesalerId!, shippingProvince: order.shippingProvince,
+          shippingCity: order.shippingCity, creditDays: order.creditDays!,
+          deliveredAt: dispatchDate, reviewIntervalDays: order.reviewIntervalDays,
+          nextReviewDate: addDays(dispatchDate, order.reviewIntervalDays),
+          notes: order.notes, createdById: userId,
+        } }) : null;
     for (const item of order.items) {
       // El costo promedio ponderado y el costo de aterrizaje se calculan y se
       // congelan AHORA, en el momento exacto de confirmar — si el costo de
@@ -252,14 +275,23 @@ export async function confirmDispatchOrder(
 
       await releaseStock(tx, item.variantId, item.quantity);
 
-      await applyMovement(tx, {
+      const movement = await applyMovement(tx, {
         variantId: item.variantId,
-        type: MovementType.SALIDA,
+        type: lot ? MovementType.CONSIGNACION : MovementType.SALIDA,
         quantity: -item.quantity,
         dispatchOrderItemId: item.id,
         locationId: item.locationId ?? undefined,
         createdById: userId,
       });
+      if (lot) {
+        const priced = await tx.dispatchOrderItem.findUniqueOrThrow({ where: { id: item.id } });
+        await tx.consignmentLine.create({ data: {
+          lotId: lot.id, variantId: item.variantId, originLocationId: item.locationId,
+          quantityDelivered: item.quantity, unitPrice: item.unitPrice,
+          unitCostSnapshot: priced.unitCostSnapshot, landedCostSnapshot: priced.landedCostSnapshot,
+          deliveryMovementId: movement.id,
+        } });
+      }
     }
 
     const updatedOrder = await tx.dispatchOrder.update({
@@ -287,7 +319,7 @@ export async function confirmDispatchOrder(
     }
 
     return { ...updatedOrder, shipment };
-  });
+  }, { timeout: 20000 });
 
   return serializeDispatchOrderForRole(result, role);
 }
@@ -304,6 +336,11 @@ export async function cancelDispatchOrder(orderId: string, role: Role) {
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.dispatchOrder.updateMany({
+      where: { id: orderId, status: DispatchStatus.PENDIENTE },
+      data: { status: DispatchStatus.CANCELADO },
+    });
+    if (!claimed.count) throw conflict("La orden ya no está pendiente.");
     for (const item of order.items) {
       await releaseStock(tx, item.variantId, item.quantity);
     }
@@ -388,6 +425,7 @@ export async function getDispatchOrderById(id: string, role: Role) {
       wholesaler: { select: { id: true, businessName: true } },
       finalCustomer: { select: { id: true, fullName: true } },
       items: { include: { variant: { select: { sku: true, label: true } } } },
+      consignmentLot: { select: { id: true, code: true } },
       payments: { orderBy: { paidAt: "desc" } },
       shipment: { include: { courier: { select: { id: true, name: true } }, claim: true } },
     },
@@ -421,6 +459,9 @@ export async function addPayment(orderId: string, data: AddPaymentInput, userId:
   const order = await prisma.dispatchOrder.findFirst({ where: { id: orderId, deletedAt: null } });
   if (!order) throw notFound("Orden no encontrada");
 
+  if (order.paymentMethod === PaymentMethod.CONSIGNACION) {
+    throw badRequest("Registra el pago en el cargo generado al liquidar la consignación.");
+  }
   return prisma.$transaction(async (tx) => {
     await tx.payment.create({
       data: {

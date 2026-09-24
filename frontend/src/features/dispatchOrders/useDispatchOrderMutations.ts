@@ -21,6 +21,7 @@ interface CreateOrderPayload {
   shippingCity: string;
   paymentMethod: PaymentMethod;
   creditDays?: number;
+  reviewIntervalDays?: number;
   notes?: string;
   items: CreateOrderItemPayload[];
 }
@@ -67,6 +68,8 @@ export function useDispatchOrderMutations() {
     onSuccess: (_, { id }) => {
       invalidateList();
       invalidateDetail(id);
+      queryClient.invalidateQueries({ queryKey: ["consignment"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Orden confirmada correctamente");
     },
   });

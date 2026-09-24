@@ -8,6 +8,7 @@ export const createDispatchOrderSchema = z.object({
   shippingProvince: z.string().min(1, "La provincia de despacho es obligatoria"),
   shippingCity: z.string().min(1, "La ciudad de despacho es obligatoria"),
   paymentMethod: z.nativeEnum(PaymentMethod).default(PaymentMethod.CONTADO),
+  reviewIntervalDays: z.number().int().min(1).max(90).default(20),
   creditDays: z.number().int().positive().optional(),
   notes: z.string().max(2000).optional(),
   items: z

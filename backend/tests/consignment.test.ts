@@ -88,6 +88,65 @@ function review(token: string, lotId: string, body: Record<string, unknown>) {
   return request(app).post(`/api/consignment/lots/${lotId}/reviews`).set(auth(token)).send(body);
 }
 
+describe("Consignación desde despachos", () => {
+  const payload = (s: Awaited<ReturnType<typeof setup>>) => ({
+    buyerType: "MAYORISTA", wholesalerId: s.wholesaler.id,
+    shippingProvince: "Guayas", shippingCity: "Guayaquil",
+    paymentMethod: "CONSIGNACION", reviewIntervalDays: 15,
+    items: [{ variantId: s.variant.id, quantity: 6, priceType: "MAYORISTA", unitPrice: PRICE }],
+  });
+
+  it("reserva, confirma una sola salida y cobra únicamente la liquidación", async () => {
+    const s = await setup(10);
+    const created = await request(app).post("/api/dispatch-orders").set(auth(s.admin.token)).send(payload(s));
+    expect(created.status).toBe(201);
+    const id = created.body.id;
+    expect(await prisma.productVariant.findUnique({ where: { id: s.variant.id } })).toMatchObject({ stock: 10, reservedStock: 6 });
+    expect(await prisma.consignmentLot.count()).toBe(0);
+    const results = await Promise.all([1, 2].map(() => request(app).post(`/api/dispatch-orders/${id}/confirm`).set(auth(s.admin.token)).send({})));
+    expect(results.map(r => r.status).sort()).toEqual([200, 409]);
+    expect(await prisma.productVariant.findUnique({ where: { id: s.variant.id } })).toMatchObject({ stock: 4, reservedStock: 0 });
+    const detail = await request(app).get(`/api/dispatch-orders/${id}`).set(auth(s.admin.token));
+    expect(detail.body.dueDate).toBeNull();
+    expect(detail.body.collectionStatus).toBeNull();
+    const lot = (await request(app).get(`/api/consignment/lots/${detail.body.consignmentLot.id}`).set(auth(s.admin.token))).body;
+    expect(lot.dispatchOrderId).toBe(id);
+    expect(new Date(lot.nextReviewDate).getTime() - new Date(lot.deliveredAt).getTime()).toBe(15 * DAY_MS);
+    expect(await prisma.inventoryMovement.count({ where: { variantId: s.variant.id, type: "CONSIGNACION" } })).toBe(1);
+    expect(await prisma.inventoryMovement.count({ where: { variantId: s.variant.id, type: "SALIDA" } })).toBe(0);
+    expect((await request(app).post(`/api/dispatch-orders/${id}/payments`).set(auth(s.admin.token)).send({ amount: 10, method: "Efectivo" })).status).toBe(400);
+    const report = () => request(app).get("/api/reports/profitability").set(auth(s.admin.token));
+    expect((await report()).body.totals.unitsSold).toBe(0);
+    const dashboard = await request(app).get("/api/dashboard/summary").set(auth(s.admin.token));
+    expect(Number(dashboard.body.sales.today.totalRevenue)).toBe(0);
+    const liquidation = await review(s.admin.token, lot.id, { action: "LIQUIDAR", lines: [{ lineId: lot.lines[0].id, quantitySold: 2, quantityReturned: 0 }] });
+    expect(liquidation.status).toBe(201);
+    expect(await stockOf(s.variant.id)).toBe(4);
+    expect((await report()).body.totals.unitsSold).toBe(2);
+    const charge = await prisma.dispatchOrder.findFirstOrThrow({ where: { origin: "CONSIGNACION_LIQUIDACION" } });
+    expect(charge.paymentMethod).toBe("CREDITO");
+    expect(charge.creditDays).toBe(30);
+    expect((await request(app).post(`/api/dispatch-orders/${charge.id}/payments`).set(auth(s.admin.token)).send({ amount: 40, method: "Efectivo" })).status).toBe(201);
+  });
+
+  it("cancelar libera la reserva sin entregar ni crear lote", async () => {
+    const s = await setup(10);
+    const order = await request(app).post("/api/dispatch-orders").set(auth(s.admin.token)).send(payload(s));
+    expect(order.status).toBe(201);
+    expect((await request(app).post(`/api/dispatch-orders/${order.body.id}/cancel`).set(auth(s.admin.token))).status).toBe(200);
+    expect(await prisma.productVariant.findUnique({ where: { id: s.variant.id } })).toMatchObject({ stock: 10, reservedStock: 0 });
+    expect(await prisma.consignmentLot.count()).toBe(0);
+    expect((await request(app).post(`/api/dispatch-orders/${order.body.id}/confirm`).set(auth(s.admin.token)).send({})).status).toBe(409);
+  });
+
+  it("conserva las restricciones de mayorista y administrador", async () => {
+    const s = await setup(10);
+    expect((await request(app).post("/api/dispatch-orders").set(auth(s.operator.token)).send(payload(s))).status).toBe(403);
+    expect((await request(app).post("/api/dispatch-orders").set(auth(s.admin.token)).send({ ...payload(s), buyerType: "CLIENTE_FINAL", wholesalerId: undefined, finalCustomerId: "not-used" })).status).toBe(400);
+    expect((await request(app).post("/api/dispatch-orders").set(auth(s.admin.token)).send({ ...payload(s), reviewIntervalDays: 0 })).status).toBe(400);
+  });
+});
+
 describe("Consignación — entrega del lote", () => {
   it("entrega sin generar cargo ni cuenta por cobrar: solo un movimiento CONSIGNACION y estado EN_CONSIGNACION", async () => {
     const s = await setup(100);

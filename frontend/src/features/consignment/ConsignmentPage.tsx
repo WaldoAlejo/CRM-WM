@@ -50,12 +50,12 @@ export function ConsignmentPage() {
           <p className="text-sm text-muted-foreground">
             {overdueOnly
               ? "Lotes con la revisión vencida: contacta al mayorista y registra qué pasó."
-              : "Lotes entregados a mayoristas. La revisión se hace cada 20 días."}
+              : "Seguimiento de productos entregados en consignación: revisiones, liquidaciones y devoluciones."}
           </p>
         </div>
         <Button asChild>
-          <Link to="/consignment/new">
-            <PlusIcon /> Nuevo lote
+          <Link to="/dispatch-orders/new?modality=consignment">
+            <PlusIcon /> Nuevo despacho en consignación
           </Link>
         </Button>
       </div>

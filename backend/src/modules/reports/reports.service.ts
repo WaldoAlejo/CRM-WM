@@ -125,7 +125,7 @@ async function fetchClassifiedItems(
       variant: query.categoryId ? { product: { categoryId: query.categoryId } } : undefined,
       dispatchOrder: {
         deletedAt: null,
-        status: DispatchStatus.DESPACHADO,
+        status: DispatchStatus.DESPACHADO, paymentMethod: { not: "CONSIGNACION" },
         dispatchDate: {
           gte: query.dateFrom,
           lte: query.dateTo ? endOfDay(query.dateTo) : undefined,

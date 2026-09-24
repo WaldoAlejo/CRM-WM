@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeftIcon } from "lucide-react";
 import type { Resolver } from "react-hook-form";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { applyApiErrorToForm } from "@/components/crud/applyApiErrorToForm";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -25,13 +25,16 @@ import { useDispatchOrderMutations } from "./useDispatchOrderMutations";
 
 export function CreateDispatchOrderPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const canNegotiate = usePricingVisibility();
   const [loadingCost, setLoadingCost] = useState(false);
   const { createMutation } = useDispatchOrderMutations();
 
   const form = useForm<DispatchOrderFormValues>({
     resolver: zodResolver(dispatchOrderFormSchema) as Resolver<DispatchOrderFormValues>,
-    defaultValues: dispatchOrderDefaultValues,
+    defaultValues: searchParams.get("modality") === "consignment" && canNegotiate
+      ? { ...dispatchOrderDefaultValues, buyerType: "MAYORISTA", paymentMethod: "CONSIGNACION" }
+      : dispatchOrderDefaultValues,
   });
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
@@ -47,7 +50,7 @@ export function CreateDispatchOrderPage() {
     // El crédito es exclusivo de mayoristas (mismo rechazo que hace el
     // backend): si ya estaba en CREDITO y se cambia a cliente final, no
     // tiene sentido dejarlo seleccionado — se resetea a CONTADO.
-    if (value === "CLIENTE_FINAL" && form.getValues("paymentMethod") === "CREDITO") {
+    if (value === "CLIENTE_FINAL" && ["CREDITO", "CONSIGNACION"].includes(form.getValues("paymentMethod"))) {
       form.setValue("paymentMethod", "CONTADO");
       form.setValue("creditDays", undefined);
     }
@@ -83,7 +86,8 @@ export function CreateDispatchOrderPage() {
       shippingProvince: values.shippingProvince,
       shippingCity: values.shippingCity,
       paymentMethod: values.paymentMethod,
-      creditDays: values.paymentMethod === "CREDITO" ? values.creditDays : undefined,
+      creditDays: ["CREDITO", "CONSIGNACION"].includes(values.paymentMethod) ? values.creditDays : undefined,
+      reviewIntervalDays: values.paymentMethod === "CONSIGNACION" ? values.reviewIntervalDays : undefined,
       notes: values.notes || undefined,
       items: values.items.map((item) => ({
         variantId: item.variantId,
@@ -137,7 +141,7 @@ export function CreateDispatchOrderPage() {
               buyerType={buyerType}
               onSelectWholesaler={(w) => {
                 form.setValue("wholesalerId", w.id);
-                if (form.getValues("paymentMethod") === "CREDITO" && w.defaultCreditDays) {
+                if (["CREDITO", "CONSIGNACION"].includes(form.getValues("paymentMethod")) && w.defaultCreditDays) {
                   form.setValue("creditDays", w.defaultCreditDays);
                 }
               }}
@@ -205,13 +209,13 @@ export function CreateDispatchOrderPage() {
           </section>
 
           <section className="grid grid-cols-2 gap-4 rounded-md border p-4">
-            <h2 className="col-span-2 text-lg font-semibold">Pago</h2>
+            <h2 className="col-span-2 text-lg font-semibold">Modalidad de despacho</h2>
             <FormField
               control={form.control}
               name="paymentMethod"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Método de pago</FormLabel>
+                  <FormLabel>Modalidad</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
@@ -226,6 +230,7 @@ export function CreateDispatchOrderPage() {
                       {buyerType === "MAYORISTA" ? (
                         <SelectItem value="CREDITO">Crédito</SelectItem>
                       ) : null}
+                      {buyerType === "MAYORISTA" && canNegotiate ? <SelectItem value="CONSIGNACION">Consignación</SelectItem> : null}
                       <SelectItem value="CONTRA_ENTREGA">Contra entrega</SelectItem>
                     </SelectContent>
                   </Select>
@@ -233,13 +238,13 @@ export function CreateDispatchOrderPage() {
                 </FormItem>
               )}
             />
-            {paymentMethod === "CREDITO" ? (
+            {["CREDITO", "CONSIGNACION"].includes(paymentMethod) ? (
               <FormField
                 control={form.control}
                 name="creditDays"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Días de crédito</FormLabel>
+                    <FormLabel>{paymentMethod === "CONSIGNACION" ? "Días de crédito al liquidar" : "Días de crédito"}</FormLabel>
                     <FormControl>
                       <Input type="number" min={1} step={1} {...field} value={field.value ?? ""} />
                     </FormControl>
@@ -248,6 +253,16 @@ export function CreateDispatchOrderPage() {
                 )}
               />
             ) : null}
+            {paymentMethod === "CONSIGNACION" ? <>
+              <FormField control={form.control} name="reviewIntervalDays" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Revisión cada (días)</FormLabel>
+                  <FormControl><Input type="number" min={1} max={90} step={1} {...field} value={field.value ?? 20} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <p className="col-span-2 text-sm text-muted-foreground">Al confirmar se entrega el producto en consignación y comienza el plazo de revisión. La deuda se genera al liquidar lo vendido.</p>
+            </> : null}
           </section>
 
           <section className="space-y-3 rounded-md border p-4">

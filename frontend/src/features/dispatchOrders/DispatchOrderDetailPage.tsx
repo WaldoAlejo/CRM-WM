@@ -1,6 +1,7 @@
 import { ArrowLeftIcon } from "lucide-react";
 import { DownloadDocumentButton } from "@/components/DownloadDocumentButton";
 import { useState } from "react";
+import { usePricingVisibility } from "@/hooks/usePricingVisibility";
 import { Link, useParams } from "react-router-dom";
 import {
   AlertDialog,
@@ -26,6 +27,7 @@ import { useDispatchOrder } from "./useDispatchOrder";
 import { useDispatchOrderMutations } from "./useDispatchOrderMutations";
 
 export function DispatchOrderDetailPage() {
+  const canManageConsignment = usePricingVisibility();
   const { id } = useParams<{ id: string }>();
   const { data: order, isLoading } = useDispatchOrder(id);
   const { cancelMutation } = useDispatchOrderMutations();
@@ -47,6 +49,7 @@ export function DispatchOrderDetailPage() {
   }
 
   const buyerName = order.wholesaler?.businessName ?? order.finalCustomer?.fullName ?? "—";
+  const isConsignment = order.paymentMethod === "CONSIGNACION";
   const isPending = order.status === "PENDIENTE";
 
   return (
@@ -63,7 +66,7 @@ export function DispatchOrderDetailPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">{order.orderNumber}</h1>
             <DispatchStatusBadge status={order.status} />
-            <PaymentStatusBadge status={order.paymentStatus} />
+            {isConsignment ? <span className="text-sm">Consignación · Sin cargo</span> : <PaymentStatusBadge status={order.paymentStatus} />}
             {/* Semáforo de la cuenta a crédito (el backend lo deriva al consultar). */}
             <CollectionStatusBadge status={order.collectionStatus} />
           </div>
@@ -82,7 +85,7 @@ export function DispatchOrderDetailPage() {
             <Button variant="outline" onClick={() => setCancelOpen(true)}>
               Cancelar
             </Button>
-            <Button onClick={() => setConfirmOpen(true)}>Confirmar</Button>
+            {!isConsignment || canManageConsignment ? <Button onClick={() => setConfirmOpen(true)}>Confirmar</Button> : null}
           </div>
         ) : null}
       </div>
@@ -114,13 +117,13 @@ export function DispatchOrderDetailPage() {
           </p>
         </div>
         <div>
-          <p className="text-muted-foreground">Método de pago</p>
+          <p className="text-muted-foreground">Modalidad</p>
           <p>
             {order.paymentMethod === "CONTADO"
               ? "Contado"
               : order.paymentMethod === "CREDITO"
                 ? `Crédito (${order.creditDays} días)`
-                : "Contra entrega"}
+                : isConsignment ? `Consignación (crédito de ${order.creditDays} días al liquidar)` : "Contra entrega"}
           </p>
         </div>
         {order.dueDate ? (
@@ -142,12 +145,15 @@ export function DispatchOrderDetailPage() {
         <OrderDetailItemsTable items={order.items} />
       </section>
 
-      <PaymentsSection
+      {isConsignment ? <section className="space-y-2 rounded-md border p-4 text-sm">
+        <p>Valor referencial de los productos; esta entrega no genera deuda. Revisión cada {order.reviewIntervalDays ?? 20} días desde la confirmación.</p>
+        {order.consignmentLot && canManageConsignment ? <Link className="font-medium underline" to={`/consignment/${order.consignmentLot.id}`}>Revisar y liquidar {order.consignmentLot.code}</Link> : null}
+      </section> : <PaymentsSection
         orderId={order.id}
         payments={order.payments}
         amountPaid={order.amountPaid}
         orderTotal={order.orderTotal}
-      />
+      />}
 
       {order.shipment ? <ShipmentSection orderId={order.id} shipment={order.shipment} /> : null}
 
