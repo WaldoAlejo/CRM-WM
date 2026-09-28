@@ -10,12 +10,15 @@ import fs from "fs";
 import multer from "multer";
 import path from "path";
 
-export const UPLOADS_ROOT = path.join(process.cwd(), "uploads");
+// STORAGE_DIR permite ubicar ambas carpetas en un único disco persistente
+// (p. ej. un volumen de Railway); por defecto se usa el directorio del backend.
+const STORAGE_ROOT = path.resolve(process.env.STORAGE_DIR || process.cwd());
+export const UPLOADS_ROOT = path.join(STORAGE_ROOT, "uploads");
 // Almacenamiento PRIVADO (comprobantes de pago): a propósito FUERA de
 // UPLOADS_ROOT, porque app.ts sirve esa carpeta completa con express.static
 // SIN autenticación. Nada de acá se sirve como estático: solo por endpoints
 // autenticados (ver dispatchOrders.controller.ts).
-export const PRIVATE_UPLOADS_ROOT = path.join(process.cwd(), "uploads-private");
+export const PRIVATE_UPLOADS_ROOT = path.join(STORAGE_ROOT, "uploads-private");
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
