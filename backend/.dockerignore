@@ -12,3 +12,7 @@
 !prisma/migrations/
 !prisma/migrations/**
 !prisma/seed.ts
+!resources/
+!resources/sri/
+!resources/sri/*.xsd
+!resources/sri/README.md

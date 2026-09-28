@@ -1,0 +1,1 @@
+ALTER TABLE "DispatchOrder" ADD COLUMN "fiscalCreditTotal" DECIMAL(12,2) NOT NULL DEFAULT 0;

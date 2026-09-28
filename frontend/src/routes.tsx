@@ -1,4 +1,8 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import { MailSettingsPage } from "@/features/fiscal/MailSettingsPage";
+import { FiscalSettingsPage } from "@/features/fiscal/FiscalSettingsPage";
+import { FiscalDocumentsPage } from "@/features/fiscal/FiscalDocumentsPage";
+import { FiscalDocumentDetailPage } from "@/features/fiscal/FiscalDocumentDetailPage";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { RequireRole } from "@/components/auth/RequireRole";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -76,6 +80,10 @@ export const router = createBrowserRouter([
               { path: "reports", element: <ProfitabilityDashboardPage /> },
               { path: "reports/profitability", element: <ProfitabilityDetailPage /> },
               { path: "admin/users", element: <UsersPage /> },
+              { path: "settings/mail", element: <MailSettingsPage /> },
+              { path: "settings/billing", element: <FiscalSettingsPage /> },
+              { path: "billing", element: <FiscalDocumentsPage /> },
+              { path: "billing/:id", element: <FiscalDocumentDetailPage /> },
             ],
           },
           {

@@ -46,6 +46,7 @@ export function OrderDetailItemsTable({ items }: { items: DispatchOrderItem[] })
     { header: "P. Unit.", cell: (item) => money(item.unitPrice) },
     { header: "Desc. %", cell: (item) => (item.discountPct ? `${item.discountPct}%` : "—") },
     { header: "Subtotal", cell: (item) => `$${lineSubtotal(item).toFixed(2)}` },
+    ...(items.some(i => i.ivaRate != null) ? [{ header: "IVA", cell: (item: DispatchOrderItem) => `${item.ivaRate ?? 0}% · $${(Math.round(lineSubtotal(item) * 100) / 100 * Number(item.ivaRate ?? 0) / 100).toFixed(2)}` }] : []),
     ...(canSeeCosts ? [
       { header: "Incremento sobre costo", cell: (item: DispatchOrderItem) => item.markupPct != null ? item.markupPct + "%" : "—" },
       { header: "Ganancia total (USD)", cell: (item: DispatchOrderItem) => item.landedCostSnapshot != null || item.unitCostSnapshot != null ? "$" + ((Number(item.unitPrice) - Number(item.landedCostSnapshot ?? item.unitCostSnapshot)) * item.quantity).toFixed(2) : "Pendiente" },

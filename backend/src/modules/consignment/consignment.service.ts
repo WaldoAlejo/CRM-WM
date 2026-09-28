@@ -1,3 +1,4 @@
+import { captureInvoice } from "../fiscal/documents.service";
 // Ventas a consignación (solo mayoristas, siempre a crédito). Ver el bloque de
 // comentarios de ConsignmentLot en schema.prisma para el modelo completo.
 //
@@ -391,10 +392,16 @@ export async function createReview(lotId: string, data: CreateReviewInput, userI
       // Cobrar y Payment funcionan sin cambios). Nace DESPACHADO y SIN movimiento
       // de stock: la mercadería ya salió al entregar el lote.
       if (totalSold > 0) {
-        await tx.dispatchOrder.create({
+        const originalOrder = lot.dispatchOrderId ? await tx.dispatchOrder.findUnique({ where: { id: lot.dispatchOrderId }, include: { items: true } }) : null;
+        const currentVariants = originalOrder?.fiscalIssuerId ? await tx.productVariant.findMany({ where: { id: { in: lot.lines.map(l => l.variantId) } }, include: { product: true } }) : [];
+        const taxByVariant = new Map(currentVariants.map(v => [v.id, v.product]));
+        if (currentVariants.some(v => v.product.ivaCode === null || v.product.ivaRate === null)) throw badRequest("Configura el IVA de los productos antes de liquidar la consignación fiscal.");
+        const charge = await tx.dispatchOrder.create({
           data: {
             orderNumber: orderNumber!,
             origin: DispatchOrderOrigin.CONSIGNACION_LIQUIDACION,
+            fiscalIssuerId: originalOrder?.fiscalIssuerId,
+            fiscalEnvironment: originalOrder?.fiscalEnvironment,
             consignmentReviewId: review.id,
             buyerType: "MAYORISTA",
             wholesalerId: lot.wholesalerId,
@@ -414,6 +421,8 @@ export async function createReview(lotId: string, data: CreateReviewInput, userI
                   const line = lineById.get(l.lineId)!;
                   return {
                     variantId: line.variantId,
+                    ivaCode: taxByVariant.get(line.variantId)?.ivaCode,
+                    ivaRate: taxByVariant.get(line.variantId)?.ivaRate,
                     quantity: l.quantitySold,
                     priceType: "MAYORISTA" as const,
                     unitPrice: line.unitPrice,
@@ -425,6 +434,7 @@ export async function createReview(lotId: string, data: CreateReviewInput, userI
             },
           },
         });
+        await captureInvoice(tx, charge.id, userId);
       }
 
       // Lo devuelto queda en Cuarentena, pendiente de checklist.

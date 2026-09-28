@@ -7,6 +7,7 @@ COPY prisma ./prisma
 RUN npx prisma generate
 COPY tsconfig.json ./
 COPY src ./src
+COPY resources/sri ./resources/sri
 RUN npm run build
 
 # Run this target as a separate Cloud Run Job before deploying a schema change.
@@ -22,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 ENV NODE_ENV=production PORT=8080 REMINDERS_ENABLED=false
 COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/resources/sri ./resources/sri
 COPY --from=build /app/package.json ./package.json
 RUN mkdir uploads uploads-private && chown node:node uploads uploads-private
 USER node

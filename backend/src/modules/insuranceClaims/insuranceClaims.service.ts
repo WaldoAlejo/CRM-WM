@@ -106,9 +106,11 @@ export async function resolveCustomer(
   // REFUND: Payment con amount negativo en la orden ORIGINAL, trazado al
   // reclamo vía insuranceClaimId.
   const result = await prisma.$transaction(async (tx) => {
+    const lockedOrder = await tx.dispatchOrder.update({ where: { id: originalOrder.id }, data: { updatedAt: new Date() } });
     const payment = await tx.payment.create({
       data: {
         dispatchOrderId: originalOrder.id,
+        fiscalCreditSnapshot: lockedOrder.fiscalCreditTotal,
         amount: new Prisma.Decimal(data.refundAmount!).negated(),
         method: "reembolso",
         paidAt: new Date(),

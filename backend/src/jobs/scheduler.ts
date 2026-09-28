@@ -31,7 +31,7 @@ export function startScheduler(env: NodeJS.ProcessEnv = process.env) {
     return;
   }
   if (!isMailConfigured(env)) {
-    console.warn("[recordatorios] SMTP no configurado (SMTP_HOST/MAIL_FROM): el job corre pero no enviará correos.");
+    console.log("[recordatorios] Sin SMTP por entorno: se consultará la cuenta configurada en la aplicación al ejecutar el job.");
   }
 
   cron.schedule(

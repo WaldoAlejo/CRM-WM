@@ -1,4 +1,5 @@
 import { ArrowLeftIcon } from "lucide-react";
+import { DispatchFiscalSection } from "@/features/fiscal/DispatchFiscalSection";
 import { DownloadDocumentButton } from "@/components/DownloadDocumentButton";
 import { useState } from "react";
 import { usePricingVisibility } from "@/hooks/usePricingVisibility";
@@ -109,6 +110,7 @@ export function DispatchOrderDetailPage() {
         </> : null}
       </div>
 
+      {canManageConsignment && <DispatchFiscalSection orderId={order.id} pending={isPending} fiscalIssuerId={order.fiscalIssuerId} />}
       <section className="grid grid-cols-2 gap-4 rounded-md border p-4 text-sm">
         <div>
           <p className="text-muted-foreground">Envío</p>
@@ -143,6 +145,7 @@ export function DispatchOrderDetailPage() {
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Ítems</h2>
         <OrderDetailItemsTable items={order.items} />
+        {Number(order.fiscalCreditTotal ?? 0) > 0 && <p className="text-sm">Créditos fiscales aplicados al saldo: ${Number(order.fiscalCreditTotal).toFixed(2)}. Los productos muestran los importes originales.</p>}
       </section>
 
       {isConsignment ? <section className="space-y-2 rounded-md border p-4 text-sm">

@@ -16,8 +16,9 @@ const orderSelect = {
   id: true, orderNumber: true, origin: true, status: true, dispatchDate: true, createdAt: true,
   shippingProvince: true, shippingCity: true, paymentMethod: true, creditDays: true, dueDate: true,
   ...customer,
-  items: { orderBy: { id: "asc" }, select: { quantity: true, unitPrice: true, variant: { select: variant } } },
-  payments: { orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true, amount: true, method: true, paidAt: true, createdAt: true } },
+  fiscalCreditTotal: true,
+  items: { orderBy: { id: "asc" }, select: { quantity: true, unitPrice: true, ivaRate: true, variant: { select: variant } } },
+  payments: { orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true, fiscalCreditSnapshot: true, amount: true, method: true, paidAt: true, createdAt: true } },
   shipment: { select: { status: true, trackingNumber: true, courier: { select: { name: true } } } },
 } as const satisfies Prisma.DispatchOrderSelect;
 type Order = Prisma.DispatchOrderGetPayload<{ select: typeof orderSelect }>;
@@ -28,6 +29,12 @@ const party = (o: Pick<Order, "wholesaler" | "finalCustomer">) => o.wholesaler
   ? `${o.wholesaler.businessName} | RUC: ${o.wholesaler.ruc}`
   : `${o.finalCustomer?.fullName ?? "Sin cliente registrado"} | Identificación: ${o.finalCustomer?.idNumber ?? "Sin registrar"}`;
 const sumPaid = (payments: { amount: Prisma.Decimal }[]) => payments.reduce((sum, p) => sum.plus(p.amount), new Prisma.Decimal(0));
+const taxBreakdown = (o: Pick<Order, "items" | "fiscalCreditTotal">): [string, string][] => {
+  if (!o.items.some(i => i.ivaRate !== null) && o.fiscalCreditTotal.isZero()) return [];
+  const base = o.items.reduce((sum, i) => sum.plus(i.unitPrice.times(i.quantity).toDecimalPlaces(2)), new Prisma.Decimal(0));
+  return [["Subtotal sin impuestos", money(base)], ["IVA", money(computeOrderTotal(o.items).minus(base))],
+    ...(o.fiscalCreditTotal.gt(0) ? [["Correcciones fiscales autorizadas", money(o.fiscalCreditTotal)] as [string, string]] : [])];
+};
 const balances = (total: Prisma.Decimal, paid: Prisma.Decimal): [string, string][] => [
   ["Total de la orden", money(total)], ["Pagos netos registrados", money(paid)],
   ["Saldo pendiente", money(Prisma.Decimal.max(total.minus(paid), 0))],
@@ -55,10 +62,10 @@ export function dispatchDocument(o: Order): OperationalDocument {
       ...(o.shipment ? [["Envío", `${o.shipment.courier.name} · ${o.shipment.status} · Guía: ${o.shipment.trackingNumber ?? "Sin registrar"}`] as [string, string]] : [])],
     columns: ["Producto", "Unidades", "Precio unitario", "Importe"],
     rows: o.items.map(i => [product(i.variant), String(i.quantity), money(i.unitPrice), money(i.unitPrice.times(i.quantity))]),
-    totals: o.paymentMethod === "CONSIGNACION" ? [["Valor referencial en consignación", money(computeOrderTotal(o.items))]] : balances(computeOrderTotal(o.items), sumPaid(o.payments)).map(([label, value]) => [
+    totals: o.paymentMethod === "CONSIGNACION" ? [["Valor referencial en consignación", money(computeOrderTotal(o.items))]] : [...taxBreakdown(o), ...balances(Prisma.Decimal.max(0, computeOrderTotal(o.items).minus(o.fiscalCreditTotal)), sumPaid(o.payments))].map(([label, value]) => [
       label === "Saldo pendiente" && (pending || canceled) ? "Diferencia contable (no exigible por este documento)" : label, value,
     ]),
-    notices: [...(o.paymentMethod === "CONSIGNACION" ? ["La entrega en consignación no genera deuda. Solo se cobra lo liquidado posteriormente."] : []), "Precios finales acordados en USD; los descuentos ya están incluidos.",
+    notices: [...(o.paymentMethod === "CONSIGNACION" ? ["La entrega en consignación no genera deuda. Solo se cobra lo liquidado posteriormente."] : []), "Precios unitarios acordados en USD antes de IVA; los descuentos ya están incluidos.",
       ...(pending ? ["Pendiente de confirmación: no acredita salida ni entrega de mercadería."] : []),
       ...(canceled ? ["Orden cancelada: este documento no constituye una solicitud de pago."] : []),
       ...(o.origin !== "NORMAL" ? ["Este cargo corresponde a mercadería entregada previamente en consignación. No representa una nueva salida de bodega."] : []),
@@ -74,7 +81,7 @@ export function paymentDocument(o: Order, paymentId: string): OperationalDocumen
   const index = ordered.findIndex(p => p.id === paymentId);
   if (index < 0) throw notFound("Pago no encontrado en esta orden");
   const payment = ordered[index];
-  const total = computeOrderTotal(o.items);
+  const total = Prisma.Decimal.max(0, computeOrderTotal(o.items).minus(payment.fiscalCreditSnapshot));
   const before = sumPaid(ordered.slice(0, index));
   const after = before.plus(payment.amount);
   const title = payment.amount.lt(0) ? "Comprobante de reembolso / reverso"
@@ -191,7 +198,7 @@ export async function getReviewDocument(id: string): Promise<OperationalDocument
       ...(review.chargeOrder ? [["Cargo generado", review.chargeOrder.orderNumber] as [string, string], ...terms(review.chargeOrder)] : [])],
     columns: ["Producto", "Vendidas", "Devueltas", "Importe vendido"],
     rows: review.lines.map(l => [product(l.line.variant), String(l.quantitySold), String(l.quantityReturned), money(l.line.unitPrice.times(l.quantitySold))]),
-    totals: review.chargeOrder ? balances(computeOrderTotal(review.chargeOrder.items), sumPaid(review.chargeOrder.payments)) : [["Cargo generado en esta revisión", "USD 0.00"]],
+    totals: review.chargeOrder ? balances(Prisma.Decimal.max(0, computeOrderTotal(review.chargeOrder.items).minus(review.chargeOrder.fiscalCreditTotal)), sumPaid(review.chargeOrder.payments)) : [["Cargo generado en esta revisión", "USD 0.00"]],
     notices: ["Las devoluciones se documentan y validan por separado. Los saldos incluyen pagos registrados hasta la generación de esta copia.",
       ...(review.returnBatch ? [`Devolución relacionada: ${review.returnBatch.id}`] : [])],
   };

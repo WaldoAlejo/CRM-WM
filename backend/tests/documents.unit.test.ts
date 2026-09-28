@@ -7,15 +7,15 @@ import { renderDocumentPdf } from "../src/modules/documents/documentPdf";
 const d = (n: number) => new Prisma.Decimal(n);
 function order(): Parameters<typeof dispatchDocument>[0] {
   return {
-    id: "order", orderNumber: "OD-000001", origin: "NORMAL", status: "DESPACHADO",
+    id: "order", fiscalCreditTotal: d(0), orderNumber: "OD-000001", origin: "NORMAL", status: "DESPACHADO",
     dispatchDate: new Date("2026-09-23T15:00:00Z"), createdAt: new Date("2026-09-22T15:00:00Z"),
     shippingProvince: "Guayas", shippingCity: "Guayaquil", paymentMethod: "CREDITO", creditDays: 30,
     dueDate: new Date("2026-10-23T15:00:00Z"), wholesaler: { businessName: "Cliente", ruc: "0990000000001" }, finalCustomer: null,
-    items: [{ quantity: 2, unitPrice: d(201), variant: { sku: "WM-001", label: "Plomo", product: { name: "Producto" } } }],
+    items: [{ quantity: 2, unitPrice: d(201), ivaRate: null, variant: { sku: "WM-001", label: "Plomo", product: { name: "Producto" } } }],
     payments: [
-      { id: "p1", amount: d(100), method: "efectivo", paidAt: new Date("2026-09-23"), createdAt: new Date("2026-09-23T10:00Z") },
-      { id: "p2", amount: d(302), method: "transferencia", paidAt: new Date("2026-09-21"), createdAt: new Date("2026-09-24T10:00Z") },
-      { id: "p3", amount: d(-50), method: "reembolso", paidAt: new Date("2026-09-25"), createdAt: new Date("2026-09-25T10:00Z") },
+      { id: "p1", fiscalCreditSnapshot: d(0), amount: d(100), method: "efectivo", paidAt: new Date("2026-09-23"), createdAt: new Date("2026-09-23T10:00Z") },
+      { id: "p2", fiscalCreditSnapshot: d(0), amount: d(302), method: "transferencia", paidAt: new Date("2026-09-21"), createdAt: new Date("2026-09-24T10:00Z") },
+      { id: "p3", fiscalCreditSnapshot: d(0), amount: d(-50), method: "reembolso", paidAt: new Date("2026-09-25"), createdAt: new Date("2026-09-25T10:00Z") },
     ], shipment: null,
   };
 }
@@ -64,6 +64,13 @@ describe("Documentos operativos", () => {
     expect(refund.title).toContain("reembolso");
     expect(refund.totals).toContainEqual(["Saldo después de este registro", "USD 50.00"]);
     expect(() => paymentDocument(o, "otra-orden")).toThrow("Pago no encontrado");
+  });
+  it("una nota posterior no reescribe recibos anteriores", () => {
+    const o = order(); const before = paymentDocument(o, "p1");
+    o.fiscalCreditTotal = d(100);
+    expect(paymentDocument(o, "p1").totals).toEqual(before.totals);
+    o.payments[1].fiscalCreditSnapshot = d(100);
+    expect(paymentDocument(o, "p2").totals).toContainEqual(["Total de la orden", "USD 302.00"]);
   });
   it("identifica exceso de pago, cobros cero y decimales sin errores de flotante", () => {
     const o = order();

@@ -1,5 +1,6 @@
 import { DispatchStatus, PaymentMethod, PaymentStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { computeOrderTotal } from "../../lib/paymentRecalculation";
 import { conflict, notFound } from "../../utils/httpError";
 import { rucValidationService } from "./ruc-validation";
 
@@ -107,14 +108,11 @@ export async function softDeleteWholesaler(id: string) {
       paymentMethod: PaymentMethod.CREDITO,
       paymentStatus: { in: [PaymentStatus.PENDIENTE, PaymentStatus.PARCIAL] },
     },
-    include: { items: { select: { unitPrice: true, quantity: true } } },
+    include: { items: { select: { unitPrice: true, ivaRate: true, quantity: true } } },
   });
 
   const totalDebt = creditOrders.reduce((sum, order) => {
-    const orderTotal = order.items.reduce(
-      (itemSum, item) => itemSum.plus(item.unitPrice.times(item.quantity)),
-      new Decimal(0)
-    );
+    const orderTotal = Prisma.Decimal.max(0, computeOrderTotal(order.items).minus(order.fiscalCreditTotal));
     return sum.plus(orderTotal.minus(order.amountPaid ?? new Decimal(0)));
   }, new Decimal(0));
 

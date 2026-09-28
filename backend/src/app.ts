@@ -1,5 +1,7 @@
 import cors from "cors";
 import express from "express";
+import { fiscalSettingsRouter } from "./modules/fiscal/settings.routes";
+import { fiscalDocumentsRouter } from "./modules/fiscal/documents.routes";
 import { documentsRouter } from "./modules/documents/documents.routes";
 import { buildCorsOptions } from "./lib/corsOptions";
 import { prisma } from "./lib/prisma";
@@ -50,6 +52,8 @@ export function createApp() {
   app.use("/uploads", express.static(UPLOADS_ROOT));
 
   app.use("/api/auth", authRouter);
+  app.use("/api/settings", fiscalSettingsRouter);
+  app.use("/api/fiscal-documents", fiscalDocumentsRouter);
   app.use("/api/documents", documentsRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/purchasing", purchasingRouter);

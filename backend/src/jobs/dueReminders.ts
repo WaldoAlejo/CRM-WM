@@ -21,7 +21,7 @@
 // Por eso una cuenta que recibió "por vencer" y luego vence de verdad NO se
 // considera ya avisada: recibe "vencida" como un evento nuevo.
 import { DispatchStatus, PaymentMethod, PaymentStatus, Prisma } from "@prisma/client";
-import { getMailer, type Mailer } from "../lib/mailer";
+import { getConfiguredMailer, type Mailer } from "../lib/mailer";
 import { computeOrderTotal } from "../lib/paymentRecalculation";
 import { prisma } from "../lib/prisma";
 import { classifyReceivable, dueSoonUpperBound } from "../lib/receivableStatus";
@@ -144,7 +144,7 @@ function isEligible(kind: ReminderKind, remindedAt: Date | null, dueDate: Date, 
 export async function runDueReminders(options: ReminderOptions = {}): Promise<ReminderSummary> {
   const now = options.now ?? new Date();
   const repeatDaily = options.repeatDaily ?? false;
-  const mailer = options.mailer === undefined ? getMailer() : options.mailer;
+  const mailer = options.mailer === undefined ? await getConfiguredMailer() : options.mailer;
 
   const summary: ReminderSummary = {
     candidates: 0,
@@ -173,7 +173,7 @@ export async function runDueReminders(options: ReminderOptions = {}): Promise<Re
     orderBy: { dueDate: "asc" },
     include: {
       wholesaler: { select: { businessName: true, email: true } },
-      items: { select: { unitPrice: true, quantity: true } },
+      items: { select: { unitPrice: true, ivaRate: true, quantity: true } },
     },
   });
 
@@ -194,7 +194,7 @@ export async function runDueReminders(options: ReminderOptions = {}): Promise<Re
       }
     }
 
-    const balance = computeOrderTotal(order.items).minus(order.amountPaid ?? new Prisma.Decimal(0));
+    const balance = Prisma.Decimal.max(0, computeOrderTotal(order.items).minus(order.fiscalCreditTotal)).minus(order.amountPaid ?? new Prisma.Decimal(0));
     if (balance.lessThanOrEqualTo(0)) continue; // sin saldo real: nada que recordar.
     summary.candidates++;
 

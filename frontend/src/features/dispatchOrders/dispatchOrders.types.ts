@@ -52,6 +52,8 @@ export interface DispatchOrderItemVariantRef {
 // para OPERATOR el backend los omite del JSON por completo — mismo criterio
 // que Variant en products.types.ts.
 export interface DispatchOrderItem {
+  ivaCode?: string | null;
+  ivaRate?: string | null;
   id: string;
   variantId: string;
   variant: DispatchOrderItemVariantRef;
@@ -100,6 +102,8 @@ export interface Shipment {
 // calculado por el backend (computeOrderTotal, la misma función que recalcula
 // paymentStatus al registrar un pago) — nunca se reimplementa la suma acá.
 export interface DispatchOrderDetail {
+  fiscalIssuerId?: string | null;
+  fiscalCreditTotal?: string;
   consignmentLot?: { id: string; code: string } | null;
   reviewIntervalDays?: number;
   id: string;

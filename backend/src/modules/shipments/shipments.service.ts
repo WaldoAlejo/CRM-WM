@@ -4,6 +4,7 @@ import { prisma } from "../../lib/prisma";
 import { conflict, notFound } from "../../utils/httpError";
 import { computeOrderTotal } from "../../lib/paymentRecalculation";
 import { createReturnBatch } from "../quarantine/quarantine.service";
+import { captureInvoice } from "../fiscal/documents.service";
 
 async function getShipmentOrThrow(shipmentId: string) {
   const shipment = await prisma.shipment.findUnique({
@@ -29,6 +30,8 @@ export async function deliverShipment(
   assertInTransit(shipment.status);
 
   return prisma.$transaction(async (tx) => {
+    const claimed = await tx.shipment.updateMany({ where: { id: shipmentId, status: ShipmentStatus.EN_TRANSITO }, data: { status: ShipmentStatus.ENTREGADO } });
+    if (!claimed.count) throw conflict("El envío ya fue procesado.");
     const updatedShipment = await tx.shipment.update({
       where: { id: shipmentId },
       data: { status: ShipmentStatus.ENTREGADO, deliveredAt: new Date(), codAmountCollected },
@@ -37,6 +40,7 @@ export async function deliverShipment(
     await tx.payment.create({
       data: {
         dispatchOrderId: shipment.dispatchOrderId,
+        fiscalCreditSnapshot: shipment.dispatchOrder.fiscalCreditTotal,
         amount: codAmountCollected,
         method: "cobro courier",
         paidAt: new Date(),
@@ -45,6 +49,7 @@ export async function deliverShipment(
     });
 
     const dispatchOrder = await recalculatePaymentStatus(tx, shipment.dispatchOrderId);
+    await captureInvoice(tx, shipment.dispatchOrderId, userId);
 
     return { shipment: updatedShipment, dispatchOrder };
   });

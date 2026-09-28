@@ -1,7 +1,6 @@
-// Envío de correo por SMTP (nodemailer). El proyecto no tenía ningún servicio de
-// email: esta es la única puerta de salida de correos. Las credenciales vienen
-// SIEMPRE de variables de entorno (ver .env.example); sin SMTP_HOST/MAIL_FROM el
-// sistema funciona igual y simplemente no envía (getMailer() devuelve null).
+// SMTP existente por variables de entorno. getConfiguredMailer resuelve primero
+// el perfil administrado en la aplicación y conserva este servicio como respaldo
+// mientras no se haya seleccionado una cuenta general.
 import nodemailer from "nodemailer";
 
 export interface MailMessage {
@@ -9,6 +8,7 @@ export interface MailMessage {
   subject: string;
   text: string;
   html?: string;
+  attachments?: { filename: string; content: Buffer; contentType: string }[];
 }
 
 export interface Mailer {
@@ -47,4 +47,14 @@ export function getMailer(env: NodeJS.ProcessEnv = process.env): Mailer | null {
     },
   };
   return cached;
+}
+
+// Resolve on every job: changing credentials takes effect without restarting.
+export async function getConfiguredMailer(): Promise<Mailer | null> {
+  if (override !== undefined) return override;
+  const { prisma } = require("./prisma") as typeof import("./prisma");
+  const settings = await prisma.fiscalSettings.findUnique({ where: { id: 1 } });
+  if (!settings?.defaultMailProfileId) return getMailer();
+  const { configuredMailer } = require("../modules/fiscal/mail.service") as typeof import("../modules/fiscal/mail.service");
+  return configuredMailer(settings.defaultMailProfileId);
 }

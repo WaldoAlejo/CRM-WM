@@ -189,7 +189,8 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
       {arrayLevelError ? <p className="text-sm font-medium text-destructive">{arrayLevelError}</p> : null}
 
       {costBased ? <p className="text-sm text-muted-foreground">Precio = costo real promedio ponderado × (1 + incremento / 100). El costo y porcentaje quedan registrados con la venta. Si el costo cambia antes de guardar, vuelve a agregar el producto para revisar la negociación.</p> : null}
-      <p className="text-right text-sm font-medium">Total: ${total.toFixed(2)}</p>
+      <p className="text-right text-sm font-medium">Subtotal sin IVA: ${total.toFixed(2)}</p>
+      <p className="text-right text-xs text-muted-foreground">El IVA configurado se sumará al guardar la orden con emisor fiscal.</p>
     </div>
   );
 }

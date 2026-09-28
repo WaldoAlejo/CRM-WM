@@ -19,6 +19,7 @@ import { negotiatedCost, negotiatedUnitPrice } from "./negotiatedPricing";
 import { hasAdminAccess } from "../../lib/roles";
 import { badRequest, conflict, forbidden, notFound } from "../../utils/httpError";
 import { serializeDispatchOrderForRole } from "./dispatchOrders.serializer";
+import { captureInvoice, fiscalOrderContext } from "../fiscal/documents.service";
 
 interface CreateOrderItemInput {
   variantId: string;
@@ -140,6 +141,7 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
       const orderNumber = await generateOrderNumber(tx);
 
       const pricedItems = [];
+      const fiscal = await fiscalOrderContext(tx, data.items);
       for (const item of data.items) {
         const base = { variantId: item.variantId, quantity: item.quantity, priceType: item.priceType, locationId: item.locationId };
         if (item.markupPct !== undefined) {
@@ -156,6 +158,8 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
       const created = await tx.dispatchOrder.create({
         data: {
           orderNumber,
+          fiscalIssuerId: fiscal.issuerId,
+          fiscalEnvironment: fiscal.environment,
           buyerType: data.buyerType,
           wholesalerId: data.wholesalerId,
           finalCustomerId: data.finalCustomerId,
@@ -167,7 +171,7 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
           notes: data.notes,
           createdById: userId,
           items: {
-            create: pricedItems,
+            create: pricedItems.map(item => ({ ...item, ...fiscal.taxes.get(item.variantId) })),
           },
         },
         include: { items: true },
@@ -302,10 +306,7 @@ export async function confirmDispatchOrder(
 
     let shipment = null;
     if (order.paymentMethod === PaymentMethod.CONTRA_ENTREGA) {
-      const codAmountExpected = updatedOrder.items.reduce(
-        (sum, item) => sum.plus(item.unitPrice.times(item.quantity)),
-        new Prisma.Decimal(0)
-      );
+      const codAmountExpected = computeOrderTotal(updatedOrder.items);
       shipment = await tx.shipment.create({
         data: {
           dispatchOrderId: orderId,
@@ -318,6 +319,7 @@ export async function confirmDispatchOrder(
       });
     }
 
+    await captureInvoice(tx, orderId, userId);
     return { ...updatedOrder, shipment };
   }, { timeout: 20000 });
 
@@ -435,7 +437,7 @@ export async function getDispatchOrderById(id: string, role: Role) {
   // orderTotal viene de la MISMA función que recalcula paymentStatus al
   // registrar un pago — el detalle nunca reimplementa la fórmula de sumar
   // ítems, solo muestra lo que ya calculó el sistema.
-  const orderTotal = computeOrderTotal(order.items);
+  const orderTotal = Prisma.Decimal.max(0, computeOrderTotal(order.items).minus(order.fiscalCreditTotal));
   // Semáforo de la cuenta (null si no es crédito despachado): derivado ahora.
   const collectionStatus = classifyReceivable(order);
   return serializeDispatchOrderForRole({ ...order, orderTotal, collectionStatus }, role);
@@ -458,14 +460,19 @@ export async function assertOrderExists(orderId: string) {
 export async function addPayment(orderId: string, data: AddPaymentInput, userId: string | undefined) {
   const order = await prisma.dispatchOrder.findFirst({ where: { id: orderId, deletedAt: null } });
   if (!order) throw notFound("Orden no encontrada");
+  if (order.fiscalIssuerId && order.status === DispatchStatus.PENDIENTE) {
+    throw conflict("El despacho fiscal debe confirmar la venta antes de registrar el pago. Los anticipos requieren un tratamiento fiscal específico.");
+  }
 
   if (order.paymentMethod === PaymentMethod.CONSIGNACION) {
     throw badRequest("Registra el pago en el cargo generado al liquidar la consignación.");
   }
   return prisma.$transaction(async (tx) => {
+    const lockedOrder = await tx.dispatchOrder.update({ where: { id: orderId }, data: { updatedAt: new Date() } });
     await tx.payment.create({
       data: {
         dispatchOrderId: orderId,
+        fiscalCreditSnapshot: lockedOrder.fiscalCreditTotal,
         amount: data.amount,
         method: data.method,
         paidAt: data.paidAt ?? new Date(),
@@ -532,7 +539,7 @@ export async function getAccountsReceivable(params: { page: number; pageSize: nu
       include: {
         wholesaler: { select: { id: true, businessName: true } },
         finalCustomer: { select: { id: true, fullName: true } },
-        items: { select: { unitPrice: true, quantity: true } },
+        items: { select: { unitPrice: true, ivaRate: true, quantity: true } },
       },
     }),
     prisma.dispatchOrder.count({ where }),
@@ -544,7 +551,7 @@ export async function getAccountsReceivable(params: { page: number; pageSize: nu
   return {
     data: rows.map(({ items, ...order }) => ({
       ...order,
-      orderTotal: computeOrderTotal(items),
+      orderTotal: Prisma.Decimal.max(0, computeOrderTotal(items).minus(order.fiscalCreditTotal)),
       collectionStatus: classifyReceivable(order, now),
     })),
     pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
@@ -575,7 +582,8 @@ export async function getAccountsReceivableSummary() {
       paymentStatus: true,
       dueDate: true,
       amountPaid: true,
-      items: { select: { unitPrice: true, quantity: true } },
+      fiscalCreditTotal: true,
+      items: { select: { unitPrice: true, ivaRate: true, quantity: true } },
     },
   });
 
@@ -589,7 +597,7 @@ export async function getAccountsReceivableSummary() {
   for (const order of rows) {
     const status = classifyReceivable(order, now);
     if (status !== "VENCIDO" && status !== "POR_VENCER" && status !== "PENDIENTE") continue;
-    const outstanding = computeOrderTotal(order.items).minus(order.amountPaid ?? new Prisma.Decimal(0));
+    const outstanding = Prisma.Decimal.max(0, computeOrderTotal(order.items).minus(order.fiscalCreditTotal)).minus(order.amountPaid ?? new Prisma.Decimal(0));
     byStatus[status].count += 1;
     byStatus[status].outstanding = byStatus[status].outstanding.plus(outstanding);
   }

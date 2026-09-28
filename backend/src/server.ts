@@ -19,13 +19,15 @@ if (missing.length > 0) {
 // ANTES de que getMissingEnvVars() llegue a leerlas, dejando el chequeo
 // efectivamente inútil en cualquier entorno donde exista un .env real. El
 // chequeo debe correr ANTES de que cualquier módulo toque Prisma.
-import("./app").then(({ createApp }) => {
+Promise.resolve().then(() => {
+  const { createApp } = require("./app") as typeof import("./app");
   const port = Number(process.env.PORT ?? 4000);
 
   createApp().listen(port, () => {
     console.log(`API de inventario WM/Kestore escuchando en http://localhost:${port}`);
     // Tareas programadas (recordatorios de pago por vencer). Aquí y no en
     // createApp(): los tests nunca deben arrancar un job real.
-    import("./jobs/scheduler").then(({ startScheduler }) => startScheduler());
+    (require("./jobs/scheduler") as typeof import("./jobs/scheduler")).startScheduler();
+    (require("./jobs/fiscalWorker") as typeof import("./jobs/fiscalWorker")).startFiscalWorker();
   });
 });

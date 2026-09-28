@@ -1,5 +1,31 @@
 # Despliegue: Cloud Run + Vercel + Neon
 
+## Facturación electrónica
+
+Guardar `SETTINGS_ENCRYPTION_KEY` como un secreto adicional (32 bytes aleatorios,
+64 caracteres hexadecimales) y mantenerlo estable entre versiones. Su pérdida
+impide descifrar las credenciales guardadas; respaldarlo de forma separada de la
+base. Nunca generar una clave nueva automáticamente en cada arranque.
+
+El contenedor incluye los XSD oficiales en `/app/resources/sri`. Aplicar las
+migraciones fiscales con el job de migración antes de desplegar la versión.
+La emisión de producción permanece bloqueada salvo
+`FISCAL_PRODUCTION_ENABLED=true`; habilitarla solo después de comprobar
+factura, nota y guía con una firma real en el ambiente de pruebas del SRI.
+
+La cola interna (`FISCAL_WORKER_ENABLED=true`) requiere CPU fuera de peticiones:
+para usarla en Cloud Run configurar CPU siempre asignada y al menos una instancia.
+Como alternativa, desactivar esa cola interna y programar un Cloud Run Job con
+`node dist/src/jobs/runFiscalQueue.js`, con frecuencia adecuada para autorización
+y recuperación. El envío inicial se intenta inmediatamente desde la petición
+de emisión; el job recupera interrupciones y consultas pendientes. Varios
+procesadores comparten bloqueos en la base y la misma clave del comprobante.
+
+La configuración SMTP anterior funciona hasta seleccionar una cuenta general
+desde la aplicación. Los comprobantes usan la cuenta de su propia empresa;
+los recordatorios usan la cuenta general. Configurar una cuenta puede habilitar
+los recordatorios existentes: revisar `REMINDERS_ENABLED` y el límite de atraso.
+
 ## Backend
 
 El contexto de construcción es `backend/`. El Dockerfile usa Node 24 y genera

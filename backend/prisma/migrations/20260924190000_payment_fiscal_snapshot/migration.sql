@@ -1,0 +1,1 @@
+ALTER TABLE "Payment" ADD COLUMN "fiscalCreditSnapshot" DECIMAL(12,2) NOT NULL DEFAULT 0;

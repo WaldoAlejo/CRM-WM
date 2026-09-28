@@ -318,6 +318,8 @@ enum ProductStatus {
 }
 
 model Product {
+  ivaCode String?
+  ivaRate Decimal? @db.Decimal(5, 2)
   id          String        @id @default(cuid())
   sku         String        @unique // Código propio interno, ej: WM-0012
   name        String
@@ -725,6 +727,12 @@ enum DispatchOrderOrigin {
 }
 
 model DispatchOrder {
+  fiscalIssuerId String?
+  fiscalIssuer FiscalIssuer? @relation(fields: [fiscalIssuerId], references: [id], onDelete: Restrict)
+  fiscalEnvironment String?
+  fiscalDocuments FiscalDocument[]
+  // Cache de notas autorizadas/anulaciones confirmadas; no representa un pago.
+  fiscalCreditTotal Decimal @default(0) @db.Decimal(12, 2)
   id          String @id @default(cuid())
   orderNumber String @unique // Autogenerado, ej: OD-000123.
 
@@ -815,6 +823,8 @@ enum PriceType {
 }
 
 model DispatchOrderItem {
+  ivaCode String?
+  ivaRate Decimal? @db.Decimal(5, 2)
   id              String         @id @default(cuid())
   dispatchOrderId String
   dispatchOrder   DispatchOrder  @relation(fields: [dispatchOrderId], references: [id], onDelete: Restrict)
@@ -874,6 +884,7 @@ model DispatchOrderItem {
 // ----------------------------------------------------------------------------
 
 model Payment {
+  fiscalCreditSnapshot Decimal @default(0) @db.Decimal(12, 2)
   id              String        @id @default(cuid())
   dispatchOrderId String
   dispatchOrder   DispatchOrder @relation(fields: [dispatchOrderId], references: [id], onDelete: Restrict)
@@ -1268,4 +1279,162 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([performedAt])
+}
+
+// Configuración fiscal: emisor activo único, secretos cifrados y documentos históricos.
+model MailProfile {
+  id                String           @id @default(cuid())
+  name              String
+  host              String
+  port              Int
+  security          String
+  username          String
+  passwordEncrypted String?
+  fromName          String
+  fromEmail         String
+  replyTo           String?
+  enabled           Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  issuers           FiscalIssuer[]
+  settings          FiscalSettings[]
+  deliveries        MailDelivery[]
+}
+
+model FiscalSettings {
+  id                   Int           @id @default(1)
+  activeIssuerId       String?
+  activeIssuer         FiscalIssuer? @relation(fields: [activeIssuerId], references: [id], onDelete: Restrict)
+  defaultMailProfileId String?
+  defaultMailProfile   MailProfile?  @relation(fields: [defaultMailProfileId], references: [id], onDelete: Restrict)
+  updatedAt            DateTime      @updatedAt
+}
+
+model FiscalIssuer {
+  id                 String              @id @default(cuid())
+  ruc                String              @unique
+  legalName          String
+  tradeName          String?
+  address            String
+  accountingRequired Boolean             @default(false)
+  specialTaxpayer    String?
+  withholdingAgent   String?
+  regime             String              @default("GENERAL")
+  environment        String              @default("1")
+  mailProfileId      String?
+  mailProfile        MailProfile?        @relation(fields: [mailProfileId], references: [id], onDelete: Restrict)
+  enabledForEmission Boolean             @default(false)
+  verifiedAt         DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  settings           FiscalSettings[]
+  certificates       FiscalCertificate[]
+  series             FiscalSeries[]
+  documents          FiscalDocument[]
+  orders             DispatchOrder[]
+}
+
+model FiscalCertificate {
+  id                String           @id @default(cuid())
+  issuerId          String
+  issuer            FiscalIssuer     @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+  p12Encrypted      String?
+  passwordEncrypted String?
+  subject           String
+  issuedBy          String
+  serialNumber      String
+  fingerprint       String
+  validFrom         DateTime
+  validTo           DateTime
+  retiredAt         DateTime?
+  createdAt         DateTime         @default(now())
+  documents         FiscalDocument[]
+
+  @@index([issuerId, retiredAt])
+}
+
+model FiscalSeries {
+  id            String           @id @default(cuid())
+  issuerId      String
+  issuer        FiscalIssuer     @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+  environment   String
+  documentType  String
+  establishment String
+  emissionPoint String
+  address       String
+  lastNumber    Int              @default(0)
+  documents     FiscalDocument[]
+
+  @@unique([issuerId, environment, documentType, establishment, emissionPoint])
+}
+
+model FiscalDocument {
+  id                  String             @id @default(cuid())
+  issuerId            String
+  issuer              FiscalIssuer       @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+  dispatchOrderId     String?
+  dispatchOrder       DispatchOrder?     @relation(fields: [dispatchOrderId], references: [id], onDelete: Restrict)
+  certificateId       String?
+  certificate         FiscalCertificate? @relation(fields: [certificateId], references: [id], onDelete: Restrict)
+  seriesId            String
+  series              FiscalSeries       @relation(fields: [seriesId], references: [id], onDelete: Restrict)
+  sourceKey           String             @unique
+  documentType        String
+  environment         String
+  status              String             @default("DRAFT")
+  cancellationStatus  String             @default("NONE")
+  number              String?
+  accessKey           String?            @unique
+  issueDate           DateTime
+  buyerName           String
+  buyerIdentification String
+  recipientEmail      String?
+  total               Decimal            @db.Decimal(12, 2)
+  snapshot            Json
+  unsignedXml         String?
+  signedXml           String?
+  authorizedXml       String?
+  authorizationNumber String?
+  authorizedAt        DateTime?
+  lastMessage         String?
+  attempts            Int                @default(0)
+  nextAttemptAt       DateTime?
+  lockedUntil         DateTime?
+  originalId          String?
+  original            FiscalDocument?    @relation("FiscalCorrections", fields: [originalId], references: [id], onDelete: Restrict)
+  corrections         FiscalDocument[]   @relation("FiscalCorrections")
+  events              FiscalEvent[]
+  deliveries          MailDelivery[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@unique([seriesId, number])
+  @@index([issuerId, issueDate])
+  @@index([status, nextAttemptAt])
+  @@index([dispatchOrderId])
+}
+
+model FiscalEvent {
+  id            String         @id @default(cuid())
+  documentId    String
+  document      FiscalDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  action        String
+  message       String
+  performedById String?
+  createdAt     DateTime       @default(now())
+}
+
+model MailDelivery {
+  id         String          @id @default(cuid())
+  profileId  String
+  profile    MailProfile     @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  documentId String?
+  document   FiscalDocument? @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  recipient  String
+  subject    String
+  status     String
+  error      String?
+  createdAt  DateTime        @default(now())
+
+  @@index([documentId, createdAt])
 }
