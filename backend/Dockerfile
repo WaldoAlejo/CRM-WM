@@ -10,7 +10,7 @@ COPY src ./src
 COPY resources/sri ./resources/sri
 RUN npm run build
 
-# Run this target as a separate Cloud Run Job before deploying a schema change.
+# Optional target that runs `prisma migrate deploy` (see DEPLOYMENT.md, Migraciones).
 FROM build AS migrate
 CMD ["npm", "run", "prisma:deploy"]
 

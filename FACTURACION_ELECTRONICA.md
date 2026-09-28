@@ -30,7 +30,7 @@ Configuración inicial: crear cuenta de correo, empresa, series 01/04/06 y carga
 la firma; configurar IVA de productos y activar el emisor. Los pedidos históricos
 sin emisor no se refacturan ni reciben IVA retroactivamente. La clave local de
 cifrado se configura en `.env`, sin incorporarla a Git; ver `DEPLOYMENT.md` para
-instalaciones nuevas y ejecución de la cola en Cloud Run.
+instalaciones nuevas y ejecución de la cola en Railway.
 
 Límites de esta entrega: el cierre de consignación sigue siendo una liquidación
 operada por el administrador y debe realizarse mensualmente; no se infieren ventas
