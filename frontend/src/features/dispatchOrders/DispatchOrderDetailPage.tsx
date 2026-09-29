@@ -62,10 +62,10 @@ export function DispatchOrderDetailPage() {
         <ArrowLeftIcon className="size-4" /> Órdenes de despacho
       </Link>
 
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">{order.orderNumber}</h1>
+            <h1 className="whitespace-nowrap text-2xl font-semibold">{order.orderNumber}</h1>
             <DispatchStatusBadge status={order.status} />
             {isConsignment ? <span className="text-sm">Consignación · Sin cargo</span> : <PaymentStatusBadge status={order.paymentStatus} />}
             {/* Semáforo de la cuenta a crédito (el backend lo deriva al consultar). */}
@@ -82,7 +82,7 @@ export function DispatchOrderDetailPage() {
           ) : null}
         </div>
         {isPending ? (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setCancelOpen(true)}>
               Cancelar
             </Button>
@@ -111,7 +111,7 @@ export function DispatchOrderDetailPage() {
       </div>
 
       {canManageConsignment && <DispatchFiscalSection orderId={order.id} pending={isPending} fiscalIssuerId={order.fiscalIssuerId} />}
-      <section className="grid grid-cols-2 gap-4 rounded-md border p-4 text-sm">
+      <section className="grid grid-cols-1 gap-4 rounded-md border p-4 text-sm sm:grid-cols-2">
         <div>
           <p className="text-muted-foreground">Envío</p>
           <p>
@@ -135,7 +135,7 @@ export function DispatchOrderDetailPage() {
           </div>
         ) : null}
         {order.notes ? (
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <p className="text-muted-foreground">Notas</p>
             <p>{order.notes}</p>
           </div>

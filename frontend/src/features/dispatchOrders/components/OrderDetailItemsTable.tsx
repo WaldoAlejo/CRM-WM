@@ -36,7 +36,7 @@ export function OrderDetailItemsTable({ items }: { items: DispatchOrderItem[] })
       header: "Producto",
       cell: (item) => (
         <div>
-          <p className="font-medium">{item.variant.sku}</p>
+          <p className="whitespace-nowrap font-medium">{item.variant.sku}</p>
           {item.variant.label ? <p className="text-xs text-muted-foreground">{item.variant.label}</p> : null}
         </div>
       ),

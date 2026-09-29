@@ -13,7 +13,7 @@ export function GlobalSearchBar() {
 
   return (
     <form
-      className="relative w-64"
+      className="relative w-full min-w-0 max-w-64"
       onSubmit={(event) => {
         event.preventDefault();
         if (value.trim()) navigate(`/search?q=${encodeURIComponent(value.trim())}`);

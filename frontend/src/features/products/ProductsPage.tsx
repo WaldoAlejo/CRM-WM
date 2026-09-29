@@ -17,7 +17,7 @@ import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 const ALL = "__all__"; // Radix Select no permite value="" en SelectItem; se traduce a "sin filtro" acá.
 
 const columns: CrudColumn<ProductListItem>[] = [
-  { header: "SKU", cell: (item) => item.sku },
+  { header: "SKU", cell: (item) => <span className="whitespace-nowrap">{item.sku}</span> },
   {
     header: "Nombre",
     cell: (item) => (
@@ -64,7 +64,7 @@ export function ProductsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Productos</h1>
         <Button onClick={() => setCreateOpen(true)}>Nuevo producto</Button>
       </div>
@@ -85,7 +85,7 @@ export function ProductsPage() {
             placeholder="Buscar por nombre, SKU o modelo..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-64"
+            className="w-full sm:w-64"
           />
           <Button type="submit" variant="outline" size="icon">
             <SearchIcon />
@@ -99,7 +99,7 @@ export function ProductsPage() {
             updateFilter("subcategoryId", undefined);
           }}
         >
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-48">
             <SelectValue placeholder="Categoría" />
           </SelectTrigger>
           <SelectContent>
@@ -117,7 +117,7 @@ export function ProductsPage() {
             value={filters.subcategoryId ?? ALL}
             onValueChange={(value) => updateFilter("subcategoryId", value === ALL ? undefined : value)}
           >
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-48">
               <SelectValue placeholder="Subcategoría" />
             </SelectTrigger>
             <SelectContent>
@@ -135,7 +135,7 @@ export function ProductsPage() {
           value={filters.status ?? ALL}
           onValueChange={(value) => updateFilter("status", value === ALL ? undefined : (value as "ACTIVE" | "DISCONTINUED"))}
         >
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-44">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
@@ -150,11 +150,11 @@ export function ProductsPage() {
       <DataTable columns={visibleColumns} data={items} isLoading={query.isLoading} getRowId={(item) => item.id} />
 
       {pagination ? (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
           <span>
             Página {pagination.page} de {pagination.totalPages} · {pagination.total} en total
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeftIcon /> Anterior
             </Button>

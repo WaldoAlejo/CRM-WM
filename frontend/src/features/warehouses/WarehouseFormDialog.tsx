@@ -134,7 +134,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="capacityCbm"
@@ -212,7 +212,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
               {!warehouse?.layout && (isSpatialLayout(layout) ? layout.elements.length === 0 : layout.positions.length === 0) ? <Button type="button" variant="ghost" disabled={isPending} onClick={() => form.setValue("layout", undefined, { shouldDirty: true, shouldValidate: true })}>Continuar sin plano</Button> : null}
             </div> : null}
             </div>
-            <DialogFooter className="sticky bottom-0 z-10 border-t bg-background py-3">
+            <DialogFooter className="sticky -bottom-4 z-10 -mb-4 border-t bg-background pb-4 pt-3 sm:-bottom-6 sm:-mb-6 sm:pb-6">
               <Button type="button" variant="outline" disabled={isPending} onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>

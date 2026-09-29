@@ -43,7 +43,7 @@ export function EditReceiptDialog({ batchId, movement, onClose }: { batchId: str
       <form onSubmit={event => { event.preventDefault(); if (valid) mutation.mutate(); }} className="space-y-4">
         <fieldset disabled={mutation.isPending} className="space-y-4">
           <label className="grid gap-2 text-sm font-medium">Ubicación del ingreso
-            <select className="h-10 rounded-md border bg-background px-3" value={locationId} disabled={isLoading} onChange={e => setLocationId(e.target.value)}>
+            <select className="h-10 w-full min-w-0 rounded-md border bg-background px-3" value={locationId} disabled={isLoading} onChange={e => setLocationId(e.target.value)}>
               <option value="">Sin ubicación</option>
               {movement.toLocationId && !options.some(o => o.id === movement.toLocationId) && <option value={movement.toLocationId}>Ubicación anterior (inactiva)</option>}
               {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}

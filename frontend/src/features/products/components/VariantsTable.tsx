@@ -62,7 +62,7 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
   // precio/costo directamente no se agregan al array si el rol no puede
   // verlas — no se renderizan vacías ni deshabilitadas, no existen.
   const columns: CrudColumn<Variant>[] = [
-    { header: "SKU", cell: (v) => v.sku },
+    { header: "SKU", cell: (v) => <span className="whitespace-nowrap">{v.sku}</span> },
     { header: "Etiqueta", cell: (v) => v.label ?? "—" },
     { header: "Stock", cell: (v) => v.stock },
     { header: "Disponible", cell: (v) => v.stock - v.reservedStock },
@@ -75,7 +75,7 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Variantes ({variants.length})</h2>
         <Button size="sm" onClick={() => openEdit("new")}>
           Nueva variante

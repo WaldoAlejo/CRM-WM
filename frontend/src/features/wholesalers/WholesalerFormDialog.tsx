@@ -88,7 +88,7 @@ export function WholesalerFormDialog({ open, onOpenChange, createMutation }: Who
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>RUC</FormLabel>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <FormControl>
                       <Input placeholder="1234567890001" {...field} />
                     </FormControl>
@@ -122,7 +122,7 @@ export function WholesalerFormDialog({ open, onOpenChange, createMutation }: Who
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="contactName"
@@ -179,7 +179,7 @@ export function WholesalerFormDialog({ open, onOpenChange, createMutation }: Who
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="creditLimit"

@@ -22,7 +22,7 @@ const columns: CrudColumn<DispatchOrderListItem>[] = [
   {
     header: "Orden",
     cell: (item) => (
-      <Link to={`/dispatch-orders/${item.id}`} className="font-medium hover:underline">
+      <Link to={`/dispatch-orders/${item.id}`} className="whitespace-nowrap font-medium hover:underline">
         {item.orderNumber}
       </Link>
     ),
@@ -72,19 +72,19 @@ function DispatchOrdersList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Órdenes de despacho</h1>
         <Button asChild>
           <Link to="/dispatch-orders/new">Nueva orden</Link>
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         <Select
           value={filters.status ?? ALL}
           onValueChange={(value) => updateFilter("status", value === ALL ? undefined : (value as never))}
         >
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-full sm:w-44">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
@@ -99,7 +99,7 @@ function DispatchOrdersList() {
           value={filters.paymentMethod ?? ALL}
           onValueChange={(value) => updateFilter("paymentMethod", value === ALL ? undefined : (value as never))}
         >
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-full sm:w-44">
             <SelectValue placeholder="Método de pago" />
           </SelectTrigger>
           <SelectContent>
@@ -115,7 +115,7 @@ function DispatchOrdersList() {
           value={filters.buyerType ?? ALL}
           onValueChange={(value) => updateFilter("buyerType", value === ALL ? undefined : (value as never))}
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Comprador" />
           </SelectTrigger>
           <SelectContent>
@@ -129,7 +129,7 @@ function DispatchOrdersList() {
           value={filters.shippingProvince ?? ALL}
           onValueChange={(value) => updateFilter("shippingProvince", value === ALL ? undefined : value)}
         >
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-full sm:w-44">
             <SelectValue placeholder="Provincia" />
           </SelectTrigger>
           <SelectContent>
@@ -142,29 +142,31 @@ function DispatchOrdersList() {
           </SelectContent>
         </Select>
 
-        <Input
-          type="date"
-          className="w-40"
-          value={filters.dateFrom ?? ""}
-          onChange={(e) => updateFilter("dateFrom", e.target.value || undefined)}
-        />
-        <span className="text-sm text-muted-foreground">a</span>
-        <Input
-          type="date"
-          className="w-40"
-          value={filters.dateTo ?? ""}
-          onChange={(e) => updateFilter("dateTo", e.target.value || undefined)}
-        />
+        <div className="col-span-2 flex items-center gap-2">
+          <Input
+            type="date"
+            className="min-w-0 flex-1 sm:w-40 sm:flex-none"
+            value={filters.dateFrom ?? ""}
+            onChange={(e) => updateFilter("dateFrom", e.target.value || undefined)}
+          />
+          <span className="text-sm text-muted-foreground">a</span>
+          <Input
+            type="date"
+            className="min-w-0 flex-1 sm:w-40 sm:flex-none"
+            value={filters.dateTo ?? ""}
+            onChange={(e) => updateFilter("dateTo", e.target.value || undefined)}
+          />
+        </div>
       </div>
 
       <DataTable columns={columns} data={items} isLoading={query.isLoading} getRowId={(item) => item.id} />
 
       {pagination ? (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
           <span>
             Página {pagination.page} de {pagination.totalPages} · {pagination.total} en total
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeftIcon /> Anterior
             </Button>

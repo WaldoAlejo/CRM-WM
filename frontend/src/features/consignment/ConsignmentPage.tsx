@@ -11,7 +11,7 @@ const columns: CrudColumn<ConsignmentLotListItem>[] = [
   {
     header: "Lote",
     cell: (lot) => (
-      <Link to={`/dispatch-orders/consignment/${lot.id}`} className="font-medium hover:underline">
+      <Link to={`/dispatch-orders/consignment/${lot.id}`} className="whitespace-nowrap font-medium hover:underline">
         {lot.code}
       </Link>
     ),
@@ -44,7 +44,7 @@ export function ConsignmentPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Seguimiento de consignación</h1>
           <p className="text-sm text-muted-foreground">
@@ -75,11 +75,11 @@ export function ConsignmentPage() {
       />
 
       {pagination ? (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
           <span>
             Página {pagination.page} de {pagination.totalPages} · {pagination.total} en total
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeftIcon /> Anterior
             </Button>

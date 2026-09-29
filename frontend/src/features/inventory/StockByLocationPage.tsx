@@ -45,14 +45,14 @@ export function StockByLocationPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Inventario · Stock por ubicación</h1>
         <Link to="/inventory/low-stock" className="text-sm text-primary hover:underline">
           Ver alertas de stock bajo →
         </Link>
       </div>
 
-      <div className="w-64">
+      <div className="w-full sm:w-64">
         <p className="mb-3 text-xs text-muted-foreground">Los cartones son equivalencias estimadas del stock si se consolidan las unidades; no cuentan cajas abiertas. El volumen incluye el cartón parcial y usa el promedio informado de ingresos compatibles. Sin medidas no se calcula superficie.</p>
         <Select
           value={warehouseId ?? "all"}
@@ -83,11 +83,11 @@ export function StockByLocationPage() {
       />
 
       {pagination ? (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
           <span>
             Página {pagination.page} de {pagination.totalPages} · {pagination.total} en total
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeftIcon /> Anterior
             </Button>

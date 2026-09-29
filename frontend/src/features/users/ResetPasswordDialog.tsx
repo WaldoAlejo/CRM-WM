@@ -58,7 +58,7 @@ export function ResetPasswordDialog({ open, onOpenChange, user }: ResetPasswordD
               Contraseña temporal generada — comunicásela a {user.name} por fuera del sistema. No se va a
               volver a mostrar.
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Input readOnly value={temporaryPassword} className="font-mono" onFocus={(e) => e.target.select()} />
               <Button type="button" variant="outline" size="icon" onClick={handleCopy} title="Copiar">
                 {copied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}

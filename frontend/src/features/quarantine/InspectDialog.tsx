@@ -121,7 +121,7 @@ export function InspectDialog({ line, onOpenChange }: InspectDialogProps) {
             {CHECK_ITEMS.map((item) => (
               <div key={item.key} role="group" aria-label={item.label} className="flex items-center justify-between gap-2">
                 <span className="text-sm">{item.label}</span>
-                <div className="flex gap-1">
+                <div className="flex shrink-0 gap-1">
                   <Button
                     type="button"
                     size="sm"

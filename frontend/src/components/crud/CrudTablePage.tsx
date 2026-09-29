@@ -26,11 +26,11 @@ function PaginationControls({
   onPageChange: (page: number) => void;
 }) {
   return (
-    <div className="flex items-center justify-between text-sm text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
       <span>
         Página {pagination.page} de {pagination.totalPages} · {pagination.total} en total
       </span>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
           <ChevronLeftIcon /> Anterior
         </Button>
@@ -74,7 +74,7 @@ export function CrudTablePage<TItem extends { id: string }, TFormValues extends 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">{config.title}</h1>
         {canCreate ? (
           <Button onClick={() => setFormState({ open: true, item: null })}>

@@ -22,7 +22,7 @@ export function ProfitabilityLinesTable({ lines }: { lines: ProfitabilityLine[] 
       <TableBody>
         {lines.map((line) => (
           <TableRow key={line.variantId}>
-            <TableCell>{line.sku}</TableCell>
+            <TableCell className="whitespace-nowrap">{line.sku}</TableCell>
             <TableCell>
               {line.productName}
               {line.label ? <span className="text-muted-foreground"> — {line.label}</span> : null}

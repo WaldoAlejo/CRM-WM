@@ -83,7 +83,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
             return (
               <TableRow key={field.id}>
                 <TableCell>
-                  <p className="font-medium">{item?.sku}</p>
+                  <p className="whitespace-nowrap font-medium">{item?.sku}</p>
                   {item?.label ? <p className="text-xs text-muted-foreground">{item.label}</p> : null}
                 </TableCell>
                 <TableCell>

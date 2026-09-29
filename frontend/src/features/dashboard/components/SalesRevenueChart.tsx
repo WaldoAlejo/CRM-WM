@@ -17,10 +17,10 @@ export function SalesRevenueChart({ sales }: SalesRevenueChartProps) {
 
   return (
     <ResponsiveContainer width="100%" height={220}>
-      <BarChart data={data} margin={{ left: 8, right: 16 }}>
+      <BarChart data={data} margin={{ left: 0, right: 8 }}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" />
-        <YAxis />
+        <XAxis dataKey="name" interval={0} tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} />
         <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, "Ventas"]} />
         <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]} />
       </BarChart>

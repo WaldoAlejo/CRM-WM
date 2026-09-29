@@ -28,7 +28,7 @@ export function ImportBatchesPage() {
     {
       header: "Referencia",
       cell: (item) => (
-        <Link to={`/import-batches/${item.id}`} className="font-medium hover:underline">
+        <Link to={`/import-batches/${item.id}`} className="whitespace-nowrap font-medium hover:underline">
           {item.reference}
         </Link>
       ),
@@ -57,14 +57,14 @@ export function ImportBatchesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Importaciones</h1>
         <Button asChild>
           <Link to="/import-batches/new">Nuevo lote</Link>
         </Button>
       </div>
 
-      <div className="w-64">
+      <div className="w-full sm:w-64">
         <Select
           value={supplierId ?? ALL}
           onValueChange={(value) => {
@@ -89,11 +89,11 @@ export function ImportBatchesPage() {
       <DataTable columns={columns} data={items} isLoading={query.isLoading} getRowId={(item) => item.id} />
 
       {pagination ? (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
           <span>
             Página {pagination.page} de {pagination.totalPages} · {pagination.total} en total
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeftIcon /> Anterior
             </Button>

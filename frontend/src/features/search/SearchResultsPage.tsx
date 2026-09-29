@@ -29,7 +29,7 @@ export function SearchResultsPage() {
           {data.data.map((result) => (
             <Link key={result.variantId} to={`/products/${result.product.id}`}>
               <Card className="transition-colors hover:bg-accent">
-                <CardContent className="flex items-center justify-between p-4">
+                <CardContent className="flex flex-wrap items-center justify-between gap-2 p-4">
                   <div>
                     <p className="font-medium">
                       {result.product.name} {result.label ? `— ${result.label}` : ""}

@@ -45,7 +45,7 @@ export function WarehouseLayoutEditor({ value, onChange, disabled }: Props) {
         <span className="text-xs font-medium text-slate-600">VISTA SUPERIOR · METROS</span>
       </div>
       <div className="space-y-4 p-4">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {numberField("lengthM", "Largo (m)", 0.1, 200)}
           {numberField("widthM", "Ancho (m)", 0.1, 200)}
           {numberField("heightM", "Altura (m)", 0.1, 200)}

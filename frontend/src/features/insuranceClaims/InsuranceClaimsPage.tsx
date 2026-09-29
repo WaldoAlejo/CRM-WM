@@ -21,7 +21,7 @@ const columns: CrudColumn<InsuranceClaim>[] = [
   {
     header: "Orden",
     cell: (claim) => (
-      <Link to={`/dispatch-orders/${claim.shipment.dispatchOrder.id}`} className="font-medium hover:underline">
+      <Link to={`/dispatch-orders/${claim.shipment.dispatchOrder.id}`} className="whitespace-nowrap font-medium hover:underline">
         {claim.shipment.dispatchOrder.orderNumber}
       </Link>
     ),
@@ -85,7 +85,7 @@ export function InsuranceClaimsPage() {
           value={filters.courierId ?? ALL}
           onValueChange={(value) => updateFilter("courierId", value === ALL ? undefined : value)}
         >
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-44">
             <SelectValue placeholder="Courier" />
           </SelectTrigger>
           <SelectContent>
@@ -102,7 +102,7 @@ export function InsuranceClaimsPage() {
           value={filters.status ?? ALL}
           onValueChange={(value) => updateFilter("status", value === ALL ? undefined : (value as never))}
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-40">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
@@ -119,7 +119,7 @@ export function InsuranceClaimsPage() {
           value={filters.customerResolution ?? ALL}
           onValueChange={(value) => updateFilter("customerResolution", value === ALL ? undefined : (value as never))}
         >
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-48">
             <SelectValue placeholder="Resolución cliente" />
           </SelectTrigger>
           <SelectContent>
@@ -189,11 +189,11 @@ export function InsuranceClaimsPage() {
       ) : null}
 
       {pagination ? (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
           <span>
             Página {pagination.page} de {pagination.totalPages} · {pagination.total} en total
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeftIcon /> Anterior
             </Button>

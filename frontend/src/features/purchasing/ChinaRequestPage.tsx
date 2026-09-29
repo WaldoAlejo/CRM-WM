@@ -46,7 +46,7 @@ export function ChinaRequestPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Solicitud a Proveedor</h1>
           <p className="text-sm text-muted-foreground">

@@ -12,16 +12,17 @@ function isVisible(item: NavItem, role: string | null): boolean {
   return roleSatisfies(role as Role | null, item.roles);
 }
 
-function NavLinkItem({ item }: { item: NavItem }) {
+function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   if (!item.path) return null;
   const Icon = item.icon;
   return (
     <NavLink
       to={item.path}
       end={item.path === "/"}
+      onClick={onNavigate}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+          "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
           isActive ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         )
       }
@@ -32,34 +33,42 @@ function NavLinkItem({ item }: { item: NavItem }) {
   );
 }
 
-export function Sidebar() {
+// Lista de navegación compartida por la barra lateral fija (escritorio) y el
+// menú deslizable (teléfono/tablet). onNavigate cierra el menú al elegir.
+export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { role } = useAuth();
   const visibleItems = NAV_ITEMS.filter((item) => isVisible(item, role));
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r bg-background">
+    <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+      {visibleItems.map((item) =>
+        item.children ? (
+          <div key={item.label} className="flex flex-col gap-1 pt-2">
+            <div className="flex items-center gap-2 px-3 py-1 text-xs font-semibold uppercase text-muted-foreground">
+              {item.icon ? <item.icon className="size-3.5" /> : null}
+              {item.label}
+            </div>
+            {item.children.filter((child) => isVisible(child, role)).map((child) => (
+              <div key={child.label} className="pl-4">
+                <NavLinkItem item={child} onNavigate={onNavigate} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <NavLinkItem key={item.label} item={item} onNavigate={onNavigate} />
+        )
+      )}
+    </nav>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="hidden h-dvh w-60 shrink-0 flex-col border-r bg-background lg:flex">
       <div className="flex h-14 items-center border-b px-4">
         <span className="text-sm font-semibold">WM / Kestore</span>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-        {visibleItems.map((item) =>
-          item.children ? (
-            <div key={item.label} className="flex flex-col gap-1 pt-2">
-              <div className="flex items-center gap-2 px-3 py-1 text-xs font-semibold uppercase text-muted-foreground">
-                {item.icon ? <item.icon className="size-3.5" /> : null}
-                {item.label}
-              </div>
-              {item.children.filter((child) => isVisible(child, role)).map((child) => (
-                <div key={child.label} className="pl-4">
-                  <NavLinkItem item={child} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <NavLinkItem key={item.label} item={item} />
-          )
-        )}
-      </nav>
+      <SidebarNav />
     </aside>
   );
 }

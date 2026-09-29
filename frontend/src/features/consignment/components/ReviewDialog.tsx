@@ -100,7 +100,7 @@ export function ReviewDialog({ open, onOpenChange, lot }: ReviewDialogProps) {
           <DialogTitle>Revisión del lote {lot.code}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button type="button" variant={action === "LIQUIDAR" ? "default" : "outline"} onClick={() => setAction("LIQUIDAR")}>
               Liquidar
             </Button>
@@ -120,15 +120,15 @@ export function ReviewDialog({ open, onOpenChange, lot }: ReviewDialogProps) {
                 Reporta por producto cuánto vendió y cuánto devuelve. Se cobra a crédito ({lot.creditDays} días) solo lo
                 vendido; lo devuelto pasa a Cuarentena para validación. Lo no reportado sigue en consignación.
               </p>
-              <div className="grid grid-cols-[1fr_5rem_6rem_6rem] items-center gap-2 text-sm font-medium">
-                <span>Producto</span>
+              <div className="grid grid-cols-3 items-center gap-2 text-sm font-medium sm:grid-cols-[1fr_5rem_6rem_6rem]">
+                <span className="hidden sm:block">Producto</span>
                 <span>Pendiente</span>
                 <span>Vendidas</span>
                 <span>Devueltas</span>
               </div>
               {openLines.map((line) => (
-                <div key={line.id} className="grid grid-cols-[1fr_5rem_6rem_6rem] items-center gap-2">
-                  <span className="truncate text-sm">
+                <div key={line.id} className="grid grid-cols-3 items-center gap-x-2 gap-y-1 border-b pb-2 sm:grid-cols-[1fr_5rem_6rem_6rem] sm:border-0 sm:pb-0">
+                  <span className="col-span-3 truncate text-sm font-medium sm:col-span-1 sm:font-normal">
                     {line.sku}
                     {line.label ? ` — ${line.label}` : ""}
                   </span>

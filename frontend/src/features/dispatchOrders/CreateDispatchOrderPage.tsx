@@ -121,7 +121,7 @@ export function CreateDispatchOrderPage() {
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           <section className="space-y-3 rounded-md border p-4">
             <h2 className="text-lg font-semibold">Comprador</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant={buyerType === "MAYORISTA" ? "default" : "outline"}
@@ -167,8 +167,8 @@ export function CreateDispatchOrderPage() {
             ) : null}
           </section>
 
-          <section className="grid grid-cols-2 gap-4 rounded-md border p-4">
-            <h2 className="col-span-2 text-lg font-semibold">Envío</h2>
+          <section className="grid grid-cols-1 gap-4 rounded-md border p-4 sm:grid-cols-2">
+            <h2 className="sm:col-span-2 text-lg font-semibold">Envío</h2>
             <FormField
               control={form.control}
               name="shippingProvince"
@@ -208,8 +208,8 @@ export function CreateDispatchOrderPage() {
             />
           </section>
 
-          <section className="grid grid-cols-2 gap-4 rounded-md border p-4">
-            <h2 className="col-span-2 text-lg font-semibold">Modalidad de despacho</h2>
+          <section className="grid grid-cols-1 gap-4 rounded-md border p-4 sm:grid-cols-2">
+            <h2 className="sm:col-span-2 text-lg font-semibold">Modalidad de despacho</h2>
             <FormField
               control={form.control}
               name="paymentMethod"
@@ -261,7 +261,7 @@ export function CreateDispatchOrderPage() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <p className="col-span-2 text-sm text-muted-foreground">Al confirmar se entrega el producto en consignación y comienza el plazo de revisión. La deuda se genera al liquidar lo vendido.</p>
+              <p className="sm:col-span-2 text-sm text-muted-foreground">Al confirmar se entrega el producto en consignación y comienza el plazo de revisión. La deuda se genera al liquidar lo vendido.</p>
             </> : null}
           </section>
 

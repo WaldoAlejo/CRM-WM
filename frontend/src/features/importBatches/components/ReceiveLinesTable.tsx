@@ -76,7 +76,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
             return (
               <TableRow key={field.id}>
                 <TableCell>
-                  <p className="font-medium">{line?.sku}</p>
+                  <p className="whitespace-nowrap font-medium">{line?.sku}</p>
                   <p className="text-xs text-muted-foreground">
                     {line?.productName}
                     {line?.label ? ` — ${line.label}` : ""}

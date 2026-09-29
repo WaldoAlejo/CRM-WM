@@ -26,7 +26,7 @@ export function LandedCostPreview({ totalCost, totalUnits, costPerCbm, originTot
           <Card key={card.label}>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{card.label}</p>
-              <p className="text-xl font-semibold">{card.value}</p>
+              <p className="break-words text-lg font-semibold sm:text-xl">{card.value}</p>
             </CardContent>
           </Card>
         ))}

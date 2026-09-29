@@ -27,10 +27,10 @@ export function ConsignmentDetailPage() {
         <ArrowLeftIcon className="size-4" /> Despachos · Seguimiento de consignación
       </Link>
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">{lot.code}</h1>
+            <h1 className="whitespace-nowrap text-2xl font-semibold">{lot.code}</h1>
             <ConsignmentStatusBadge status={lot.displayStatus} />
           </div>
           <p className="text-sm text-muted-foreground">
@@ -77,7 +77,7 @@ export function ConsignmentDetailPage() {
             {lot.lines.map((line) => (
               <TableRow key={line.id}>
                 <TableCell>
-                  <p className="font-medium">
+                  <p className="whitespace-nowrap font-medium">
                     {line.sku}
                     {line.label ? ` — ${line.label}` : ""}
                   </p>

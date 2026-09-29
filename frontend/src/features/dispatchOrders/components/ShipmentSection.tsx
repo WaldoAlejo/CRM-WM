@@ -86,7 +86,7 @@ export function ShipmentSection({ orderId, shipment }: ShipmentSectionProps) {
       ) : null}
 
       {inTransit ? (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button size="sm" onClick={() => setDeliverOpen(true)}>
             Marcar entregado
           </Button>

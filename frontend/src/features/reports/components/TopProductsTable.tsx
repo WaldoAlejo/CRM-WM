@@ -20,7 +20,7 @@ export function TopProductsTable({ products }: { products: TopProduct[] }) {
       <TableBody>
         {products.map((product) => (
           <TableRow key={product.variantId}>
-            <TableCell>{product.sku}</TableCell>
+            <TableCell className="whitespace-nowrap">{product.sku}</TableCell>
             <TableCell>
               {product.productName}
               {product.label ? <span className="text-muted-foreground"> — {product.label}</span> : null}

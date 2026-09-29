@@ -17,7 +17,7 @@ export function TotalsSummaryCards({ totals }: { totals: ProfitabilityTotals }) 
         <Card key={card.label}>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">{card.label}</p>
-            <p className="text-2xl font-semibold">{card.value}</p>
+            <p className="text-xl font-semibold sm:text-2xl">{card.value}</p>
           </CardContent>
         </Card>
       ))}

@@ -67,7 +67,7 @@ export function ImportBatchDetailPage() {
         <ArrowLeftIcon className="size-4" /> Importaciones
       </Link>
 
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">{batch.reference}</h1>
@@ -93,7 +93,7 @@ export function ImportBatchDetailPage() {
           <Card key={card.label}>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{card.label}</p>
-              <p className="text-xl font-semibold">{card.value}</p>
+              <p className="break-words text-lg font-semibold sm:text-xl">{card.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -131,7 +131,7 @@ export function ImportBatchDetailPage() {
               batch.movements.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell>
-                    <p className="font-medium">{m.variant.sku}</p>
+                    <p className="whitespace-nowrap font-medium">{m.variant.sku}</p>
                     {m.variant.label ? <p className="text-xs text-muted-foreground">{m.variant.label}</p> : null}
                     {m.packaging ? <details className="mt-2 min-w-56 text-xs"><summary className="cursor-pointer">{m.packaging.cartonCount} cartones × {m.packaging.unitsPerCarton} unidades · ver apilamiento</summary><CartonPlanSummary packaging={m.packaging} volumeCbm={m.volumeCbm == null ? null : Number(m.volumeCbm)} /></details> : <p className="text-xs text-muted-foreground">Empaque por cartón sin registrar</p>}
                   </TableCell>

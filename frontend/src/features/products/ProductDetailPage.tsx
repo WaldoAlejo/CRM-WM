@@ -52,7 +52,7 @@ export function ProductDetailPage() {
         </Link>
       </div>
 
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">{product.name}</h1>

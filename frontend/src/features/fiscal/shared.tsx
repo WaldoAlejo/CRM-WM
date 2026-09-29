@@ -18,8 +18,8 @@ export function useAction() {
   return useMutation({ mutationFn: ({ path, data, method = "POST" }: { path: string; data?: unknown; method?: string }) => apiFetch<any>(path, { method, body: data instanceof FormData ? data : data === undefined ? undefined : JSON.stringify(data) }),
     onSuccess: async () => { await client.invalidateQueries({ queryKey: ["fiscal-settings"] }); await client.invalidateQueries({ queryKey: ["fiscal"] }); toast.success("Operación completada"); }, onError: error => toast.error(error.message) });
 }
-export function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="flex flex-col gap-1 text-sm"><span>{label}</span>{children}</label>; }
-export const inputClass = "h-9 w-full rounded-md border bg-background px-3 text-sm disabled:opacity-50";
+export function Field({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) { return <label className={`flex min-w-0 flex-col gap-1 text-sm ${className}`}><span>{label}</span>{children}</label>; }
+export const inputClass = "h-9 w-full min-w-0 rounded-md border bg-background px-3 text-base md:text-sm disabled:opacity-50";
 export const money = (value: string | number) => Number(value).toLocaleString("es-EC", { style: "currency", currency: "USD" });
 export const date = (value: string) => new Date(value).toLocaleDateString("es-EC", { timeZone: "America/Guayaquil" });
 export async function downloadFiscal(id: string, extension: string, name: string) {

@@ -120,7 +120,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="sku"
@@ -163,7 +163,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="model"
@@ -192,7 +192,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="categoryId"

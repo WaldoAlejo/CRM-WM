@@ -29,7 +29,7 @@ export function ImageGrid({ images, onUpload, onDelete, isUploading }: ImageGrid
             type="button"
             onClick={() => onDelete(image.id)}
             title="Eliminar imagen"
-            className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+            className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
           >
             <Trash2Icon className="size-3.5" />
           </button>

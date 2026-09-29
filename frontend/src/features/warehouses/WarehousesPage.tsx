@@ -30,7 +30,7 @@ export function WarehousesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Bodegas</h1>
         {canCreate ? (
           <Button onClick={() => setEditing("new")}>

@@ -22,7 +22,7 @@ export function StockAlertsList({ count, items }: { count: number; items: StockA
         ) : (
           <ul className="space-y-2">
             {items.map((item) => (
-              <li key={item.variantId} className="flex items-center justify-between text-sm">
+              <li key={item.variantId} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <div>
                   <p className="font-medium">{item.sku}</p>
                   <p className="text-xs text-muted-foreground">{item.productName}</p>

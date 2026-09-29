@@ -64,7 +64,7 @@ export function QuarantinePage() {
                       ) : null}
                     </div>
                     <div>
-                      <p className="font-medium">
+                      <p className="whitespace-nowrap font-medium">
                         {line.variant.sku}
                         {line.variant.label ? ` — ${line.variant.label}` : ""}
                       </p>
@@ -104,11 +104,11 @@ export function QuarantinePage() {
       )}
 
       {pagination && pagination.totalPages > 1 ? (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
           <span>
             Página {pagination.page} de {pagination.totalPages} · {pagination.total} en total
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeftIcon /> Anterior
             </Button>

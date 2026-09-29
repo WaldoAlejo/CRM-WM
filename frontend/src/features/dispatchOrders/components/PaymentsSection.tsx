@@ -31,7 +31,7 @@ export function PaymentsSection({ orderId, payments, amountPaid, orderTotal }: P
 
   return (
     <section className="space-y-3 rounded-md border p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Pagos</h2>
         {canManage ? <Button size="sm" onClick={() => setRegisterOpen(true)}>Registrar pago</Button> : null}
       </div>

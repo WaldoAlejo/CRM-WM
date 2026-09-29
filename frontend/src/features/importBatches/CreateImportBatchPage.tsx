@@ -136,8 +136,8 @@ export function CreateImportBatchPage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-          <section className="grid grid-cols-2 gap-4 rounded-md border p-4">
-            <h2 className="col-span-2 text-lg font-semibold">Lote</h2>
+          <section className="grid grid-cols-1 gap-4 rounded-md border p-4 sm:grid-cols-2">
+            <h2 className="sm:col-span-2 text-lg font-semibold">Lote</h2>
             <FormField control={form.control} name="containerType" render={({ field }) => (
               <FormItem><FormLabel>Modalidad de importación</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange} disabled={headerLocked}>
@@ -228,7 +228,7 @@ export function CreateImportBatchPage() {
           {isAdmin ? (
             <section className="space-y-3 rounded-md border p-4">
               <h2 className="text-lg font-semibold">Costos del lote (USD): flete + aranceles + otros</h2>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {(
                   [
                     ["freightCost", "Flete internacional"],
