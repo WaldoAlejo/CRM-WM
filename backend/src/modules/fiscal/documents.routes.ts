@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import { asyncHandler } from "../../middleware/asyncHandler";
 import { prisma } from "../../lib/prisma";
 import { badRequest, conflict } from "../../utils/httpError";
+import { IVA_CODES, IVA_RATES } from "../../lib/ivaRates";
 import { captureInvoice, createCreditNote, getFiscalDocument, issuerSnapshot, prepareIssue, processFiscalDocument, reconcileFiscalCredits } from "./documents.service";
 import { fiscalDate, type FiscalSnapshot } from "./xml";
 import { sendConfiguredMail } from "./mail.service";
@@ -29,9 +30,8 @@ fiscalDocumentsRouter.get("/tax-products", asyncHandler(async (req, res) => {
   res.json(await prisma.product.findMany({ where: { deletedAt: null, OR: [{ name: { contains: q, mode: "insensitive" } }, { sku: { contains: q, mode: "insensitive" } }] }, take: 100, orderBy: { name: "asc" }, select: { id: true, name: true, sku: true, ivaCode: true, ivaRate: true } }));
 }));
 fiscalDocumentsRouter.put("/tax-products/:id", asyncHandler(async (req, res) => {
-  const data = z.object({ ivaCode: z.enum(["0", "2", "3", "4", "5", "6", "7", "8", "10"]), ivaRate: z.number().min(0).max(100) }).strict().parse(req.body);
-  const rates: Record<string, number> = { "0": 0, "2": 12, "3": 14, "4": 15, "5": 5, "6": 0, "7": 0, "8": 8, "10": 13 };
-  if (rates[data.ivaCode] !== data.ivaRate) throw badRequest("La tarifa no corresponde al código IVA seleccionado.");
+  const data = z.object({ ivaCode: z.enum(IVA_CODES), ivaRate: z.number().min(0).max(100) }).strict().parse(req.body);
+  if (IVA_RATES[data.ivaCode] !== data.ivaRate) throw badRequest("La tarifa no corresponde al código IVA seleccionado.");
   res.json(await prisma.$transaction(async tx => {
     const row = await tx.product.update({ where: { id: req.params.id }, data, select: { id: true, ivaCode: true, ivaRate: true } });
     await tx.auditLog.create({ data: { entityType: "ProductTax", entityId: row.id, action: "UPDATE", changes: data, performedById: req.user!.id } });

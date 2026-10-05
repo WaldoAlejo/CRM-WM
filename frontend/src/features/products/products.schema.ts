@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { optionalString } from "@/lib/zodHelpers";
+import { DEFAULT_IVA_CODE } from "@/lib/iva";
 
 // Espejo de backend/src/modules/products/products.schemas.ts. La regla de
 // "si cambiás de categoría y el producto ya tenía subcategoría, hay que
@@ -16,6 +17,7 @@ export const productFormSchema = z.object({
   categoryId: z.string().min(1, "La categoría es obligatoria"),
   subcategoryId: optionalString(z.string().min(1)),
   brandId: optionalString(z.string().min(1)),
+  ivaCode: optionalString(z.string().min(1)),
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
@@ -29,4 +31,5 @@ export const productDefaultValues: ProductFormValues = {
   categoryId: "",
   subcategoryId: "",
   brandId: "",
+  ivaCode: DEFAULT_IVA_CODE,
 };

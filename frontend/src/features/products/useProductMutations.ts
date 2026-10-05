@@ -12,6 +12,7 @@ interface ProductWritePayload {
   categoryId: string;
   subcategoryId?: string | null;
   brandId?: string | null;
+  ivaCode?: string;
 }
 
 export function useProductMutations() {

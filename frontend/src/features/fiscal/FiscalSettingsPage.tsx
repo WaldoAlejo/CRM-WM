@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { IVA_OPTIONS } from "@/lib/iva";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
@@ -55,7 +56,7 @@ function IssuerDetails({ issuer, active }: { issuer: Issuer; active: boolean }) 
     <section className="space-y-3 border-t pt-4"><label className="flex gap-2 text-sm"><input type="checkbox" checked={verified} onChange={e => setVerified(e.target.checked)} />Verifiqué los datos fiscales y la habilitación de este emisor en el SRI.</label><p className="text-sm text-muted-foreground">Al activar esta empresa, se utilizará para nuevos despachos. Los anteriores conservarán su emisor.</p><Button disabled={!verified || action.isPending} onClick={() => action.mutate({ path: `/settings/issuers/${issuer.id}/activate`, data: { verified } })}>{active ? "Validar y habilitar emisión" : "Activar esta empresa"}</Button></section>
   </div>;
 }
-const taxOptions = [{ code: "0", rate: 0, label: "IVA 0%" }, { code: "10", rate: 13, label: "IVA 13%" }, { code: "4", rate: 15, label: "IVA 15%" }, { code: "2", rate: 12, label: "IVA 12%" }, { code: "3", rate: 14, label: "IVA 14%" }, { code: "5", rate: 5, label: "IVA 5%" }, { code: "8", rate: 8, label: "IVA 8%" }, { code: "6", rate: 0, label: "No objeto de IVA" }, { code: "7", rate: 0, label: "Exento de IVA" }];
+const taxOptions = IVA_OPTIONS;
 function TaxProducts() {
   const [q, setQ] = useState(""); const action = useAction();
   const query = useQuery({ queryKey: ["fiscal", "tax-products", q], queryFn: () => apiFetch<{ id: string; name: string; sku: string; ivaCode: string | null }[]>(`/fiscal-documents/tax-products?q=${encodeURIComponent(q)}`) });

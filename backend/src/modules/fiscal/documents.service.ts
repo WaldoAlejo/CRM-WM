@@ -12,15 +12,19 @@ import { checkIdentification } from "./identification";
 export async function fiscalOrderContext(tx: Prisma.TransactionClient, items: { variantId: string }[]) {
   const settings = await tx.fiscalSettings.findUnique({ where: { id: 1 }, include: { activeIssuer: true } });
   const issuer = settings?.activeIssuer;
-  if (!issuer) return { issuerId: undefined, environment: undefined, taxes: new Map<string, { ivaCode: string; ivaRate: Prisma.Decimal }>() };
-  if (!issuer.enabledForEmission) throw conflict("La empresa activa tiene cambios pendientes de validar. Revisa su configuración antes de crear nuevos despachos.");
+  if (issuer && !issuer.enabledForEmission) throw conflict("La empresa activa tiene cambios pendientes de validar. Revisa su configuración antes de crear nuevos despachos.");
   const variants = await tx.productVariant.findMany({ where: { id: { in: items.map(i => i.variantId) } }, include: { product: true } });
   const taxes = new Map<string, { ivaCode: string; ivaRate: Prisma.Decimal }>();
   for (const v of variants) {
-    if (v.product.ivaCode === null || v.product.ivaRate === null) throw badRequest(`Configura el IVA de ${v.product.name} antes de crear un despacho con facturación.`);
+    if (v.product.ivaCode === null || v.product.ivaRate === null) {
+      if (issuer) throw badRequest(`Configura el IVA de ${v.product.name} antes de crear un despacho con facturación.`);
+      continue;
+    }
+    // Sin emisor (facturación manual) el IVA también se congela: el total por
+    // cobrar debe coincidir con la factura emitida fuera del sistema.
     taxes.set(v.id, { ivaCode: v.product.ivaCode, ivaRate: v.product.ivaRate });
   }
-  return { issuerId: issuer.id, environment: issuer.environment, taxes };
+  return { issuerId: issuer?.id, environment: issuer?.environment, taxes };
 }
 
 export async function captureInvoice(tx: Prisma.TransactionClient, orderId: string, userId?: string) {

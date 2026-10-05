@@ -39,6 +39,10 @@ export interface DispatchOrderListItem {
   dueDate: string | null;
   paymentStatus: PaymentStatus;
   amountPaid: string | null;
+  // Factura emitida fuera del sistema (facturación manual), 001-001-000000123.
+  manualInvoiceNumber: string | null;
+  fiscalIssuerId?: string | null;
+  replacesOrderId?: string | null;
   itemsCount: number;
   createdAt: string;
 }
@@ -103,6 +107,8 @@ export interface Shipment {
 // paymentStatus al registrar un pago) — nunca se reimplementa la suma acá.
 export interface DispatchOrderDetail {
   fiscalIssuerId?: string | null;
+  manualInvoiceNumber?: string | null;
+  replacesOrderId?: string | null;
   fiscalCreditTotal?: string;
   consignmentLot?: { id: string; code: string } | null;
   reviewIntervalDays?: number;
@@ -137,6 +143,7 @@ export interface DispatchOrderDetail {
 export interface AccountsReceivableItem {
   id: string;
   orderNumber: string;
+  manualInvoiceNumber?: string | null;
   wholesaler: WholesalerRef | null;
   finalCustomer: FinalCustomerRef | null;
   dueDate: string | null;

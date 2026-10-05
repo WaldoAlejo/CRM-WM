@@ -17,6 +17,7 @@ export interface BrandRef {
 
 // Fila del listado (GET /api/products): plano, sin variantes anidadas.
 export interface ProductListItem {
+  ivaCode?: string | null;
   weightedAverageCost?: string | null;
   id: string;
   sku: string;
@@ -97,6 +98,7 @@ export interface Variant {
 
 // Detalle completo (GET /api/products/:id).
 export interface ProductDetail {
+  ivaCode?: string | null;
   id: string;
   sku: string;
   name: string;

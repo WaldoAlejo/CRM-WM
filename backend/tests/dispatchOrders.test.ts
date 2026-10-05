@@ -767,3 +767,68 @@ describe("GET /api/accounts-receivable", () => {
     expect(res.body.data.map((o: { id: string }) => o.id)).toContain(created.body.id);
   });
 });
+
+describe("Facturación manual (sin emisor electrónico)", () => {
+  async function confirmedOrder(token: string, ivaRate?: number) {
+    const { product, variant } = await setupVariant(20);
+    if (ivaRate !== undefined) await prisma.product.update({ where: { id: product.id }, data: { ivaCode: "4", ivaRate } });
+    const finalCustomer = await createFinalCustomerFixture();
+    const created = await request(app)
+      .post("/api/dispatch-orders")
+      .set("Authorization", `Bearer ${token}`)
+      .send(orderBody({ finalCustomerId: finalCustomer.id, items: [{ variantId: variant.id, quantity: 2, priceType: "PVP", unitPrice: 100 }] }));
+    expect(created.status).toBe(201);
+    await request(app).post(`/api/dispatch-orders/${created.body.id}/confirm`).set("Authorization", `Bearer ${token}`).send({}).expect(200);
+    return created.body.id as string;
+  }
+
+  it("congela el IVA del producto aunque no haya emisor activo", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const id = await confirmedOrder(token, 15);
+    const res = await request(app).get(`/api/dispatch-orders/${id}`).set("Authorization", `Bearer ${token}`);
+    expect(res.body.fiscalIssuerId).toBeNull();
+    expect(res.body.items[0].ivaRate).toBe("15");
+    expect(res.body.orderTotal).toBe("230");
+  });
+
+  it("registra, normaliza, busca y quita el número de factura", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const id = await confirmedOrder(token);
+    const pending = await request(app).get("/api/dispatch-orders?invoice=PENDIENTE").set("Authorization", `Bearer ${token}`);
+    expect(pending.body.data.map((o: { id: string }) => o.id)).toContain(id);
+
+    const saved = await request(app).patch(`/api/dispatch-orders/${id}/manual-invoice`).set("Authorization", `Bearer ${token}`).send({ manualInvoiceNumber: "1-1-123" });
+    expect(saved.status).toBe(200);
+    expect(saved.body.manualInvoiceNumber).toBe("001-001-000000123");
+
+    const found = await request(app).get("/api/dispatch-orders?q=000000123").set("Authorization", `Bearer ${token}`);
+    expect(found.body.data.map((o: { id: string }) => o.id)).toEqual([id]);
+    const stillPending = await request(app).get("/api/dispatch-orders?invoice=PENDIENTE").set("Authorization", `Bearer ${token}`);
+    expect(stillPending.body.data.map((o: { id: string }) => o.id)).not.toContain(id);
+    expect(await prisma.auditLog.count({ where: { entityType: "DispatchOrderInvoice", entityId: id } })).toBe(1);
+
+    const cleared = await request(app).patch(`/api/dispatch-orders/${id}/manual-invoice`).set("Authorization", `Bearer ${token}`).send({ manualInvoiceNumber: "" });
+    expect(cleared.body.manualInvoiceNumber).toBeNull();
+  });
+
+  it("rechaza formatos inválidos, duplicados y a OPERATOR", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const first = await confirmedOrder(token);
+    const second = await confirmedOrder(token);
+    await request(app).patch(`/api/dispatch-orders/${first}/manual-invoice`).set("Authorization", `Bearer ${token}`).send({ manualInvoiceNumber: "001-001-ABC" }).expect(400);
+    await request(app).patch(`/api/dispatch-orders/${first}/manual-invoice`).set("Authorization", `Bearer ${token}`).send({ manualInvoiceNumber: "001001000000045" }).expect(200);
+    const duplicate = await request(app).patch(`/api/dispatch-orders/${second}/manual-invoice`).set("Authorization", `Bearer ${token}`).send({ manualInvoiceNumber: "001-001-000000045" });
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body.error).toContain("ya está registrada");
+    const operator = await createTestUser("OPERATOR");
+    await request(app).patch(`/api/dispatch-orders/${second}/manual-invoice`).set("Authorization", `Bearer ${operator.token}`).send({ manualInvoiceNumber: "001-001-000000046" }).expect(403);
+  });
+
+  it("el filtro de fechas toma el día completo de Ecuador", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const id = await confirmedOrder(token);
+    await prisma.dispatchOrder.update({ where: { id }, data: { createdAt: new Date("2026-10-05T22:30:00-05:00") } });
+    const res = await request(app).get("/api/dispatch-orders?dateFrom=2026-10-05&dateTo=2026-10-05").set("Authorization", `Bearer ${token}`);
+    expect(res.body.data.map((o: { id: string }) => o.id)).toEqual([id]);
+  });
+});

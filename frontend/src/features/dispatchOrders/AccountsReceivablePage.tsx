@@ -20,6 +20,7 @@ const columns: CrudColumn<AccountsReceivableItem>[] = [
       </Link>
     ),
   },
+  { header: "Factura", cell: (item) => <span className="whitespace-nowrap">{item.manualInvoiceNumber ?? "—"}</span> },
   {
     header: "Comprador",
     cell: (item) => item.wholesaler?.businessName ?? item.finalCustomer?.fullName ?? "—",

@@ -789,6 +789,11 @@ model DispatchOrder {
   // REMINDER_REPEAT_DAILY lo repite cada día. Null = nunca se avisó.
   remindedAt DateTime?
 
+  // Número de la factura emitida FUERA del sistema (facturación manual mientras
+  // no hay emisor electrónico activo), formato SRI 001-001-000000123. Solo es
+  // referencia para cobranza: no crea comprobante ni modifica totales.
+  manualInvoiceNumber String?
+
   // Cuando esta orden nace de POST /insurance-claims/:id/resolve-customer
   // (resolution=REPLACEMENT), apunta a la orden original que el courier
   // perdió/dañó. Self-relation opcional: la inmensa mayoría de las órdenes no
@@ -814,6 +819,7 @@ model DispatchOrder {
   @@index([finalCustomerId])
   @@index([dispatchDate])
   @@index([paymentStatus, dueDate])
+  @@index([manualInvoiceNumber])
 }
 
 // Con qué tipo de precio se vendió el ítem: precio mayorista o precio público (PVP).

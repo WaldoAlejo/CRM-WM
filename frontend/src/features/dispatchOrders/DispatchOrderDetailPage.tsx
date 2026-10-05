@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmOrderDialog } from "./components/ConfirmOrderDialog";
+import { ManualInvoiceSection } from "./components/ManualInvoiceSection";
 import { DispatchStatusBadge } from "./components/DispatchStatusBadge";
 import { OrderDetailItemsTable } from "./components/OrderDetailItemsTable";
 import { CollectionStatusBadge } from "./components/CollectionStatusBadge";
@@ -110,7 +111,9 @@ export function DispatchOrderDetailPage() {
         </> : null}
       </div>
 
-      {canManageConsignment && <DispatchFiscalSection orderId={order.id} pending={isPending} fiscalIssuerId={order.fiscalIssuerId} />}
+      {/* Con emisor: comprobantes electrónicos. Sin emisor: número de la factura manual. */}
+      {canManageConsignment && order.fiscalIssuerId ? <DispatchFiscalSection orderId={order.id} pending={isPending} fiscalIssuerId={order.fiscalIssuerId} /> : null}
+      {canManageConsignment && !order.fiscalIssuerId && !isConsignment && !order.replacesOrderId && order.status !== "CANCELADO" ? <ManualInvoiceSection order={order} /> : null}
       <section className="grid grid-cols-1 gap-4 rounded-md border p-4 text-sm sm:grid-cols-2">
         <div>
           <p className="text-muted-foreground">Envío</p>

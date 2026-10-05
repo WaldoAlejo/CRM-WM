@@ -13,6 +13,8 @@ export interface DispatchOrderFilters {
   shippingProvince?: string;
   dateFrom?: string;
   dateTo?: string;
+  q?: string;
+  invoice?: "REGISTRADA" | "PENDIENTE";
 }
 
 function buildQuery(page: number, filters: DispatchOrderFilters): string {
@@ -23,6 +25,8 @@ function buildQuery(page: number, filters: DispatchOrderFilters): string {
   if (filters.shippingProvince) params.set("shippingProvince", filters.shippingProvince);
   if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
   if (filters.dateTo) params.set("dateTo", filters.dateTo);
+  if (filters.q) params.set("q", filters.q);
+  if (filters.invoice) params.set("invoice", filters.invoice);
   return params.toString();
 }
 

@@ -4,6 +4,7 @@ import { serializeVariantForRole } from "../variants/variants.serializer";
 import { badRequest, conflict, notFound } from "../../utils/httpError";
 import { hasAdminAccess } from '../../lib/roles';
 import { catalogWeightedCosts } from '../../lib/weightedLandedCost';
+import { DEFAULT_IVA_CODE, IVA_RATES, type IvaCode } from "../../lib/ivaRates";
 
 // P2002 (unique constraint) puede ser por `sku` o por `barcode`: se traduce
 // a un mensaje específico con el campo exacto, nunca un "ya existe" genérico.
@@ -126,6 +127,7 @@ interface CreateProductInput {
   categoryId: string;
   subcategoryId?: string;
   brandId?: string;
+  ivaCode?: IvaCode;
 }
 
 export async function createProduct(data: CreateProductInput, userId?: string) {
@@ -141,8 +143,9 @@ export async function createProduct(data: CreateProductInput, userId?: string) {
   }
 
   try {
+    const ivaCode = data.ivaCode ?? DEFAULT_IVA_CODE;
     return await prisma.product.create({
-      data: { ...data, createdById: userId, updatedById: userId },
+      data: { ...data, ivaCode, ivaRate: IVA_RATES[ivaCode], createdById: userId, updatedById: userId },
     });
   } catch (err) {
     mapUniqueConstraintError(err);
@@ -159,6 +162,7 @@ interface UpdateProductInput {
   categoryId?: string;
   subcategoryId?: string | null;
   brandId?: string | null;
+  ivaCode?: IvaCode;
 }
 
 export async function updateProduct(id: string, data: UpdateProductInput, userId?: string) {
@@ -194,9 +198,18 @@ export async function updateProduct(id: string, data: UpdateProductInput, userId
   }
 
   try {
-    return await prisma.product.update({
-      where: { id },
-      data: { ...data, updatedById: userId },
+    const { ivaCode, ...rest } = data;
+    const taxChanges = ivaCode !== undefined && ivaCode !== product.ivaCode;
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.product.update({
+        where: { id },
+        data: { ...rest, ...(taxChanges && { ivaCode, ivaRate: IVA_RATES[ivaCode] }), updatedById: userId },
+      });
+      // Mismo registro que el cambio de IVA desde Configuración (tax-products).
+      if (taxChanges) {
+        await tx.auditLog.create({ data: { entityType: "ProductTax", entityId: id, action: "UPDATE", changes: { ivaCode, ivaRate: IVA_RATES[ivaCode] }, performedById: userId } });
+      }
+      return updated;
     });
   } catch (err) {
     mapUniqueConstraintError(err);

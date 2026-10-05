@@ -200,3 +200,25 @@ describe("DELETE /api/products/:id", () => {
     expect(res.status).toBe(204);
   });
 });
+
+describe("IVA del producto", () => {
+  it("nace con la tarifa general (15%) y ADMIN puede cambiarla con auditoría", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { category } = await createCategoryFixture();
+    const created = await request(app).post("/api/products").set("Authorization", `Bearer ${token}`).send({ sku: "WM-IVA1", name: "Con IVA", categoryId: category.id });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({ ivaCode: "4", ivaRate: "15" });
+
+    const updated = await request(app).patch(`/api/products/${created.body.id}`).set("Authorization", `Bearer ${token}`).send({ ivaCode: "0" });
+    expect(updated.status).toBe(200);
+    expect(updated.body).toMatchObject({ ivaCode: "0", ivaRate: "0" });
+    expect(await prisma.auditLog.count({ where: { entityType: "ProductTax", entityId: created.body.id } })).toBe(1);
+  });
+
+  it("OPERATOR no puede elegir el IVA", async () => {
+    const { token } = await createTestUser("OPERATOR");
+    const { category } = await createCategoryFixture();
+    const res = await request(app).post("/api/products").set("Authorization", `Bearer ${token}`).send({ sku: "WM-IVA2", name: "Sin permiso", categoryId: category.id, ivaCode: "0" });
+    expect(res.status).toBe(403);
+  });
+});

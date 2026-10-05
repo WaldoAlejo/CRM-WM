@@ -7,7 +7,7 @@ import { renderDocumentPdf } from "../src/modules/documents/documentPdf";
 const d = (n: number) => new Prisma.Decimal(n);
 function order(): Parameters<typeof dispatchDocument>[0] {
   return {
-    id: "order", fiscalCreditTotal: d(0), orderNumber: "OD-000001", origin: "NORMAL", status: "DESPACHADO",
+    id: "order", fiscalCreditTotal: d(0), manualInvoiceNumber: null, orderNumber: "OD-000001", origin: "NORMAL", status: "DESPACHADO",
     dispatchDate: new Date("2026-09-23T15:00:00Z"), createdAt: new Date("2026-09-22T15:00:00Z"),
     shippingProvince: "Guayas", shippingCity: "Guayaquil", paymentMethod: "CREDITO", creditDays: 30,
     dueDate: new Date("2026-10-23T15:00:00Z"), wholesaler: { businessName: "Cliente", ruc: "0990000000001" }, finalCustomer: null,
@@ -36,6 +36,12 @@ describe("Documentos operativos", () => {
     expect(doc.fields).toContainEqual(["Condición", "Consignación"]);
     expect(doc.totals).toEqual([["Valor referencial en consignación", "USD 402.00"]]);
     expect(doc.notices.join(" ")).toContain("no genera deuda");
+  });
+  it("muestra la factura manual solo cuando está registrada", () => {
+    const o = order();
+    expect(dispatchDocument(o).fields.map(([label]) => label)).not.toContain("Factura");
+    o.manualInvoiceNumber = "001-001-000000123";
+    expect(dispatchDocument(o).fields).toContainEqual(["Factura", "001-001-000000123"]);
   });
   it("usa precios finales y condiciones sin publicar costos ni notas privadas", async () => {
     const o = order();

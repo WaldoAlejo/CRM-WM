@@ -1,5 +1,5 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DataTable } from "@/components/crud/DataTable";
 import type { CrudColumn } from "@/components/crud/types";
@@ -14,9 +14,16 @@ import type { DispatchOrderFilters } from "./useDispatchOrders";
 import { useDispatchOrders } from "./useDispatchOrders";
 
 import { usePricingVisibility } from "@/hooks/usePricingVisibility";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { ConsignmentPage } from "@/features/consignment/ConsignmentPage";
 
 const ALL = "__all__"; // Radix Select no permite value="" en SelectItem; se traduce a "sin filtro" acá.
+
+// Despachos que llevan factura manual mientras no hay emisor electrónico (mismo
+// criterio que el filtro "Sin factura" del backend).
+export function needsManualInvoice(order: Pick<DispatchOrderListItem, "status" | "paymentMethod" | "fiscalIssuerId" | "replacesOrderId">) {
+  return order.status === "DESPACHADO" && order.paymentMethod !== "CONSIGNACION" && !order.fiscalIssuerId && !order.replacesOrderId;
+}
 
 const columns: CrudColumn<DispatchOrderListItem>[] = [
   {
@@ -26,6 +33,19 @@ const columns: CrudColumn<DispatchOrderListItem>[] = [
         {item.orderNumber}
       </Link>
     ),
+  },
+  {
+    header: "Factura",
+    cell: (item) =>
+      item.manualInvoiceNumber ? (
+        <span className="whitespace-nowrap">{item.manualInvoiceNumber}</span>
+      ) : item.fiscalIssuerId ? (
+        <span className="text-muted-foreground">Electrónica</span>
+      ) : needsManualInvoice(item) ? (
+        <span className="whitespace-nowrap text-amber-700">Sin registrar</span>
+      ) : (
+        "—"
+      ),
   },
   {
     header: "Comprador",
@@ -59,8 +79,13 @@ export function DispatchOrdersPage() {
 }
 
 function DispatchOrdersList() {
+  const canManageInvoices = usePricingVisibility();
   const [filters, setFilters] = useState<DispatchOrderFilters>({});
-  const { page, setPage, query } = useDispatchOrders(filters);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const effectiveFilters = useMemo(() => ({ ...filters, q: debouncedSearch || undefined }), [filters, debouncedSearch]);
+  const { page, setPage, query } = useDispatchOrders(effectiveFilters);
+  useEffect(() => setPage(1), [debouncedSearch]);
 
   const items = query.data?.data ?? [];
   const pagination = query.data?.pagination ?? null;
@@ -80,6 +105,14 @@ function DispatchOrdersList() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <Input
+          type="search"
+          aria-label="Buscar órdenes"
+          placeholder="Buscar orden, factura o comprador"
+          className="col-span-2 min-w-0 sm:w-72"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <Select
           value={filters.status ?? ALL}
           onValueChange={(value) => updateFilter("status", value === ALL ? undefined : (value as never))}
@@ -141,6 +174,22 @@ function DispatchOrdersList() {
             ))}
           </SelectContent>
         </Select>
+
+        {canManageInvoices ? (
+          <Select
+            value={filters.invoice ?? ALL}
+            onValueChange={(value) => updateFilter("invoice", value === ALL ? undefined : (value as never))}
+          >
+            <SelectTrigger className="col-span-2 w-full sm:w-52">
+              <SelectValue placeholder="Factura" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todas las facturas</SelectItem>
+              <SelectItem value="PENDIENTE">Sin factura registrada</SelectItem>
+              <SelectItem value="REGISTRADA">Con factura registrada</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : null}
 
         <div className="col-span-2 flex items-center gap-2">
           <Input

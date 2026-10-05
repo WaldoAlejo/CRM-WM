@@ -367,7 +367,18 @@ interface ListOrdersParams {
   shippingProvince?: string;
   dateFrom?: Date;
   dateTo?: Date;
+  q?: string;
+  invoice?: "REGISTRADA" | "PENDIENTE";
 }
+
+// Despachos que llevan factura manual: confirmados, sin emisor electrónico, sin
+// ser la entrega de una consignación (se factura su liquidación) ni una reposición.
+const manualInvoiceable: Prisma.DispatchOrderWhereInput = {
+  status: DispatchStatus.DESPACHADO,
+  fiscalIssuerId: null,
+  paymentMethod: { not: PaymentMethod.CONSIGNACION },
+  replacesOrderId: null,
+};
 
 export async function listDispatchOrders(params: ListOrdersParams) {
   const {
@@ -381,6 +392,8 @@ export async function listDispatchOrders(params: ListOrdersParams) {
     shippingProvince,
     dateFrom,
     dateTo,
+    q,
+    invoice,
   } = params;
 
   const where: Prisma.DispatchOrderWhereInput = {
@@ -394,6 +407,16 @@ export async function listDispatchOrders(params: ListOrdersParams) {
     ...((dateFrom || dateTo) && {
       createdAt: { ...(dateFrom && { gte: dateFrom }), ...(dateTo && { lte: dateTo }) },
     }),
+    AND: [
+      ...(q ? [{ OR: [
+        { orderNumber: { contains: q, mode: "insensitive" as const } },
+        { manualInvoiceNumber: { contains: q } },
+        { wholesaler: { businessName: { contains: q, mode: "insensitive" as const } } },
+        { finalCustomer: { fullName: { contains: q, mode: "insensitive" as const } } },
+      ] }] : []),
+      ...(invoice === "REGISTRADA" ? [{ manualInvoiceNumber: { not: null } }] : []),
+      ...(invoice === "PENDIENTE" ? [manualInvoiceable, { manualInvoiceNumber: null }] : []),
+    ],
   };
 
   const [rows, total] = await Promise.all([
@@ -450,6 +473,31 @@ interface AddPaymentInput {
   notes?: string;
   // Ruta relativa del comprobante ya subido al almacenamiento privado (opcional).
   proofFile?: string;
+}
+
+export async function setManualInvoiceNumber(orderId: string, manualInvoiceNumber: string | null, userId: string | undefined) {
+  const order = await prisma.dispatchOrder.findFirst({ where: { id: orderId, deletedAt: null } });
+  if (!order) throw notFound("Orden no encontrada");
+  if (order.fiscalIssuerId) throw conflict("Este despacho se factura electrónicamente desde Comprobantes.");
+  if (order.status === DispatchStatus.CANCELADO) throw conflict("La orden está cancelada: no lleva factura.");
+  if (order.paymentMethod === PaymentMethod.CONSIGNACION) throw conflict("La entrega en consignación no se factura: registra la factura en el cargo de su liquidación.");
+  if (manualInvoiceNumber) {
+    const duplicate = await prisma.dispatchOrder.findFirst({
+      where: { manualInvoiceNumber, id: { not: orderId }, deletedAt: null },
+      select: { orderNumber: true },
+    });
+    if (duplicate) throw conflict(`La factura ${manualInvoiceNumber} ya está registrada en ${duplicate.orderNumber}.`, { field: "manualInvoiceNumber" });
+  }
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.dispatchOrder.update({
+      where: { id: orderId },
+      data: { manualInvoiceNumber },
+      select: { id: true, manualInvoiceNumber: true },
+    });
+    await tx.auditLog.create({ data: { entityType: "DispatchOrderInvoice", entityId: orderId, action: "UPDATE",
+      changes: { before: order.manualInvoiceNumber, after: manualInvoiceNumber }, performedById: userId } });
+    return updated;
+  });
 }
 
 export async function assertOrderExists(orderId: string) {

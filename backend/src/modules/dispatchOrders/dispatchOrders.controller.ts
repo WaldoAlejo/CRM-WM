@@ -6,6 +6,7 @@ import {
   createDispatchOrderSchema,
   createPaymentSchema,
   listDispatchOrdersQuerySchema,
+  manualInvoiceSchema,
 } from "./dispatchOrders.schemas";
 import {
   addPayment,
@@ -17,6 +18,7 @@ import {
   getDispatchOrderById,
   getPaymentProofPath,
   listDispatchOrders,
+  setManualInvoiceNumber,
 } from "./dispatchOrders.service";
 
 export async function createDispatchOrderController(req: Request, res: Response) {
@@ -31,6 +33,11 @@ export async function confirmDispatchOrderController(req: Request, res: Response
 
 export async function cancelDispatchOrderController(req: Request, res: Response) {
   res.json(await cancelDispatchOrder(req.params.id, req.user!.role));
+}
+
+export async function setManualInvoiceController(req: Request, res: Response) {
+  const { manualInvoiceNumber } = manualInvoiceSchema.parse(req.body);
+  res.json(await setManualInvoiceNumber(req.params.id, manualInvoiceNumber, req.user!.id));
 }
 
 export async function listDispatchOrdersController(req: Request, res: Response) {

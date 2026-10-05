@@ -26,6 +26,16 @@ Fecha de revisión: 2026-09-24.
 - Registro auditado de trámites de anulación realizados en el portal del SRI;
   la aplicación no afirma haber solicitado automáticamente una anulación.
 
+Facturación manual (transitoria, mientras no haya emisor activo): la factura se
+emite fuera del sistema y su número (001-001-000000123) se registra en el detalle
+del despacho, sección **Factura** (ADMIN/CEO). El listado de despachos permite
+buscar por ese número y filtrar "Sin factura registrada"; también aparece en
+Cuentas por cobrar y en el PDF del despacho. El IVA del producto (15 % por
+defecto al crearlo, editable en el formulario del producto) se congela en cada
+línea aunque no haya emisor, para que el saldo por cobrar coincida con la factura.
+Los despachos creados en este modo no se refacturan electrónicamente al activar
+el emisor.
+
 Configuración inicial: crear cuenta de correo, empresa, series 01/04/06 y cargar
 la firma; configurar IVA de productos y activar el emisor. Los pedidos históricos
 sin emisor no se refacturan ni reciben IVA retroactivamente. La clave local de

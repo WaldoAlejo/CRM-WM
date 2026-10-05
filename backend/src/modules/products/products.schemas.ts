@@ -1,5 +1,6 @@
 import { ProductStatus } from "@prisma/client";
 import { z } from "zod";
+import { IVA_CODES } from "../../lib/ivaRates";
 
 export const createProductSchema = z.object({
   sku: z.string().min(1, "El SKU es obligatorio").max(50),
@@ -10,6 +11,8 @@ export const createProductSchema = z.object({
   categoryId: z.string().min(1, "La categoría es obligatoria"),
   subcategoryId: z.string().min(1).optional(),
   brandId: z.string().min(1).optional(),
+  // Tarifa de IVA (precios sin IVA). Sin valor, el producto nace con la general.
+  ivaCode: z.enum(IVA_CODES).optional(),
 });
 
 export const updateProductSchema = z.object({
@@ -22,6 +25,7 @@ export const updateProductSchema = z.object({
   categoryId: z.string().min(1).optional(),
   subcategoryId: z.string().min(1).nullable().optional(),
   brandId: z.string().min(1).nullable().optional(),
+  ivaCode: z.enum(IVA_CODES).optional(),
 });
 
 export const listProductsQuerySchema = z.object({

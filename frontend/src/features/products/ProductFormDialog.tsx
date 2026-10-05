@@ -9,6 +9,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { usePricingVisibility } from "@/hooks/usePricingVisibility";
+import { IVA_OPTIONS } from "@/lib/iva";
 import { productDefaultValues, productFormSchema } from "./products.schema";
 import type { ProductFormValues } from "./products.schema";
 import type { ProductDetail, ProductListItem } from "./products.types";
@@ -35,11 +37,14 @@ function toFormValues(product: ProductFormDialogProps["product"]): ProductFormVa
     categoryId: product.category.id,
     subcategoryId: product.subcategory?.id ?? "",
     brandId: product.brand?.id ?? "",
+    ivaCode: product.ivaCode ?? "",
   };
 }
 
 export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDialogProps) {
   const isEdit = product !== null;
+  // El IVA lo define ADMIN/CEO; un producto creado por OPERATOR nace con el 15%.
+  const canSetTax = usePricingVisibility();
   const { data: categories } = useCategoryOptions();
   const { data: brands } = useBrandOptions();
   const { createMutation, updateMutation } = useProductMutations();
@@ -101,6 +106,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
       // cambio de categoría con subcategoría ya reconfirmada arriba.
       subcategoryId: isEdit ? values.subcategoryId || null : values.subcategoryId || undefined,
       brandId: isEdit ? values.brandId || null : values.brandId || undefined,
+      ivaCode: canSetTax ? values.ivaCode || undefined : undefined,
     };
 
     const action = isEdit
@@ -261,34 +267,63 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="brandId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Marca</FormLabel>
-                  <Select
-                    value={field.value || NONE}
-                    onValueChange={(value) => field.onChange(value === NONE ? "" : value)}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sin marca" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={NONE}>Sin marca</SelectItem>
-                      {brands?.map((brand) => (
-                        <SelectItem key={brand.id} value={brand.id}>
-                          {brand.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="brandId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Marca</FormLabel>
+                    <Select
+                      value={field.value || NONE}
+                      onValueChange={(value) => field.onChange(value === NONE ? "" : value)}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sin marca" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NONE}>Sin marca</SelectItem>
+                        {brands?.map((brand) => (
+                          <SelectItem key={brand.id} value={brand.id}>
+                            {brand.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {canSetTax ? (
+                <FormField
+                  control={form.control}
+                  name="ivaCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>IVA</FormLabel>
+                      <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sin configurar" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {IVA_OPTIONS.map((option) => (
+                            <SelectItem key={option.code} value={option.code}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Los precios son sin IVA; se suma al despachar.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

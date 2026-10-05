@@ -16,6 +16,7 @@ import {
   getPaymentProofController,
   immutablePaymentController,
   listDispatchOrdersController,
+  setManualInvoiceController,
 } from "./dispatchOrders.controller";
 
 // Crear/confirmar/cancelar una orden son tareas operativas del día a día
@@ -35,6 +36,8 @@ dispatchOrdersRouter.get("/:id", asyncHandler(getDispatchOrderController));
 dispatchOrdersRouter.post("/", asyncHandler(createDispatchOrderController));
 dispatchOrdersRouter.post("/:id/confirm", asyncHandler(confirmDispatchOrderController));
 dispatchOrdersRouter.post("/:id/cancel", asyncHandler(cancelDispatchOrderController));
+// Factura emitida fuera del sistema (facturación manual): solo ADMIN/CEO, como los cobros.
+dispatchOrdersRouter.patch("/:id/manual-invoice", requireRole(Role.ADMIN), asyncHandler(setManualInvoiceController));
 // Orden de middlewares a propósito: 1) rol ADMIN/CEO (un OPERATOR nunca llega a
 // subir un archivo), 2) la orden existe, 3) recién ahí multer escribe la foto
 // opcional `proof` (multipart) — con JSON a secas multer no hace nada.

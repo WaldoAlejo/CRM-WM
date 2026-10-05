@@ -393,9 +393,11 @@ export async function createReview(lotId: string, data: CreateReviewInput, userI
       // de stock: la mercadería ya salió al entregar el lote.
       if (totalSold > 0) {
         const originalOrder = lot.dispatchOrderId ? await tx.dispatchOrder.findUnique({ where: { id: lot.dispatchOrderId }, include: { items: true } }) : null;
-        const currentVariants = originalOrder?.fiscalIssuerId ? await tx.productVariant.findMany({ where: { id: { in: lot.lines.map(l => l.variantId) } }, include: { product: true } }) : [];
-        const taxByVariant = new Map(currentVariants.map(v => [v.id, v.product]));
-        if (currentVariants.some(v => v.product.ivaCode === null || v.product.ivaRate === null)) throw badRequest("Configura el IVA de los productos antes de liquidar la consignación fiscal.");
+        // El IVA se aplica también sin emisor (facturación manual) para que el
+        // cargo coincida con la factura; con emisor es obligatorio configurarlo.
+        const currentVariants = await tx.productVariant.findMany({ where: { id: { in: lot.lines.map(l => l.variantId) } }, include: { product: true } });
+        const taxByVariant = new Map(currentVariants.filter(v => v.product.ivaCode !== null && v.product.ivaRate !== null).map(v => [v.id, v.product]));
+        if (originalOrder?.fiscalIssuerId && taxByVariant.size < currentVariants.length) throw badRequest("Configura el IVA de los productos antes de liquidar la consignación fiscal.");
         const charge = await tx.dispatchOrder.create({
           data: {
             orderNumber: orderNumber!,

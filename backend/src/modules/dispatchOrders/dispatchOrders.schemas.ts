@@ -46,6 +46,37 @@ export const createPaymentSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
+// Número de factura emitida fuera del sistema. Acepta 001-001-000000123,
+// 1-1-123 o los 15 dígitos seguidos, y lo guarda siempre como 001-001-000000123.
+// null o "" quita el número registrado.
+const manualInvoiceNumber = z
+  .string()
+  .trim()
+  .transform((value, ctx) => {
+    if (value === "") return null;
+    const parts = /^\d{15}$/.test(value)
+      ? [value.slice(0, 3), value.slice(3, 6), value.slice(6)]
+      : /^(\d{1,3})-(\d{1,3})-(\d{1,9})$/.exec(value)?.slice(1);
+    if (!parts || Number(parts[2]) === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Usa el formato 001-001-000000123" });
+      return z.NEVER;
+    }
+    return `${parts[0].padStart(3, "0")}-${parts[1].padStart(3, "0")}-${parts[2].padStart(9, "0")}`;
+  })
+  .nullable();
+
+export const manualInvoiceSchema = z.object({ manualInvoiceNumber });
+
+// Una fecha sin hora (lo que envía el filtro) es un día completo en Ecuador:
+// "desde" empieza a las 00:00 y "hasta" termina a las 23:59:59.999 (UTC-5).
+const ecuadorDay = (edge: "start" | "end") =>
+  z.preprocess(
+    (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? `${value}T${edge === "start" ? "00:00:00.000" : "23:59:59.999"}-05:00`
+      : value,
+    z.coerce.date()
+  );
+
 export const listDispatchOrdersQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
@@ -55,8 +86,12 @@ export const listDispatchOrdersQuerySchema = z.object({
   wholesalerId: z.string().optional(),
   finalCustomerId: z.string().optional(),
   shippingProvince: z.string().optional(),
-  dateFrom: z.coerce.date().optional(),
-  dateTo: z.coerce.date().optional(),
+  dateFrom: ecuadorDay("start").optional(),
+  dateTo: ecuadorDay("end").optional(),
+  // Busca por número de orden, número de factura manual o nombre del comprador.
+  q: z.string().trim().max(100).optional(),
+  // PENDIENTE = despachos facturables sin número de factura manual registrado.
+  invoice: z.enum(["REGISTRADA", "PENDIENTE"]).optional(),
 });
 
 export const accountsReceivableQuerySchema = z.object({
