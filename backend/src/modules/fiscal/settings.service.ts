@@ -23,12 +23,16 @@ export async function getSettings() {
   return { settings, mailProfiles: mailProfiles.map(publicMail), issuers, encryptionReady: encryptionReady(), productionEnabled: process.env.FISCAL_PRODUCTION_ENABLED === "true" };
 }
 export async function saveMail(id: string | undefined, input: z.infer<typeof mailSchema>, userId?: string) {
-  const { password, clearPassword, ...data } = input;
+  const { password, clearPassword, ...rest } = input;
+  // Resend envía por API HTTPS (Railway bloquea SMTP saliente en planes sin Pro):
+  // la contraseña guardada es la API key y no hay servidor ni usuario SMTP.
+  const data = rest.security === "RESEND" ? { ...rest, host: "api.resend.com", port: 443, username: "" } : rest;
   const profileId = id ?? randomUUID();
   const existing = id ? await prisma.mailProfile.findUnique({ where: { id } }) : null;
   if (id && !existing) throw notFound();
   const passwordEncrypted = clearPassword ? null : password ? encryptSecret(password, `mail:${profileId}`) : existing?.passwordEncrypted ?? null;
   if (data.username && !passwordEncrypted) throw badRequest("Indica una contraseña para el usuario SMTP.");
+  if (data.security === "RESEND" && !passwordEncrypted) throw badRequest("Indica la API key de Resend.");
   return prisma.$transaction(async tx => {
     const row = await tx.mailProfile.upsert({ where: { id: profileId }, create: { id: profileId, ...data, passwordEncrypted }, update: { ...data, passwordEncrypted } });
     await audit(tx, "MailProfile", row.id, existing ? "EDIT" : "CREATE", userId);

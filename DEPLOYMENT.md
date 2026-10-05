@@ -113,6 +113,11 @@ La cola interna consulta el SRI con espera creciente
 interna existe `node dist/src/jobs/runFiscalQueue.js`, apto para un cron externo;
 varios procesadores comparten bloqueos en la base y la misma clave del comprobante.
 
+Railway bloquea el SMTP saliente fuera del plan Pro. En Configuración → Correo se
+usa la forma de envío **Resend · API HTTPS** (puerto 443): API key de Resend y un
+remitente cuyo dominio esté verificado en Resend (registros DNS en GoDaddy). Las
+respuestas siguen llegando al buzón de GoDaddy.
+
 La configuración SMTP por variables funciona hasta seleccionar una cuenta general
 desde la aplicación. Los comprobantes usan la cuenta de su propia empresa y los
 recordatorios la cuenta general. Configurar una cuenta puede habilitar los

@@ -46,6 +46,29 @@ describe("configuración fiscal y correo", () => {
     expect((await request(app).put(`/api/settings/mail/${stored.id}`).set(auth(token)).send({ ...body, password: "" })).status).toBe(200);
     expect((await prisma.mailProfile.findUniqueOrThrow({ where: { id: stored.id } })).passwordEncrypted).toBe(stored.passwordEncrypted);
   });
+  it("Resend: exige API key, verifica el dominio y envía por API HTTPS", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const body = { name: "Resend", host: "", port: 1, security: "RESEND", username: "", fromName: "WM Global", fromEmail: "contact@wmglobalcorp.com", enabled: true };
+    expect((await request(app).post("/api/settings/mail").set(auth(token)).send({ ...body, host: "api.resend.com" })).status).toBe(400);
+    const created = await request(app).post("/api/settings/mail").set(auth(token)).send({ ...body, host: "api.resend.com", password: "re_test_key" });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({ host: "api.resend.com", port: 443, username: "", hasPassword: true });
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    try {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ name: "wmglobalcorp.com", status: "pending" }] }), { status: 200 }));
+      const pending = await request(app).post(`/api/settings/mail/${created.body.id}/verify`).set(auth(token));
+      expect(pending.status).toBe(400); expect(pending.body.error).toContain("no está verificado");
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ name: "wmglobalcorp.com", status: "verified" }] }), { status: 200 }));
+      expect((await request(app).post(`/api/settings/mail/${created.body.id}/verify`).set(auth(token))).status).toBe(200);
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ id: "email-1" }), { status: 200 }));
+      expect((await request(app).post(`/api/settings/mail/${created.body.id}/test`).set(auth(token)).send({ recipient: "destino@example.com" })).status).toBe(200);
+      const [url, init] = fetchMock.mock.calls[2];
+      expect(url).toBe("https://api.resend.com/emails");
+      expect((init!.headers as Record<string, string>).Authorization).toBe("Bearer re_test_key");
+      expect(JSON.parse(String(init!.body))).toMatchObject({ from: "WM Global <contact@wmglobalcorp.com>", to: ["destino@example.com"] });
+      expect((await prisma.mailDelivery.findFirstOrThrow()).status).toBe("SENT");
+    } finally { fetchMock.mockRestore(); }
+  });
   it("una firma inválida conserva la vigente y el cambio de RUC se rechaza", async () => {
     const { token } = await createTestUser("ADMIN"); const id = await configuredIssuer(token);
     const previous = await prisma.fiscalCertificate.findFirstOrThrow({ where: { issuerId: id, retiredAt: null } });

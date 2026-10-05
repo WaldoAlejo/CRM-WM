@@ -4,7 +4,7 @@ const text = z.string().trim().min(1).max(300);
 const optional = z.string().trim().max(300).optional();
 export const mailSchema = z.object({
   name: text, host: z.string().trim().min(1).max(253).regex(/^[a-zA-Z0-9.-]+$/), port: z.number().int().min(1).max(65535),
-  security: z.enum(["TLS", "STARTTLS"]), username: z.string().trim().max(300), password: z.string().max(2000).optional(),
+  security: z.enum(["TLS", "STARTTLS", "RESEND"]), username: z.string().trim().max(300), password: z.string().max(2000).optional(),
   clearPassword: z.boolean().optional(), fromName: text, fromEmail: z.string().email().max(254),
   replyTo: z.union([z.string().email().max(254), z.literal("")]).optional(), enabled: z.boolean(),
 }).strict();
