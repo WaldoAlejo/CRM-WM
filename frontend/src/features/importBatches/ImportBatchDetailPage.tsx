@@ -76,6 +76,7 @@ export function ImportBatchDetailPage() {
           <p className="text-sm text-muted-foreground">
             Llegada {new Date(batch.arrivalDate).toLocaleDateString("es-EC", { timeZone: "UTC" })} · Proveedor{" "}
             {batch.supplier?.name ?? "—"}
+            {batch.containerNumber ? <> · Contenedor/BL <span className="whitespace-nowrap">{batch.containerNumber}</span></> : null}
           </p>
           {batch.notes ? <p className="mt-1 text-sm">{batch.notes}</p> : null}
         </div>

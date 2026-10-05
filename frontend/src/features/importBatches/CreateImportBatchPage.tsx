@@ -77,7 +77,7 @@ export function CreateImportBatchPage() {
       let batchId = createdBatchId;
       if (!batchId) {
         const created = await createMutation.mutateAsync({
-          reference: values.reference,
+          containerNumber: values.containerNumber || undefined,
           containerType: values.containerType,
           containerCbm: values.containerCbm,
           supplierId: values.supplierId,
@@ -154,13 +154,14 @@ export function CreateImportBatchPage() {
             )} />
             <FormField
               control={form.control}
-              name="reference"
+              name="containerNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Referencia / embarque</FormLabel>
+                  <FormLabel>N.º de contenedor / BL (opcional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: CONT-2026-001" disabled={headerLocked} {...field} />
+                    <Input placeholder="Ej: MSKU1234567" disabled={headerLocked} {...field} value={field.value ?? ""} />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">La referencia interna (IMP-000001) se asigna automáticamente al guardar.</p>
                   <FormMessage />
                 </FormItem>
               )}

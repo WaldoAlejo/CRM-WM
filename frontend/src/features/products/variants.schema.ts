@@ -40,7 +40,6 @@ const attributePairsSchema = z
 // VariantFormDialog decide si lo muestra/manda según el modo.
 export const variantFormSchema = z.object({
   attributePairs: attributePairsSchema,
-  sku: optionalString(z.string().min(1).max(80)),
   barcode: optionalString(z.string().max(50)),
   minStock: optionalNumber(z.number().int().nonnegative("No puede ser negativo")),
   weightKg: optionalNumber(z.number().positive("Debe ser mayor a 0")),
@@ -58,7 +57,6 @@ export type VariantFormValues = z.infer<typeof variantFormSchema>;
 
 export const variantDefaultValues: VariantFormValues = {
   attributePairs: [{ key: "", value: "" }],
-  sku: "",
   barcode: "",
   minStock: undefined,
   weightKg: undefined,

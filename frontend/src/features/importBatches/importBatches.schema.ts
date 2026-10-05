@@ -50,7 +50,8 @@ export const receiveFormDefaultValues: ReceiveFormValues = { lines: [] };
 export const createImportBatchFormSchema = z.object({
   containerType: z.enum(["20", "40", "40HC", "LCL"]),
   containerCbm: z.coerce.number().positive("Ingresa los CBM contratados del lote").max(999999).multipleOf(0.000001),
-  reference: z.string().min(1, "La referencia/contenedor es obligatoria").max(100),
+  // La referencia (IMP-000001) la asigna el sistema; el contenedor/BL es opcional.
+  containerNumber: optionalString(z.string().trim().max(100)),
   supplierId: optionalString(z.string().min(1)),
   arrivalDate: z.string().min(1, "La fecha de llegada es obligatoria"),
   notes: optionalString(z.string().max(2000)),
@@ -68,7 +69,7 @@ export type CreateImportBatchFormValues = z.infer<typeof createImportBatchFormSc
 
 export function createImportBatchDefaultValues(): CreateImportBatchFormValues {
   return {
-    reference: "",
+    containerNumber: "",
     containerType: "40",
     containerCbm: 0,
     supplierId: undefined,

@@ -6,14 +6,15 @@ import type { ImportBatchDetail, ImportBatchListItem } from "./importBatches.typ
 
 const PAGE_SIZE = 20;
 
-export function useImportBatches(supplierId: string | undefined) {
+export function useImportBatches(supplierId: string | undefined, search?: string) {
   const [page, setPage] = useState(1);
 
   const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
   if (supplierId) params.set("supplierId", supplierId);
+  if (search) params.set("q", search);
 
   const query = useQuery({
-    queryKey: ["importBatches", "list", page, supplierId ?? null],
+    queryKey: ["importBatches", "list", page, supplierId ?? null, search ?? null],
     queryFn: () =>
       apiFetch<{ data: ImportBatchListItem[]; pagination: PaginationMeta }>(`/import-batches?${params.toString()}`),
   });

@@ -5,6 +5,7 @@ import { badRequest, conflict, notFound } from "../../utils/httpError";
 import { hasAdminAccess } from '../../lib/roles';
 import { catalogWeightedCosts } from '../../lib/weightedLandedCost';
 import { DEFAULT_IVA_CODE, IVA_RATES, type IvaCode } from "../../lib/ivaRates";
+import { generateProductSku } from "../../lib/sku";
 
 // P2002 (unique constraint) puede ser por `sku` o por `barcode`: se traduce
 // a un mensaje específico con el campo exacto, nunca un "ya existe" genérico.
@@ -119,7 +120,7 @@ export async function getProductById(id: string, role: Role) {
 }
 
 interface CreateProductInput {
-  sku: string;
+  sku?: undefined;
   name: string;
   description?: string;
   model?: string;
@@ -143,9 +144,13 @@ export async function createProduct(data: CreateProductInput, userId?: string) {
   }
 
   try {
+    const { sku: _sku, ...fields } = data;
     const ivaCode = data.ivaCode ?? DEFAULT_IVA_CODE;
-    return await prisma.product.create({
-      data: { ...data, ivaCode, ivaRate: IVA_RATES[ivaCode], createdById: userId, updatedById: userId },
+    return await prisma.$transaction(async (tx) => {
+      const sku = await generateProductSku(tx, data.categoryId);
+      return tx.product.create({
+        data: { ...fields, sku, ivaCode, ivaRate: IVA_RATES[ivaCode], createdById: userId, updatedById: userId },
+      });
     });
   } catch (err) {
     mapUniqueConstraintError(err);
@@ -153,7 +158,7 @@ export async function createProduct(data: CreateProductInput, userId?: string) {
 }
 
 interface UpdateProductInput {
-  sku?: string;
+  sku?: undefined;
   name?: string;
   description?: string | null;
   model?: string | null;
@@ -198,7 +203,7 @@ export async function updateProduct(id: string, data: UpdateProductInput, userId
   }
 
   try {
-    const { ivaCode, ...rest } = data;
+    const { ivaCode, sku: _sku, ...rest } = data;
     const taxChanges = ivaCode !== undefined && ivaCode !== product.ivaCode;
     return await prisma.$transaction(async (tx) => {
       const updated = await tx.product.update({

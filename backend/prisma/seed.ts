@@ -60,7 +60,7 @@ async function main() {
   const cocina = await prisma.category.upsert({
     where: { name: "Cocina" },
     update: {},
-    create: { name: "Cocina", description: "Electrodomésticos y utensilios de cocina" },
+    create: { name: "Cocina", code: "COC", skuCounter: 1, description: "Electrodomésticos y utensilios de cocina" },
   });
   const electrodomesticos = await prisma.subcategory.upsert({
     where: { categoryId_name: { categoryId: cocina.id, name: "Electrodomésticos menores" } },
@@ -73,6 +73,8 @@ async function main() {
     update: {},
     create: {
       name: "Seguridad / Smart Home",
+      code: "SEG",
+      skuCounter: 1,
       description: "Cámaras, cerraduras digitales y productos smart home",
     },
   });
@@ -85,7 +87,7 @@ async function main() {
   const mascotas = await prisma.category.upsert({
     where: { name: "Mascotas" },
     update: {},
-    create: { name: "Mascotas", description: "Camas, juguetes, comederos y transportadoras" },
+    create: { name: "Mascotas", code: "MAS", skuCounter: 1, description: "Camas, juguetes, comederos y transportadoras" },
   });
   const camasTransportadoras = await prisma.subcategory.upsert({
     where: { categoryId_name: { categoryId: mascotas.id, name: "Camas y transportadoras" } },
@@ -134,10 +136,10 @@ async function main() {
 
   // --- Producto 1: Freidora de aire (Cocina > Electrodomésticos menores) ---
   const freidora = await prisma.product.upsert({
-    where: { sku: "WM-0001" },
+    where: { sku: "COC-0001" },
     update: {},
     create: {
-      sku: "WM-0001",
+      sku: "COC-0001",
       name: "Freidora de aire WM",
       description: "Freidora de aire sin aceite, panel digital.",
       model: "AF-5000",
@@ -154,11 +156,11 @@ async function main() {
     retailDiscountPct: 10.0,
   };
   const freidora4L = await prisma.productVariant.upsert({
-    where: { sku: "WM-0001-4L" },
+    where: { sku: "COC-0001-4L" },
     update: freidora4LPrecios,
     create: {
       productId: freidora.id,
-      sku: "WM-0001-4L",
+      sku: "COC-0001-4L",
       attributes: { capacidad: "4L" },
       label: "4L",
       warehouseLocation: "Pasillo A - Estante 1 - Nivel 1",
@@ -174,11 +176,11 @@ async function main() {
     retailDiscountPct: 10.0,
   };
   const freidora6L = await prisma.productVariant.upsert({
-    where: { sku: "WM-0001-6L" },
+    where: { sku: "COC-0001-6L" },
     update: freidora6LPrecios,
     create: {
       productId: freidora.id,
-      sku: "WM-0001-6L",
+      sku: "COC-0001-6L",
       attributes: { capacidad: "6L" },
       label: "6L",
       warehouseLocation: "Pasillo A - Estante 1 - Nivel 2",
@@ -189,10 +191,10 @@ async function main() {
 
   // --- Producto 2: Chapa digital (Seguridad / Smart Home > Cerraduras digitales) ---
   const chapa = await prisma.product.upsert({
-    where: { sku: "WM-0002" },
+    where: { sku: "SEG-0001" },
     update: {},
     create: {
-      sku: "WM-0002",
+      sku: "SEG-0001",
       name: "Chapa digital WM",
       description: "Cerradura digital con huella, tarjeta y clave.",
       model: "DL-200",
@@ -209,11 +211,11 @@ async function main() {
     retailDiscountPct: 12.0,
   };
   const chapaNegraHuella = await prisma.productVariant.upsert({
-    where: { sku: "WM-0002-NEGRO-HUELLA" },
+    where: { sku: "SEG-0001-NEGRO-HUELLA" },
     update: chapaNegraHuellaPrecios,
     create: {
       productId: chapa.id,
-      sku: "WM-0002-NEGRO-HUELLA",
+      sku: "SEG-0001-NEGRO-HUELLA",
       attributes: { color: "Negro", apertura: "Huella" },
       label: "Negro / Huella",
       warehouseLocation: "Pasillo B - Estante 2 - Nivel 1",
@@ -229,11 +231,11 @@ async function main() {
     retailDiscountPct: 12.0,
   };
   const chapaDoradaTarjeta = await prisma.productVariant.upsert({
-    where: { sku: "WM-0002-DORADO-TARJETA" },
+    where: { sku: "SEG-0001-DORADO-TARJET" },
     update: chapaDoradaTarjetaPrecios,
     create: {
       productId: chapa.id,
-      sku: "WM-0002-DORADO-TARJETA",
+      sku: "SEG-0001-DORADO-TARJET",
       attributes: { color: "Dorado", apertura: "Tarjeta" },
       label: "Dorado / Tarjeta",
       warehouseLocation: "Pasillo B - Estante 2 - Nivel 2",
@@ -244,10 +246,10 @@ async function main() {
 
   // --- Producto 3: Cama para mascota (Mascotas > Camas y transportadoras) ---
   const cama = await prisma.product.upsert({
-    where: { sku: "WM-0003" },
+    where: { sku: "MAS-0001" },
     update: {},
     create: {
-      sku: "WM-0003",
+      sku: "MAS-0001",
       name: "Cama para mascota WM",
       description: "Cama acolchada lavable para perros y gatos.",
       model: "PB-100",
@@ -264,11 +266,11 @@ async function main() {
     retailDiscountPct: 10.0,
   };
   const camaS = await prisma.productVariant.upsert({
-    where: { sku: "WM-0003-S" },
+    where: { sku: "MAS-0001-S" },
     update: camaSPrecios,
     create: {
       productId: cama.id,
-      sku: "WM-0003-S",
+      sku: "MAS-0001-S",
       attributes: { tamaño: "S" },
       label: "Talla S",
       warehouseLocation: "Pasillo C - Estante 1 - Nivel 1",
@@ -284,11 +286,11 @@ async function main() {
     retailDiscountPct: 10.0,
   };
   const camaM = await prisma.productVariant.upsert({
-    where: { sku: "WM-0003-M" },
+    where: { sku: "MAS-0001-M" },
     update: camaMPrecios,
     create: {
       productId: cama.id,
-      sku: "WM-0003-M",
+      sku: "MAS-0001-M",
       attributes: { tamaño: "M" },
       label: "Talla M",
       warehouseLocation: "Pasillo C - Estante 1 - Nivel 2",
@@ -304,11 +306,11 @@ async function main() {
     retailDiscountPct: 10.0,
   };
   const camaL = await prisma.productVariant.upsert({
-    where: { sku: "WM-0003-L" },
+    where: { sku: "MAS-0001-L" },
     update: camaLPrecios,
     create: {
       productId: cama.id,
-      sku: "WM-0003-L",
+      sku: "MAS-0001-L",
       attributes: { tamaño: "L" },
       label: "Talla L",
       warehouseLocation: "Pasillo C - Estante 1 - Nivel 3",
@@ -320,7 +322,7 @@ async function main() {
   // --- Lote de importación de ejemplo + movimientos de ingreso ---
   // Así el stock inicial nace de movimientos reales (ledger), tal como lo
   // hará la API real, y no de un valor puesto a mano en la variante.
-  const referenciaLote = "CONT-DEMO-0001";
+  const referenciaLote = "IMP-000001";
   const loteExistente = await prisma.importBatch.findUnique({
     where: { reference: referenciaLote },
   });
@@ -329,6 +331,7 @@ async function main() {
     const lote = await prisma.importBatch.create({
       data: {
         reference: referenciaLote,
+        containerNumber: "CONT-DEMO-0001",
         supplierId: proveedor.id,
         arrivalDate: new Date(),
         notes: "Lote de ejemplo generado por el seed inicial.",
@@ -463,6 +466,12 @@ async function main() {
         });
       });
     }
+  }
+
+  // Los contadores de códigos deben quedar por delante de los registros de
+  // ejemplo creados arriba con número fijo (OD-000001, IMP-000001).
+  for (const [id, lastNumber] of [[1, await prisma.dispatchOrder.count()], [3, await prisma.importBatch.count()]] as const) {
+    await prisma.orderNumberCounter.upsert({ where: { id }, create: { id, lastNumber }, update: { lastNumber } });
   }
 
   console.log("Seed completado: categorías, productos, variantes, stock y orden de ejemplo creados.");

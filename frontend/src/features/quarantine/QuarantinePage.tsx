@@ -75,7 +75,7 @@ export function QuarantinePage() {
                 <TableCell>
                   <Badge variant="secondary">{SOURCE_LABELS[line.source]}</Badge>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {line.reference ?? "—"}
+                    <span className="whitespace-nowrap font-medium text-foreground">{line.batchCode}</span> · {line.reference ?? "—"}
                     {line.wholesalerName ? ` · ${line.wholesalerName}` : ""}
                   </p>
                 </TableCell>

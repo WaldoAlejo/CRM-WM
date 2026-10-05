@@ -1,3 +1,4 @@
+import { generateClaimCode } from "../../lib/orderNumber";
 import { ClaimStatus, MovementType, ReturnSource, ShipmentStatus } from "@prisma/client";
 import { recalculatePaymentStatus } from "../../lib/paymentRecalculation";
 import { prisma } from "../../lib/prisma";
@@ -132,6 +133,7 @@ export async function markShipmentLostOrDamaged(
 
     const insuranceClaim = await tx.insuranceClaim.create({
       data: {
+        code: await generateClaimCode(tx),
         shipmentId,
         claimAmount,
         status: ClaimStatus.PENDIENTE,

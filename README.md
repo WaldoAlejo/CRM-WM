@@ -273,6 +273,26 @@ siempre, como red de seguridad idempotente.
 - **CORS** (`src/lib/corsOptions.ts`): `CORS_ORIGIN` acepta una lista de orígenes separados por coma. Sin definirla, en desarrollo cae al modo abierto de siempre (refleja cualquier `Origin`); en producción es obligatoria (ver validación de arriba).
 - **`GET /health`**: hace un `SELECT 1` real contra la base (no solo "el proceso está vivo") — `200 { status: "ok", db: "connected" }` o `503 { status: "error", db: "disconnected" }`.
 
+## Códigos automáticos
+
+Todos los códigos los genera el sistema; la API rechaza los que se envían a mano.
+
+| Registro | Formato | Ejemplo | Regla |
+| --- | --- | --- | --- |
+| Producto | `<código de categoría>-<0001>` | `COC-0001` | Correlativo por categoría. No cambia nunca, ni al cambiar de categoría. |
+| Variante | `<SKU producto>-<atributos>` | `COC-0001-NEGRO-5L` | Cada atributo sin tildes ni espacios, máximo 6 caracteres. Choques: `-2`, `-3`. Sigue a los atributos hasta su primer movimiento de inventario; después queda fijo. |
+| Importación | `IMP-000001` | `IMP-000012` | El contenedor/BL va en un campo aparte y también se puede buscar. |
+| Despacho | `OD-000001` | | |
+| Lote de consignación | `CON-000001` | | |
+| Devolución | `DEV-000001` | | |
+| Reclamo de seguro | `REC-000001` | | |
+
+El código de categoría (2 a 4 letras) se sugiere del nombre (Cocina → COC) y se
+puede editar; un cambio solo afecta a los productos nuevos. Categorías actuales:
+HOG Hogar y Oficina, COC Cocina, ENE Energía, ELE Electrónica y Gadgets,
+CUI Cuidado Personal y Belleza, DEP Deportes y Aire Libre, JUG Juguetería,
+AUT Automotriz.
+
 ## Modelo de datos
 
 El esquema completo vive en [`backend/prisma/schema.prisma`](backend/prisma/schema.prisma),

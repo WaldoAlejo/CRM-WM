@@ -37,7 +37,7 @@ describe("POST /api/import-batches", () => {
       .post("/api/import-batches")
       .set("Authorization", `Bearer ${token}`)
       .send({
-        reference: "CONT-TEST-001",
+        containerNumber: "MSKU1234567",
         supplierId: supplier.id,
         containerType: "40", containerCbm: 70, arrivalDate: "2026-09-20",
         freightCost: 850,
@@ -46,7 +46,8 @@ describe("POST /api/import-batches", () => {
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.reference).toBe("CONT-TEST-001");
+    expect(res.body.reference).toBe("IMP-000001");
+    expect(res.body.containerNumber).toBe("MSKU1234567");
     expect(res.body.freightCost).toBe("850");
   });
 
@@ -56,7 +57,7 @@ describe("POST /api/import-batches", () => {
     const res = await request(app)
       .post("/api/import-batches")
       .set("Authorization", `Bearer ${token}`)
-      .send({ reference: "CONT-TEST-002", containerType: "40", containerCbm: 70, arrivalDate: "2026-09-20", freightCost: 100 });
+      .send({ containerType: "40", containerCbm: 70, arrivalDate: "2026-09-20", freightCost: 100 });
 
     expect(res.status).toBe(403);
   });
@@ -67,7 +68,7 @@ describe("POST /api/import-batches", () => {
     const res = await request(app)
       .post("/api/import-batches")
       .set("Authorization", `Bearer ${token}`)
-      .send({ reference: "CONT-TEST-003", containerType: "40", containerCbm: 70, arrivalDate: "2026-09-20" });
+      .send({ containerType: "40", containerCbm: 70, arrivalDate: "2026-09-20" });
 
     expect(res.status).toBe(201);
   });
@@ -505,7 +506,7 @@ describe("Carga suelta LCL", () => {
     const { variant: powerStationA } = await setupProductWithVariant();
     const { variant: powerStationB } = await setupProductWithVariant();
     const created = await request(app).post("/api/import-batches").set("Authorization", `Bearer ${token}`).send({
-      reference: "LCL-POWER-STATIONS", arrivalDate: "2026-09-22", containerType: "LCL", containerCbm: 26,
+      containerNumber: "LCL-POWER-STATIONS", arrivalDate: "2026-09-22", containerType: "LCL", containerCbm: 26,
       freightCost: 2600, customsCost: 2000, otherCosts: 600,
     });
     expect(created.status).toBe(201);

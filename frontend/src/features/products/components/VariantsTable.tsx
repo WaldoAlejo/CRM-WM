@@ -23,6 +23,7 @@ export interface PendingVariantEdit {
 interface VariantsTableProps {
   productId: string;
   productStatus: ProductStatus;
+  productSku?: string;
   variants: Variant[];
   pendingEdit?: PendingVariantEdit | null;
   onPendingEditHandled?: () => void;
@@ -32,7 +33,7 @@ function money(value: string | null | undefined, prefix: string): string {
   return value ? `${prefix}${value}` : "—";
 }
 
-export function VariantsTable({ productId, productStatus, variants, pendingEdit, onPendingEditHandled }: VariantsTableProps) {
+export function VariantsTable({ productId, productStatus, productSku, variants, pendingEdit, onPendingEditHandled }: VariantsTableProps) {
   const canSeePricing = usePricingVisibility();
   const { deleteMutation } = useVariantMutations(productId);
   const [editing, setEditing] = useState<Variant | null | "new">(null);
@@ -108,6 +109,7 @@ export function VariantsTable({ productId, productStatus, variants, pendingEdit,
         onOpenChange={(open) => !open && setEditing(null)}
         productId={productId}
         productStatus={productStatus}
+        productSku={productSku}
         variant={editing === "new" ? null : editing}
         retailPriceOverride={retailPriceOverride}
         wholesalePriceOverride={wholesalePriceOverride}

@@ -117,7 +117,7 @@ describe("PDF en los procesos operativos", () => {
       items: { create: { variantId: s.variant.id, quantity: 1, unitPrice: 201, priceType: "MAYORISTA" } },
       shipment: { create: { courierId: courier.id, status: "RECHAZADO", isCOD: true } },
     }, include: { shipment: true } });
-    await prisma.returnBatch.create({ data: { source: "COURIER_RECHAZADO", shipmentId: order.shipment!.id,
+    await prisma.returnBatch.create({ data: { code: "DEV-900001", source: "COURIER_RECHAZADO", shipmentId: order.shipment!.id,
       lines: { create: { variantId: s.variant.id, quantity: 1, unitPrice: 201 } } } });
     await pdf(`/dispatch-orders/${order.id}/return`, s.operator.token);
     expect((await docs.getDispatchDocument(order.id)).notices.join(" ")).toContain("Envío con incidencia");

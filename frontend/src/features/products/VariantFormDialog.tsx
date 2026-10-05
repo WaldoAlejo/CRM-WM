@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { usePricingVisibility } from "@/hooks/usePricingVisibility";
+import { previewVariantSku } from "@/lib/sku";
 import { AttributesFieldArray } from "./components/AttributesFieldArray";
 import type { ProductStatus, Variant } from "./products.types";
 import { useVariantMutations } from "./useVariantMutations";
@@ -24,6 +25,8 @@ interface VariantFormDialogProps {
   onOpenChange: (open: boolean) => void;
   productId: string;
   productStatus: ProductStatus;
+  // Para mostrar el SKU que se generará (el backend es quien lo asigna).
+  productSku?: string;
   variant: Variant | null; // null = modo crear
   // Precarga el campo PVP (viene de "Usar este PVP" en la calculadora de
   // precios) SIN guardar nada por sí sola: el usuario sigue teniendo que
@@ -36,7 +39,6 @@ function toFormValues(variant: Variant | null, retailPriceOverride?: number): Va
   if (!variant) return { ...variantDefaultValues, ...(retailPriceOverride !== undefined && { retailPrice: retailPriceOverride }) };
   return {
     attributePairs: attributesToPairs(variant.attributes),
-    sku: variant.sku,
     barcode: variant.barcode ?? "",
     minStock: variant.minStock ?? undefined,
     weightKg: variant.weightKg ? Number(variant.weightKg) : undefined,
@@ -58,6 +60,7 @@ export function VariantFormDialog({
   onOpenChange,
   productId,
   productStatus,
+  productSku,
   variant,
   retailPriceOverride,
   wholesalePriceOverride,
@@ -77,13 +80,17 @@ export function VariantFormDialog({
     form.reset({ ...toFormValues(variant, retailPriceOverride), ...(wholesalePriceOverride !== undefined && { wholesalePrice: wholesalePriceOverride }) });
   }, [open, variant, retailPriceOverride, wholesalePriceOverride]);
 
+  const watchedPairs = form.watch("attributePairs");
+  const skuPreview = productSku
+    ? previewVariantSku(productSku, (watchedPairs ?? []).map((p) => p.value ?? ""))
+    : (variant?.sku ?? null);
+
   function handleSubmit(values: VariantFormValues) {
     const attributes = pairsToAttributes(values.attributePairs);
 
     const payload = isEdit
       ? {
           attributes,
-          sku: values.sku || undefined, // sku nunca se "limpia", solo se cambia u omite
           barcode: values.barcode || null,
           minStock: values.minStock ?? null,
           weightKg: values.weightKg ?? null,
@@ -94,7 +101,6 @@ export function VariantFormDialog({
         }
       : {
           attributes,
-          sku: values.sku || undefined,
           barcode: values.barcode || undefined,
           minStock: values.minStock,
           weightKg: values.weightKg,
@@ -126,24 +132,18 @@ export function VariantFormDialog({
           <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4">
             <AttributesFieldArray control={form.control} errors={form.formState.errors} />
 
-            <FormField
-              control={form.control}
-              name="sku"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>SKU</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Se autogenera si lo dejás vacío" {...field} value={field.value ?? ""} />
-                  </FormControl>
-                  {!isEdit ? (
-                    <FormDescription>
-                      Si lo dejás vacío, se arma solo a partir del SKU del producto y los atributos.
-                    </FormDescription>
-                  ) : null}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* SKU automático: SKU del producto + atributos abreviados (máx. 6 letras c/u). */}
+            <div className="grid gap-1">
+              <span className="text-sm font-medium">SKU</span>
+              <p className="flex min-h-9 items-center break-all rounded-md border bg-muted/50 px-3 py-1.5 font-mono text-sm">
+                {skuPreview ?? "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isEdit && skuPreview !== variant.sku
+                  ? "Si la variante ya tuvo movimientos de inventario, conserva su SKU actual."
+                  : "Se genera automáticamente con el SKU del producto y los atributos."}
+              </p>
+            </div>
 
             <div className="grid gap-4">
               <FormField

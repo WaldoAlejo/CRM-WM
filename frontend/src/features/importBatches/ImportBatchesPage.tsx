@@ -1,6 +1,8 @@
 import { hasAdminAccess } from "@/lib/roles";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/crud/DataTable";
 import type { CrudColumn } from "@/components/crud/types";
@@ -18,7 +20,10 @@ const ALL = "__all__";
 export function ImportBatchesPage() {
   const { role } = useAuth();
   const [supplierId, setSupplierId] = useState<string | undefined>(undefined);
-  const { page, setPage, query } = useImportBatches(supplierId);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { page, setPage, query } = useImportBatches(supplierId, debouncedSearch || undefined);
+  useEffect(() => setPage(1), [debouncedSearch]);
   const { data: suppliers } = useSupplierOptions();
 
   const items = query.data?.data ?? [];
@@ -33,6 +38,7 @@ export function ImportBatchesPage() {
         </Link>
       ),
     },
+    { header: "Contenedor / BL", cell: (item) => <span className="whitespace-nowrap">{item.containerNumber ?? "—"}</span> },
     { header: "Modalidad", cell: (item) => item.containerType === "LCL" ? "Carga suelta / LCL" : item.containerType === "40HC" ? "40 HC" : item.containerType ? `${item.containerType} pies` : "—" },
     { header: "CBM contratados", cell: (item) => item.containerCbm ?? "—" },
     { header: "Llegada", cell: (item) => new Date(item.arrivalDate).toLocaleDateString("es-EC", { timeZone: "UTC" }) },
@@ -64,6 +70,15 @@ export function ImportBatchesPage() {
         </Button>
       </div>
 
+      <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+      <Input
+        type="search"
+        aria-label="Buscar importaciones"
+        placeholder="Buscar IMP- o contenedor"
+        className="min-w-0 sm:w-64"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
       <div className="w-full sm:w-64">
         <Select
           value={supplierId ?? ALL}
@@ -84,6 +99,7 @@ export function ImportBatchesPage() {
             ))}
           </SelectContent>
         </Select>
+      </div>
       </div>
 
       <DataTable columns={columns} data={items} isLoading={query.isLoading} getRowId={(item) => item.id} />

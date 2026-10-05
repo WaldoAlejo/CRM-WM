@@ -17,6 +17,7 @@ export interface InsuranceClaimOrderRef {
 // detalle aparte.
 export interface InsuranceClaim {
   id: string;
+  code: string; // REC-000001
   shipmentId: string;
   claimAmount: string;
   status: ClaimStatus;

@@ -56,8 +56,11 @@ export async function createTestUser(role: Role) {
   return { user, token };
 }
 
+// Código único de categoría para fixtures (la API exige 2-4 letras; acá basta con que sea único).
+export const testCategoryCode = () => `T${randomUUID().slice(0, 8).toUpperCase()}`;
+
 export async function createCategoryFixture() {
-  const category = await prisma.category.create({ data: { name: `Categoría ${randomUUID()}` } });
+  const category = await prisma.category.create({ data: { name: `Categoría ${randomUUID()}`, code: testCategoryCode() } });
   const subcategory = await prisma.subcategory.create({
     data: { name: `Subcategoría ${randomUUID()}`, categoryId: category.id },
   });

@@ -1,4 +1,6 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { suggestCategoryCode } from "../../lib/sku";
 import { conflict, notFound } from "../../utils/httpError";
 
 export async function listCategories() {
@@ -23,16 +25,28 @@ export async function getCategoryById(id: string) {
   return category;
 }
 
-export async function createCategory(data: { name: string; description?: string }) {
-  return prisma.category.create({ data });
+// El código es el prefijo de los SKU (COC-0001) y es único entre TODAS las
+// categorías, incluidas las eliminadas: sus productos conservan ese prefijo.
+function mapCodeConflict(err: unknown): never {
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002" && String(err.meta?.target).includes("code")) {
+    throw conflict("Ese código ya lo usa otra categoría", { field: "code" });
+  }
+  throw err;
 }
 
+export async function createCategory(data: { name: string; description?: string; code?: string }) {
+  const taken = new Set((await prisma.category.findMany({ select: { code: true } })).map((c) => c.code));
+  const code = data.code || suggestCategoryCode(data.name, taken);
+  return prisma.category.create({ data: { ...data, code } }).catch(mapCodeConflict);
+}
+
+// Cambiar el código solo afecta a productos nuevos: los SKU ya asignados no cambian.
 export async function updateCategory(
   id: string,
-  data: { name?: string; description?: string }
+  data: { name?: string; description?: string; code?: string }
 ) {
   await getCategoryById(id); // valida que exista y no esté eliminada
-  return prisma.category.update({ where: { id }, data });
+  return prisma.category.update({ where: { id }, data }).catch(mapCodeConflict);
 }
 
 // Antes de borrar (soft delete), hay que asegurarse de que no queden

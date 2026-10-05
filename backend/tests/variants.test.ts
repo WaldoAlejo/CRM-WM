@@ -44,24 +44,18 @@ describe("POST /api/products/:id/variants", () => {
     expect(res.body.sku).toBe(`${product.sku}-NEGRO-2`);
   });
 
-  it("rechaza un sku manual duplicado con 409 y el campo exacto", async () => {
+  it("rechaza un sku manual: siempre se genera automáticamente", async () => {
     const { token } = await createTestUser("ADMIN");
     const { category } = await createCategoryFixture();
     const product = await createProductFixture({ categoryId: category.id });
-
-    await request(app)
-      .post(`/api/products/${product.id}/variants`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ attributes: { color: "Negro" }, sku: "SKU-FIJO-TEST" });
 
     const res = await request(app)
       .post(`/api/products/${product.id}/variants`)
       .set("Authorization", `Bearer ${token}`)
       .send({ attributes: { color: "Rojo" }, sku: "SKU-FIJO-TEST" });
 
-    expect(res.status).toBe(409);
-    expect(res.body.field).toBe("sku");
-    expect(res.body.error).toMatch(/SKU/);
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body)).toContain("se genera automáticamente");
   });
 
   it("rechaza attributes vacío", async () => {

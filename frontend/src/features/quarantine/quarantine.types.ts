@@ -1,6 +1,7 @@
 export interface QuarantineQueueLine {
   id: string;
   batchId: string;
+  batchCode: string; // DEV-000001
   source: "CONSIGNACION" | "COURIER_RECHAZADO";
   reference: string | null;
   wholesalerName: string | null;

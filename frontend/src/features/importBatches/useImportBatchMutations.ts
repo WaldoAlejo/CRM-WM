@@ -6,7 +6,7 @@ import type { CartonPackaging } from '@/lib/cartonPackaging';
 export interface CreateBatchPayload {
   containerType: "20" | "40" | "40HC" | "LCL";
   containerCbm: number;
-  reference: string;
+  containerNumber?: string;
   supplierId?: string;
   arrivalDate: string;
   notes?: string;

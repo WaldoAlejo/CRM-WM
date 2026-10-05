@@ -4,7 +4,6 @@ import { ApiError, apiFetch } from "@/lib/api";
 import type { ProductDetail } from "./products.types";
 
 interface ProductWritePayload {
-  sku: string;
   name: string;
   description?: string;
   model?: string;

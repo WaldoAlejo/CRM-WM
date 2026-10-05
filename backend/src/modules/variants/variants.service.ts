@@ -21,7 +21,7 @@ function mapUniqueConstraintError(err: unknown): never {
 
 interface CreateVariantInput {
   attributes: Record<string, string>;
-  sku?: string;
+  sku?: undefined;
   barcode?: string;
   warehouseLocation?: string;
   minStock?: number;
@@ -46,11 +46,9 @@ export async function createVariant(productId: string, data: CreateVariantInput,
     );
   }
 
-  const { force, sku, attributes, ...rest } = data;
-  // Si el usuario no especificó un sku, se autogenera y se auto-resuelve
-  // cualquier colisión (-2, -3, ...). Si SÍ lo especificó, se valida su
-  // unicidad tal cual (ver mapUniqueConstraintError) sin inventarle sufijos.
-  const finalSku = sku ?? (await generateUniqueVariantSku(product.sku, attributes));
+  const { force, sku: _sku, attributes, ...rest } = data;
+  // Siempre automático; una colisión se resuelve con -2, -3, ...
+  const finalSku = await generateUniqueVariantSku(product.sku, attributes);
   const label = buildLabel(attributes);
 
   try {
@@ -65,7 +63,7 @@ export async function createVariant(productId: string, data: CreateVariantInput,
 
 interface UpdateVariantInput {
   attributes?: Record<string, string>;
-  sku?: string;
+  sku?: undefined;
   barcode?: string | null;
   warehouseLocation?: string | null;
   minStock?: number | null;
@@ -86,9 +84,17 @@ export async function updateVariant(id: string, data: UpdateVariantInput, role: 
 
   // `attributes` reemplaza el objeto completo (no hace merge parcial) y
   // siempre regenera `label`; `label` nunca es un input directo de la API.
-  const updateData: Prisma.ProductVariantUpdateInput = { ...data };
+  const { sku: _sku, ...fields } = data;
+  const updateData: Prisma.ProductVariantUpdateInput = { ...fields };
   if (data.attributes) {
     updateData.label = buildLabel(data.attributes);
+    // El SKU sigue a los atributos solo mientras la variante no tenga
+    // movimientos: después ya puede estar en etiquetas, guías y documentos.
+    const used = await prisma.inventoryMovement.findFirst({ where: { variantId: id }, select: { id: true } });
+    if (!used) {
+      const product = await prisma.product.findUniqueOrThrow({ where: { id: variant.productId }, select: { sku: true } });
+      updateData.sku = await generateUniqueVariantSku(product.sku, data.attributes, id);
+    }
   }
 
   try {

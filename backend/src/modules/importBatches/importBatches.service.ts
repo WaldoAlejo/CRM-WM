@@ -1,5 +1,6 @@
 import { LocationType, MovementType, Prisma, Role } from "@prisma/client";
 import { applyMovement } from "../../lib/inventoryMovements";
+import { generateImportReference } from "../../lib/orderNumber";
 import { prisma } from "../../lib/prisma";
 import { badRequest, conflict, notFound, unprocessableEntity } from "../../utils/httpError";
 import { serializeMovementForRole } from "../inventory/inventory.movementSerializer";
@@ -10,7 +11,8 @@ import type { CartonPackaging } from '../../lib/cartonPackaging';
 interface CreateImportBatchInput {
   containerType: "20" | "40" | "40HC" | "LCL";
   containerCbm: number;
-  reference: string;
+  reference?: undefined;
+  containerNumber?: string;
   supplierId?: string;
   arrivalDate: Date;
   notes?: string;
@@ -31,26 +33,28 @@ export async function createImportBatch(
     if (!supplier) throw notFound("Proveedor no encontrado");
   }
 
-  try {
-    const batch = await prisma.importBatch.create({ data: { ...data, createdById: userId } });
-    return serializeImportBatchForRole(batch, role);
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw conflict("Ya existe un lote de importación con esa referencia", { field: "reference" });
-    }
-    throw err;
-  }
+  const { reference: _reference, ...fields } = data;
+  const batch = await prisma.$transaction(async (tx) =>
+    tx.importBatch.create({
+      data: { ...fields, containerNumber: fields.containerNumber || undefined, reference: await generateImportReference(tx), createdById: userId },
+    })
+  );
+  return serializeImportBatchForRole(batch, role);
 }
 
 interface ListImportBatchesParams {
   page: number;
   pageSize: number;
   supplierId?: string;
+  q?: string;
 }
 
 export async function listImportBatches(params: ListImportBatchesParams, role: Role) {
-  const { page, pageSize, supplierId } = params;
-  const where: Prisma.ImportBatchWhereInput = { ...(supplierId && { supplierId }) };
+  const { page, pageSize, supplierId, q } = params;
+  const where: Prisma.ImportBatchWhereInput = {
+    ...(supplierId && { supplierId }),
+    ...(q && { OR: [{ reference: { contains: q, mode: "insensitive" } }, { containerNumber: { contains: q, mode: "insensitive" } }] }),
+  };
 
   const [rows, total] = await Promise.all([
     prisma.importBatch.findMany({

@@ -24,10 +24,10 @@ describe("POST /api/products", () => {
     const res = await request(app)
       .post("/api/products")
       .set("Authorization", `Bearer ${token}`)
-      .send({ sku: "WM-9001", name: "Producto válido", categoryId: category.id, subcategoryId: subcategory.id });
+      .send({ name: "Producto válido", categoryId: category.id, subcategoryId: subcategory.id });
 
     expect(res.status).toBe(201);
-    expect(res.body.sku).toBe("WM-9001");
+    expect(res.body.sku).toBe(`${category.code}-0001`);
     expect(res.body.subcategoryId).toBe(subcategory.id);
   });
 
@@ -40,7 +40,6 @@ describe("POST /api/products", () => {
       .post("/api/products")
       .set("Authorization", `Bearer ${token}`)
       .send({
-        sku: "WM-9002",
         name: "Producto mal clasificado",
         categoryId: categoryB.id,
         subcategoryId: subcategory.id,
@@ -57,13 +56,12 @@ describe("POST /api/products", () => {
     const res = await request(app)
       .post("/api/products")
       .set("Authorization", `Bearer ${token}`)
-      .send({ sku: "WM-9003", name: "Producto con marca inventada", categoryId: category.id, brandId: "id-inexistente" });
+      .send({ name: "Producto con marca inventada", categoryId: category.id, brandId: "id-inexistente" });
 
     expect(res.status).toBe(404);
     expect(res.body.error).toBe("Marca no encontrada");
 
-    const created = await prisma.product.findUnique({ where: { sku: "WM-9003" } });
-    expect(created).toBeNull(); // nunca se creó
+    expect(await prisma.product.count()).toBe(0); // nunca se creó
   });
 
   it("crea el producto con un brandId válido", async () => {
@@ -74,7 +72,7 @@ describe("POST /api/products", () => {
     const res = await request(app)
       .post("/api/products")
       .set("Authorization", `Bearer ${token}`)
-      .send({ sku: "WM-9004", name: "Producto con marca", categoryId: category.id, brandId: brand.id });
+      .send({ name: "Producto con marca", categoryId: category.id, brandId: brand.id });
 
     expect(res.status).toBe(201);
     expect(res.body.brandId).toBe(brand.id);
@@ -205,7 +203,7 @@ describe("IVA del producto", () => {
   it("nace con la tarifa general (15%) y ADMIN puede cambiarla con auditoría", async () => {
     const { token } = await createTestUser("ADMIN");
     const { category } = await createCategoryFixture();
-    const created = await request(app).post("/api/products").set("Authorization", `Bearer ${token}`).send({ sku: "WM-IVA1", name: "Con IVA", categoryId: category.id });
+    const created = await request(app).post("/api/products").set("Authorization", `Bearer ${token}`).send({ name: "Con IVA", categoryId: category.id });
     expect(created.status).toBe(201);
     expect(created.body).toMatchObject({ ivaCode: "4", ivaRate: "15" });
 
@@ -218,7 +216,7 @@ describe("IVA del producto", () => {
   it("OPERATOR no puede elegir el IVA", async () => {
     const { token } = await createTestUser("OPERATOR");
     const { category } = await createCategoryFixture();
-    const res = await request(app).post("/api/products").set("Authorization", `Bearer ${token}`).send({ sku: "WM-IVA2", name: "Sin permiso", categoryId: category.id, ivaCode: "0" });
+    const res = await request(app).post("/api/products").set("Authorization", `Bearer ${token}`).send({ name: "Sin permiso", categoryId: category.id, ivaCode: "0" });
     expect(res.status).toBe(403);
   });
 });

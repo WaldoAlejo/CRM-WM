@@ -45,9 +45,27 @@ export async function generateOrderNumber(tx: Prisma.TransactionClient): Promise
 // crea el lote, y SIEMPRE antes de tocar ProductVariant (orden de locks: contador
 // primero, variantes después, en todos los flujos que usan los dos).
 export async function generateConsignmentCode(tx: Prisma.TransactionClient): Promise<string> {
-  const counter = await tx.orderNumberCounter.update({
-    where: { id: 2 },
-    data: { lastNumber: { increment: 1 } },
-  });
-  return `CON-${String(counter.lastNumber).padStart(6, "0")}`;
+  return generateSequenceCode(tx, 2, "CON");
 }
+
+// Mismo mecanismo para el resto de códigos correlativos. upsert compila a un
+// INSERT ... ON CONFLICT DO UPDATE atómico: crea la fila del contador si aún
+// no existe (base nueva o tests) sin carrera entre dos creaciones simultáneas.
+// Mismas reglas: SIEMPRE dentro de la transacción que crea el registro.
+const SEQUENCES = { IMP: 3, DEV: 4, REC: 5 } as const;
+
+async function generateSequenceCode(tx: Prisma.TransactionClient, id: number, prefix: string): Promise<string> {
+  const counter = await tx.orderNumberCounter.upsert({
+    where: { id },
+    create: { id, lastNumber: 1 },
+    update: { lastNumber: { increment: 1 } },
+  });
+  return `${prefix}-${String(counter.lastNumber).padStart(6, "0")}`;
+}
+
+/** Importaciones: IMP-000001. */
+export const generateImportReference = (tx: Prisma.TransactionClient) => generateSequenceCode(tx, SEQUENCES.IMP, "IMP");
+/** Lotes de devolución: DEV-000001. */
+export const generateReturnCode = (tx: Prisma.TransactionClient) => generateSequenceCode(tx, SEQUENCES.DEV, "DEV");
+/** Reclamos de seguro: REC-000001. */
+export const generateClaimCode = (tx: Prisma.TransactionClient) => generateSequenceCode(tx, SEQUENCES.REC, "REC");

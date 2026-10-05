@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { applyMovement } from "../src/lib/inventoryMovements";
 import { asyncHandler } from "../src/middleware/asyncHandler";
 import { errorHandler } from "../src/middleware/errorHandler";
-import { prisma, resetDatabase } from "./helpers";
+import { prisma, resetDatabase, testCategoryCode } from "./helpers";
 
 afterEach(async () => {
   await resetDatabase();
@@ -38,7 +38,7 @@ function buildTestApp() {
   app.post(
     "/test/create-duplicate-category",
     asyncHandler(async (req, res) => {
-      await prisma.category.create({ data: { name: req.body.name } });
+      await prisma.category.create({ data: { name: req.body.name, code: testCategoryCode() } });
       res.status(201).json({ ok: true });
     })
   );
@@ -61,7 +61,7 @@ describe("errorHandler: P2025 vs P2002 (antes se confundían, ahora no)", () => 
 
   it("P2002 (violación de unique) sigue dando 409, sin cambios", async () => {
     const app = buildTestApp();
-    await prisma.category.create({ data: { name: "Categoría Duplicada Test" } });
+    await prisma.category.create({ data: { name: "Categoría Duplicada Test", code: testCategoryCode() } });
 
     const res = await request(app)
       .post("/test/create-duplicate-category")

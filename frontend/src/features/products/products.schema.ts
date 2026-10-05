@@ -9,7 +9,6 @@ import { DEFAULT_IVA_CODE } from "@/lib/iva";
 // ORIGINAL y de si el usuario ya interactuó con el select después del
 // cambio, algo que ProductFormDialog rastrea con estado de React, no Zod.
 export const productFormSchema = z.object({
-  sku: z.string().min(1, "El SKU es obligatorio").max(50),
   name: z.string().min(1, "El nombre es obligatorio").max(200),
   description: optionalString(z.string().max(2000)),
   model: optionalString(z.string().max(100)),
@@ -23,7 +22,6 @@ export const productFormSchema = z.object({
 export type ProductFormValues = z.infer<typeof productFormSchema>;
 
 export const productDefaultValues: ProductFormValues = {
-  sku: "",
   name: "",
   description: "",
   model: "",

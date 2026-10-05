@@ -29,7 +29,6 @@ interface ProductFormDialogProps {
 function toFormValues(product: ProductFormDialogProps["product"]): ProductFormValues {
   if (!product) return productDefaultValues;
   return {
-    sku: product.sku,
     name: product.name,
     description: "description" in product ? (product.description ?? "") : "",
     model: product.model ?? "",
@@ -95,7 +94,6 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
     }
 
     const payload = {
-      sku: values.sku,
       name: values.name,
       description: values.description || undefined,
       model: values.model || undefined,
@@ -127,19 +125,16 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="sku"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>SKU</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej: WM-0012" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* SKU automático: <código de la categoría>-<correlativo>. No se edita nunca. */}
+              <div className="grid gap-2">
+                <span className="text-sm font-medium">SKU</span>
+                <p className="flex h-9 items-center rounded-md border bg-muted/50 px-3 font-mono text-sm">
+                  {isEdit ? product.sku : selectedCategory ? `${selectedCategory.code}-${String((selectedCategory.skuCounter ?? 0) + 1).padStart(4, "0")}` : "—"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isEdit ? "Fijo: no cambia aunque cambies la categoría." : selectedCategory ? "Se asigna automáticamente al guardar." : "Elige la categoría para generarlo."}
+                </p>
+              </div>
               <FormField
                 control={form.control}
                 name="name"

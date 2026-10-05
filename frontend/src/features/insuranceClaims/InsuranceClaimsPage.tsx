@@ -18,6 +18,7 @@ import { useInsuranceClaims } from "./useInsuranceClaims";
 const ALL = "__all__"; // Radix Select no permite value="" en SelectItem; se traduce a "sin filtro" acá.
 
 const columns: CrudColumn<InsuranceClaim>[] = [
+  { header: "Reclamo", cell: (claim) => <span className="whitespace-nowrap font-medium">{claim.code}</span> },
   {
     header: "Orden",
     cell: (claim) => (

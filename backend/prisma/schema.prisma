@@ -88,6 +88,12 @@ model PasswordToken {
 model Category {
   id          String    @id @default(cuid())
   name        String    @unique
+  // Prefijo de los SKU de sus productos (ej. "COC" -> COC-0001). Cambiarlo solo
+  // afecta a productos nuevos: un SKU asignado nunca se reescribe.
+  code        String    @unique
+  // Último correlativo usado para el SKU de sus productos (se incrementa
+  // atómicamente dentro de la transacción que crea el producto).
+  skuCounter  Int       @default(0)
   description String?
   deletedAt   DateTime? // Soft delete: nunca se borra físicamente.
   createdAt   DateTime  @default(now())
@@ -529,7 +535,8 @@ model ImportBatch {
   containerType String?
   containerCbm Decimal? @db.Decimal(12, 6)
   id          String    @id @default(cuid())
-  reference   String    @unique // Nº de contenedor / importación.
+  reference   String    @unique // Código interno autogenerado, ej: IMP-000001.
+  containerNumber String? // Nº de contenedor / BL del naviero (dato externo, opcional).
   supplierId  String?
   supplier    Supplier? @relation(fields: [supplierId], references: [id])
   arrivalDate DateTime
@@ -730,6 +737,9 @@ enum BuyerType {
 // filas anterior (dispatchOrder.count()), que no es seguro bajo concurrencia
 // real — confirmado por un test de 10 creaciones simultáneas que producía
 // orderNumber duplicados/colisiones 409 antes de este cambio.
+// Contadores de códigos correlativos (ver src/lib/orderNumber.ts):
+// 1 = OD (despachos), 2 = CON (consignación), 3 = IMP (importaciones),
+// 4 = DEV (devoluciones), 5 = REC (reclamos de seguro).
 model OrderNumberCounter {
   id         Int @id
   lastNumber Int @default(0)
@@ -1028,6 +1038,7 @@ enum CustomerResolution {
 
 model InsuranceClaim {
   id         String   @id @default(cuid())
+  code       String   @unique // Autogenerado, ej: REC-000001.
   shipmentId String   @unique
   shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
 
@@ -1206,6 +1217,7 @@ model ReturnBatch {
 
   completedAt DateTime? // Cuando todas las unidades quedaron inspeccionadas.
 
+  code        String       @unique // Autogenerado, ej: DEV-000001.
   lines       ReturnLine[]
   chargeOrder DispatchOrder? // Cargo por no conformes (solo source = CONSIGNACION).
 

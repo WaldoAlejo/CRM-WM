@@ -4,6 +4,9 @@ import { apiFetch } from "@/lib/api";
 interface CategoryWithSubcategories {
   id: string;
   name: string;
+  // Prefijo y último correlativo del SKU: permiten mostrar el próximo SKU.
+  code: string;
+  skuCounter?: number;
   subcategories: { id: string; name: string }[];
 }
 

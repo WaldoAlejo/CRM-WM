@@ -22,7 +22,7 @@ import {
 } from "@prisma/client";
 import { applyMovement } from "../../lib/inventoryMovements";
 import { computeOrderTotal } from "../../lib/paymentRecalculation";
-import { generateOrderNumber } from "../../lib/orderNumber";
+import { generateClaimCode, generateOrderNumber, generateReturnCode } from "../../lib/orderNumber";
 import { prisma } from "../../lib/prisma";
 import { badRequest, conflict, notFound } from "../../utils/httpError";
 
@@ -70,6 +70,7 @@ export async function createReturnBatch(
 
   return tx.returnBatch.create({
     data: {
+      code: await generateReturnCode(tx),
       source: input.source,
       reviewId: input.reviewId,
       shipmentId: input.shipmentId,
@@ -132,6 +133,7 @@ export async function listQuarantineQueue(params: QueueParams) {
       quarantineLocation: { select: { id: true, code: true, warehouse: { select: { id: true, name: true } } } },
       batch: {
         select: {
+          code: true,
           source: true,
           createdAt: true,
           review: { select: { lot: { select: { code: true, wholesaler: { select: { businessName: true } } } } } },
@@ -151,6 +153,7 @@ export async function listQuarantineQueue(params: QueueParams) {
   const data = pending.slice(start, start + pageSize).map((r) => ({
     id: r.id,
     batchId: r.batchId,
+    batchCode: r.batch.code,
     source: r.batch.source,
     reference:
       r.batch.source === ReturnSource.CONSIGNACION
@@ -338,6 +341,7 @@ export async function inspectReturnLine(lineId: string, data: InspectionInput, u
           const claimDate = new Date();
           await tx.insuranceClaim.create({
             data: {
+              code: await generateClaimCode(tx),
               shipmentId: batch.shipmentId!,
               claimAmount,
               status: ClaimStatus.PENDIENTE,

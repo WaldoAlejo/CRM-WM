@@ -83,6 +83,7 @@ export function ProductDetailPage() {
 
       <VariantsTable
         productId={product.id}
+        productSku={product.sku}
         productStatus={product.status}
         variants={product.variants}
         pendingEdit={pendingEdit}

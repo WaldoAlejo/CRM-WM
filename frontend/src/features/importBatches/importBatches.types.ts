@@ -12,7 +12,8 @@ export interface ImportBatchListItem {
   id: string;
   containerType?: "20" | "40" | "40HC" | "LCL" | null;
   containerCbm?: string | null;
-  reference: string;
+  reference: string; // IMP-000001, automático
+  containerNumber?: string | null;
   supplier: ImportBatchSupplierRef | null;
   arrivalDate: string;
   notes: string | null;
