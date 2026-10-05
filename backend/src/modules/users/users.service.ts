@@ -35,7 +35,7 @@ export async function getUserById(id: string) {
 
 interface CreateUserInput {
   email: string;
-  password: string;
+  password?: string;
   name: string;
   role: Role;
 }
@@ -51,7 +51,9 @@ function assertCanManageCeo(requesterRole: Role, targetRole: Role | undefined) {
 
 export async function createUser(data: CreateUserInput, requesterRole: Role) {
   assertCanManageCeo(requesterRole, data.role);
-  const passwordHash = await bcrypt.hash(data.password, 10);
+  // Sin contraseña elegida por el admin queda una aleatoria que nadie conoce
+  // hasta que el usuario use el enlace de invitación.
+  const passwordHash = await bcrypt.hash(data.password || randomBytes(32).toString("base64url"), 10);
   return prisma.user.create({
     data: { email: data.email, passwordHash, name: data.name, role: data.role },
     select: USER_SELECT,
@@ -141,6 +143,11 @@ function generateTemporaryPassword(): string {
   // 12 caracteres legibles (sin +, / ni = de base64) — de sobra para una
   // contraseña temporal de un solo uso que el admin comunica a mano.
   return randomBytes(9).toString("base64").replace(/[+/=]/g, "").slice(0, 12);
+}
+
+export async function assertCanSendAccessLink(id: string, requesterRole: Role) {
+  const target = await getUserById(id);
+  assertCanManageCeo(requesterRole, target.role);
 }
 
 export async function resetPassword(id: string, requesterRole: Role) {

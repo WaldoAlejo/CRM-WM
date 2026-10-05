@@ -54,8 +54,26 @@ model User {
   consignmentReviews ConsignmentReview[]
   returnInspections  ReturnInspection[]
   managedWarehouses  Warehouse[]         @relation("WarehouseManager")
+  passwordTokens     PasswordToken[]
 
   @@index([email])
+}
+
+// Enlaces de un solo uso para crear o recuperar la contraseña por correo. Solo
+// se guarda el hash SHA-256 del token: el valor en claro viaja únicamente en el
+// enlace enviado. RESET = "olvidé mi contraseña"; INVITE = acceso inicial
+// enviado por un administrador.
+model PasswordToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  purpose   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 // ----------------------------------------------------------------------------

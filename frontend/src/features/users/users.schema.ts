@@ -2,8 +2,9 @@ import { z } from "zod";
 
 // Espejo de backend/src/modules/users/users.schemas.ts (createUserSchema).
 export const createUserFormSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  email: z.string().trim().email("Email inválido"),
+  // Vacía = se envía al correo un enlace para que el usuario cree su contraseña.
+  password: z.union([z.literal(""), z.string().min(8, "La contraseña debe tener al menos 8 caracteres")]),
   name: z.string().min(1, "El nombre es obligatorio").max(200),
   role: z.enum(["ADMIN", "OPERATOR", "CEO"]),
 });

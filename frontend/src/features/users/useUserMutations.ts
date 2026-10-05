@@ -13,10 +13,12 @@ export function useUserMutations() {
 
   const createMutation = useMutation({
     mutationFn: (values: CreateUserFormValues) =>
-      apiFetch<AdminUser>("/users", { method: "POST", body: JSON.stringify(values) }),
-    onSuccess: () => {
+      apiFetch<AdminUser & { invitation?: { sent: boolean; error?: string } }>("/users", { method: "POST", body: JSON.stringify(values) }),
+    onSuccess: (user) => {
       invalidateList();
-      toast.success("Usuario creado correctamente");
+      if (!user.invitation) toast.success("Usuario creado correctamente");
+      else if (user.invitation.sent) toast.success(`Usuario creado. Enviamos a ${user.email} el enlace para crear su contraseña.`);
+      else toast.warning(`Usuario creado, pero no se pudo enviar la invitación: ${user.invitation.error}. Reenvíala desde «Resetear contraseña».`, { duration: 10000 });
     },
   });
 
@@ -57,5 +59,11 @@ export function useUserMutations() {
     },
   });
 
-  return { createMutation, updateMutation, toggleActiveMutation, resetPasswordMutation };
+  const sendAccessLinkMutation = useMutation({
+    mutationFn: (id: string) => apiFetch<{ sentTo: string }>(`/users/${id}/send-access-link`, { method: "POST" }),
+    onSuccess: ({ sentTo }) => toast.success(`Enlace enviado a ${sentTo}. Vence en 1 hora.`),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : "No se pudo enviar el enlace."),
+  });
+
+  return { createMutation, updateMutation, toggleActiveMutation, resetPasswordMutation, sendAccessLinkMutation };
 }

@@ -67,7 +67,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="usuario@kestore.com.ec" {...field} />
+                    <Input type="email" placeholder="correo personal del usuario" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -78,10 +78,13 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contraseña inicial</FormLabel>
+                  <FormLabel>Contraseña inicial (opcional)</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Al menos 8 caracteres" {...field} />
+                    <Input type="password" autoComplete="new-password" placeholder="Vacío: se envía invitación por correo" {...field} />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Recomendado: déjala vacía y el usuario recibirá un enlace (válido 72 h) para crear su propia contraseña.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

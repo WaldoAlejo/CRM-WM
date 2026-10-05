@@ -25,6 +25,7 @@ import { ImportBatchesPage } from "@/features/importBatches/ImportBatchesPage";
 import { ReceiveStockPage } from "@/features/importBatches/ReceiveStockPage";
 import { InsuranceClaimsPage } from "@/features/insuranceClaims/InsuranceClaimsPage";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { ForgotPasswordPage, ResetPasswordPage } from "@/features/auth/PasswordRecoveryPages";
 import { LocationsPage } from "@/features/locations/LocationsPage";
 import { QuarantinePage } from "@/features/quarantine/QuarantinePage";
 import { ProductDetailPage } from "@/features/products/ProductDetailPage";
@@ -41,6 +42,8 @@ import { WholesalersPage } from "@/features/wholesalers/WholesalersPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
+  { path: "/forgot-password", element: <ForgotPasswordPage /> },
+  { path: "/reset-password", element: <ResetPasswordPage /> },
   {
     element: <RequireAuth />,
     children: [

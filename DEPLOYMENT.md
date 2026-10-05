@@ -41,6 +41,7 @@ Variables del servicio (pestaña Variables del servicio, nunca Shared Variables)
 | `JWT_EXPIRES_IN` | Duración de la sesión |
 | `SETTINGS_ENCRYPTION_KEY` | La misma clave con la que se cifraron firma y correo (ver abajo) |
 | `CORS_ORIGIN` | `http://localhost:5173,https://crm-wm.vercel.app` |
+| `APP_URL` | `https://crm-wm.vercel.app` (opcional: base de los enlaces para crear/recuperar contraseña; sin ella se usa el origen permitido por CORS que hizo la solicitud) |
 | `STORAGE_DIR` | `/data` |
 | `RAILWAY_RUN_UID` | `0`: el volumen se monta como root y el contenedor usa otro usuario |
 | `FISCAL_PRODUCTION_ENABLED` | `false` hasta completar las pruebas con el SRI |

@@ -1,4 +1,5 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { ChangePasswordButton } from "@/features/auth/ChangePasswordDialog";
 import { LogOutIcon, MenuIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
@@ -53,6 +54,7 @@ export function AppLayout() {
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <span className="hidden text-sm text-muted-foreground md:inline">{user?.email}</span>
             <Badge variant="secondary" className="hidden sm:inline-flex">{user?.role}</Badge>
+            <ChangePasswordButton />
             <Button variant="ghost" size="icon" onClick={logout} title="Cerrar sesión" aria-label="Cerrar sesión">
               <LogOutIcon />
             </Button>

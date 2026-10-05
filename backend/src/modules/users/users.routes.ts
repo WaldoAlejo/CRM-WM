@@ -7,6 +7,7 @@ import {
   getUserController,
   listUsersController,
   resetPasswordController,
+  sendAccessLinkController,
   updateUserController,
 } from "./users.controller";
 
@@ -22,3 +23,5 @@ usersRouter.get("/:id", asyncHandler(getUserController));
 usersRouter.post("/", asyncHandler(createUserController));
 usersRouter.patch("/:id", asyncHandler(updateUserController));
 usersRouter.post("/:id/reset-password", asyncHandler(resetPasswordController));
+// Envía al correo del usuario un enlace para crear una contraseña nueva (1 hora).
+usersRouter.post("/:id/send-access-link", asyncHandler(sendAccessLinkController));

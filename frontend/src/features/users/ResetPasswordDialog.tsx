@@ -17,7 +17,7 @@ interface ResetPasswordDialogProps {
 // vuelve a poder consultar después de cerrar este diálogo (el backend nunca
 // la devuelve de nuevo, ver users.service.ts::resetPassword).
 export function ResetPasswordDialog({ open, onOpenChange, user }: ResetPasswordDialogProps) {
-  const { resetPasswordMutation } = useUserMutations();
+  const { resetPasswordMutation, sendAccessLinkMutation } = useUserMutations();
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -47,7 +47,9 @@ export function ResetPasswordDialog({ open, onOpenChange, user }: ResetPasswordD
           <DialogTitle>Resetear contraseña de {user.name}</DialogTitle>
           {!temporaryPassword ? (
             <DialogDescription>
-              Se va a generar una contraseña temporal nueva. La actual dejará de funcionar de inmediato.
+              Recomendado: enviar a {user.email} un enlace para que cree una contraseña nueva (la actual sigue
+              funcionando hasta que la cambie). Si no tiene acceso a ese correo, genera una contraseña temporal; la
+              actual dejará de funcionar de inmediato.
             </DialogDescription>
           ) : null}
         </DialogHeader>
@@ -75,10 +77,18 @@ export function ResetPasswordDialog({ open, onOpenChange, user }: ResetPasswordD
               </Button>
               <Button
                 type="button"
-                disabled={resetPasswordMutation.isPending}
+                variant="outline"
+                disabled={resetPasswordMutation.isPending || sendAccessLinkMutation.isPending}
                 onClick={() => resetPasswordMutation.mutate(user.id)}
               >
-                {resetPasswordMutation.isPending ? "Generando..." : "Resetear contraseña"}
+                {resetPasswordMutation.isPending ? "Generando..." : "Contraseña temporal"}
+              </Button>
+              <Button
+                type="button"
+                disabled={resetPasswordMutation.isPending || sendAccessLinkMutation.isPending}
+                onClick={() => sendAccessLinkMutation.mutate(user.id, { onSuccess: () => onOpenChange(false) })}
+              >
+                {sendAccessLinkMutation.isPending ? "Enviando..." : "Enviar enlace por correo"}
               </Button>
             </>
           ) : (
