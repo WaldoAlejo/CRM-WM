@@ -6,14 +6,15 @@ import type { StockByLocationRow } from "./inventory.types";
 
 const PAGE_SIZE = 20;
 
-export function useStockByLocation(warehouseId: string | undefined) {
+export function useStockByLocation(warehouseId: string | undefined, search?: string) {
   const [page, setPage] = useState(1);
 
   const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
   if (warehouseId) params.set("warehouseId", warehouseId);
+  if (search) params.set("q", search);
 
   const query = useQuery({
-    queryKey: ["inventory", "stock-by-location", page, warehouseId ?? null],
+    queryKey: ["inventory", "stock-by-location", page, warehouseId ?? null, search ?? null],
     queryFn: () =>
       apiFetch<{ data: StockByLocationRow[]; pagination: PaginationMeta }>(
         `/inventory/stock-by-location?${params.toString()}`

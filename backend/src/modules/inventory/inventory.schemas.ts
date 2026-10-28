@@ -36,4 +36,5 @@ export const stockByLocationQuerySchema = z.object({
   warehouseId: z.string().optional(),
   locationId: z.string().optional(),
   variantId: z.string().optional(),
+  q: z.string().trim().max(100).optional(),
 });

@@ -193,6 +193,12 @@ interface StockByLocationParams {
   warehouseId?: string;
   locationId?: string;
   variantId?: string;
+  q?: string;
+}
+
+// Sin mayúsculas ni tildes: "perfume" encuentra "Perfúme" y viceversa.
+function normalizeSearch(value: string) {
+  return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 // Agrega el ledger por (ubicación, variante) — mismo patrón que
@@ -202,7 +208,7 @@ interface StockByLocationParams {
 // ubicación fue destino" y "esta ubicación fue origen" y combinarlos da el
 // stock neto correcto sin doble conteo.
 export async function getStockByLocation(params: StockByLocationParams) {
-  const { page, pageSize, warehouseId, locationId, variantId } = params;
+  const { page, pageSize, warehouseId, locationId, variantId, q } = params;
 
   let locationIds: string[] | undefined;
   if (warehouseId) {
@@ -246,12 +252,37 @@ export async function getStockByLocation(params: StockByLocationParams) {
     netByKey.set(key, (netByKey.get(key) ?? 0) + (row._sum.quantity ?? 0));
   }
 
+  // Las variantes se cargan antes de paginar: la búsqueda y el orden son por
+  // nombre de producto, que es como el usuario reconoce la mercadería.
+  const variants = await prisma.productVariant.findMany({
+    where: { id: { in: [...new Set(Array.from(netByKey.keys(), (key) => key.split("|")[1]))] } },
+    select: {
+      id: true, sku: true, label: true, dimensionsCm: true, maxStackUnits: true,
+      images: { select: { url: true }, orderBy: { position: "asc" }, take: 1 },
+      product: { select: { id: true, sku: true, name: true, images: { select: { url: true }, orderBy: { position: "asc" }, take: 1 } } },
+    },
+  });
+  const variantById = new Map(variants.map((v) => [v.id, v]));
+  const terms = normalizeSearch(q ?? "").split(/\s+/).filter(Boolean);
+
   const entries = Array.from(netByKey.entries())
     .map(([key, netStock]) => {
       const [locId, varId] = key.split("|");
       return { locationId: locId, variantId: varId, netStock };
     })
-    .sort((a, b) => a.locationId.localeCompare(b.locationId) || a.variantId.localeCompare(b.variantId));
+    .filter((e) => {
+      if (!terms.length) return true;
+      const v = variantById.get(e.variantId);
+      const haystack = normalizeSearch([v?.product.name, v?.product.sku, v?.sku, v?.label].filter(Boolean).join(" "));
+      return terms.every((term) => haystack.includes(term));
+    })
+    .sort((a, b) => {
+      const va = variantById.get(a.variantId);
+      const vb = variantById.get(b.variantId);
+      return (va?.product.name ?? "").localeCompare(vb?.product.name ?? "", "es")
+        || (va?.sku ?? "").localeCompare(vb?.sku ?? "")
+        || a.locationId.localeCompare(b.locationId);
+    });
 
   const total = entries.length;
   const start = (page - 1) * pageSize;
@@ -260,18 +291,11 @@ export async function getStockByLocation(params: StockByLocationParams) {
   const locIds = [...new Set(pageEntries.map((e) => e.locationId))];
   const varIds = [...new Set(pageEntries.map((e) => e.variantId))];
 
-  const [locations, variants] = await Promise.all([
-    prisma.location.findMany({
-      where: { id: { in: locIds } },
-      include: { warehouse: { select: { id: true, name: true, layout: true } } },
-    }),
-    prisma.productVariant.findMany({
-      where: { id: { in: varIds } },
-      select: { id: true, sku: true, label: true, dimensionsCm: true, maxStackUnits: true, product: { select: { id: true, sku: true, name: true } } },
-    }),
-  ]);
+  const locations = await prisma.location.findMany({
+    where: { id: { in: locIds } },
+    include: { warehouse: { select: { id: true, name: true, layout: true } } },
+  });
   const locationById = new Map(locations.map((l) => [l.id, l]));
-  const variantById = new Map(variants.map((v) => [v.id, v]));
   const incoming = pageEntries.length ? await prisma.inventoryMovement.findMany({
     where: { variantId: { in: varIds }, toLocationId: { in: locIds }, quantity: { gt: 0 } },
     select: { variantId: true, toLocationId: true, quantity: true, packaging: true, volumeCbm: true },
@@ -299,7 +323,8 @@ export async function getStockByLocation(params: StockByLocationParams) {
       variantId: e.variantId,
       sku: variant?.sku ?? null,
       label: variant?.label ?? null,
-      product: variant?.product ?? null,
+      product: variant ? { id: variant.product.id, sku: variant.product.sku, name: variant.product.name } : null,
+      imageUrl: variant?.images[0]?.url ?? variant?.product.images[0]?.url ?? null,
       netStock: e.netStock,
       volumeCbm: cartons.status === 'NONE' ? estimate?.totalCbm ?? null : cartons.volumeCbm ?? null,
       estimatedFloorAreaM2: cartons.status === 'NONE' ? estimate?.floorAreaM2 ?? null : cartons.plan?.floorAreaM2 ?? null,

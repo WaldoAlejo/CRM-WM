@@ -279,4 +279,28 @@ describe("GET /api/inventory/stock-by-location", () => {
     expect(res.body.data[0].locationId).toBe(locationA.id);
     expect(res.body.data[0].netStock).toBe(5);
   });
+
+  it("ordena por nombre, busca sin tildes y devuelve la foto principal", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { category } = await createCategoryFixture();
+    const location = await createLocationFixture({ warehouseId: (await createWarehouseFixture()).id });
+    const yara = await createProductFixture({ categoryId: category.id });
+    await prisma.product.update({ where: { id: yara.id }, data: { name: "Yara Candy", images: { create: [{ url: "https://img/yara-2.jpg", position: 1 }, { url: "https://img/yara.jpg", position: 0 }] } } });
+    const amber = await createProductFixture({ categoryId: category.id });
+    await prisma.product.update({ where: { id: amber.id }, data: { name: "Ámber Oud Gold" } });
+    for (const product of [yara, amber]) {
+      const variant = await createVariantFixture({ productId: product.id, stock: 0 });
+      await request(app).post("/api/inventory/adjustments").set("Authorization", `Bearer ${token}`)
+        .send({ variantId: variant.id, quantity: 2, reason: "Ingreso inicial", locationId: location.id });
+    }
+
+    const all = await request(app).get("/api/inventory/stock-by-location").set("Authorization", `Bearer ${token}`);
+    expect(all.body.data.map((r: { product: { name: string } }) => r.product.name)).toEqual(["Ámber Oud Gold", "Yara Candy"]);
+    expect(all.body.data[0].imageUrl).toBeNull();
+    expect(all.body.data[1].imageUrl).toBe("https://img/yara.jpg");
+
+    const found = await request(app).get("/api/inventory/stock-by-location?q=amber%20gold").set("Authorization", `Bearer ${token}`);
+    expect(found.body.data.map((r: { product: { name: string } }) => r.product.name)).toEqual(["Ámber Oud Gold"]);
+    expect(found.body.pagination.total).toBe(1);
+  });
 });

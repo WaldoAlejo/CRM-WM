@@ -1,10 +1,13 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/crud/DataTable";
 import type { CrudColumn } from "@/components/crud/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { getAssetUrl } from "@/lib/api";
 import { useWarehouseOptions } from "../warehouses/useWarehouseOptions";
 import type { StockByLocationRow } from "./inventory.types";
 import { useStockByLocation } from "./useStockByLocation";
@@ -13,9 +16,19 @@ const columns: CrudColumn<StockByLocationRow>[] = [
   {
     header: "Producto",
     cell: (item) => (
-      <div>
-        <p className="font-medium">{item.sku}</p>
-        {item.label ? <p className="text-xs text-muted-foreground">{item.label}</p> : null}
+      <div className="flex min-w-56 items-center gap-3">
+        <div className="size-12 shrink-0 overflow-hidden rounded-md border bg-muted">
+          {item.imageUrl ? (
+            <img src={getAssetUrl(item.imageUrl)} alt={item.product?.name ?? item.sku ?? ""} loading="lazy" className="size-full object-cover" />
+          ) : null}
+        </div>
+        <div>
+          <p className="font-medium">{item.product?.name ?? item.sku}</p>
+          <p className="text-xs text-muted-foreground">
+            {item.sku}
+            {item.label ? ` · ${item.label}` : ""}
+          </p>
+        </div>
       </div>
     ),
   },
@@ -37,7 +50,11 @@ const columns: CrudColumn<StockByLocationRow>[] = [
 // hasta que exista una página de Inventario/Dashboard más completa.
 export function StockByLocationPage() {
   const [warehouseId, setWarehouseId] = useState<string | undefined>(undefined);
-  const { page, setPage, query } = useStockByLocation(warehouseId);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { page, setPage, query } = useStockByLocation(warehouseId, debouncedSearch || undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setPage(1), [debouncedSearch]);
   const { data: warehouses } = useWarehouseOptions();
 
   const items = query.data?.data ?? [];
@@ -51,6 +68,15 @@ export function StockByLocationPage() {
           Ver alertas de stock bajo →
         </Link>
       </div>
+
+      <Input
+        type="search"
+        aria-label="Buscar producto"
+        placeholder="Buscar por nombre o SKU"
+        className="min-w-0 sm:w-80"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
       <div className="w-full sm:w-64">
         <p className="mb-3 text-xs text-muted-foreground">Los cartones son equivalencias estimadas del stock si se consolidan las unidades; no cuentan cajas abiertas. El volumen incluye el cartón parcial y usa el promedio informado de ingresos compatibles. Sin medidas no se calcula superficie.</p>

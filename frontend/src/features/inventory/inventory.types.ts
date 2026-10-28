@@ -7,6 +7,7 @@ export interface StockByLocationRow {
   sku: string | null;
   label: string | null;
   product: { id: string; sku: string; name: string } | null;
+  imageUrl: string | null;
   netStock: number;
   volumeCbm?: number | null;
   cartonEstimate?: { status: 'MIXED' | 'ESTIMATED'; cartons: number | null; piles: number | null; fullCartonEquivalent: number | null; looseUnitEquivalent: number | null; stackCartons: number | null; stackingConfirmed: boolean } | null;
