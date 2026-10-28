@@ -47,7 +47,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
     return (
       <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
         Todavía no agregaste ninguna línea.
-        {arrayLevelError ? <p className="mt-2 font-medium text-destructive">{arrayLevelError}</p> : null}
+        {arrayLevelError ? <p data-form-error className="mt-2 font-medium text-destructive">{arrayLevelError}</p> : null}
       </div>
     );
   }
@@ -151,7 +151,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
           })}
         </TableBody>
       </Table>
-      {arrayLevelError ? <p className="text-sm font-medium text-destructive">{arrayLevelError}</p> : null}
+      {arrayLevelError ? <p data-form-error className="text-sm font-medium text-destructive">{arrayLevelError}</p> : null}
     </div>
   );
 }

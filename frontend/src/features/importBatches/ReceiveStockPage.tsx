@@ -17,6 +17,7 @@ import { VariantSearchAddLine } from "./components/VariantSearchAddLine";
 import { receiveFormDefaultValues, receiveFormSchema } from "./importBatches.schema";
 import type { ReceiveFormValues } from "./importBatches.schema";
 import { costPerCbm, totalBatchCost } from "./landedCost";
+import { useScrollToFirstError } from "./scrollToFirstError";
 import { useImportBatch } from "./useImportBatches";
 import { useImportBatchMutations } from "./useImportBatchMutations";
 
@@ -33,7 +34,9 @@ export function ReceiveStockPage() {
   const form = useForm<ReceiveFormValues>({
     resolver: zodResolver(receiveFormSchema) as Resolver<ReceiveFormValues>,
     defaultValues: receiveFormDefaultValues,
+    shouldFocusError: false, // ver useScrollToFirstError
   });
+  const formRef = useScrollToFirstError(form.formState);
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "lines" });
   const lines = useWatch({ control: form.control, name: "lines" }) ?? [];
 
@@ -104,7 +107,7 @@ export function ReceiveStockPage() {
       <h1 className="text-2xl font-semibold">Recibir mercadería · {batch.reference}</h1>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <form ref={formRef} onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           {isAdmin ? (
             <LandedCostPreview
               totalCost={totalCost}

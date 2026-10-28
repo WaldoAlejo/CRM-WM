@@ -19,6 +19,7 @@ import { VariantSearchAddLine } from "./components/VariantSearchAddLine";
 import { createImportBatchDefaultValues, createImportBatchFormSchema } from "./importBatches.schema";
 import type { CreateImportBatchFormValues } from "./importBatches.schema";
 import { costPerCbm, totalBatchCost } from "./landedCost";
+import { useScrollToFirstError } from "./scrollToFirstError";
 import { useImportBatchMutations } from "./useImportBatchMutations";
 import { useSupplierOptions } from "./useSupplierOptions";
 
@@ -38,8 +39,12 @@ export function CreateImportBatchPage() {
   const form = useForm<CreateImportBatchFormValues>({
     resolver: zodResolver(createImportBatchFormSchema) as Resolver<CreateImportBatchFormValues>,
     defaultValues: createImportBatchDefaultValues(),
+    // useScrollToFirstError se encarga: el foco nativo no llega a la bodega
+    // (Select sin ref) y salta a otro campo.
+    shouldFocusError: false,
   });
 
+  const formRef = useScrollToFirstError(form.formState);
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "lines" });
   const lines = useWatch({ control: form.control, name: "lines" }) ?? [];
   const containerType = useWatch({ control: form.control, name: "containerType" });
@@ -57,6 +62,12 @@ export function CreateImportBatchPage() {
   });
   const proration = costPerCbm(totalCost, Number(containerCbm));
   const volumeCbm = lines.reduce((sum, l) => sum + (Number(l?.volumeCbm) || 0), 0);
+  // Los gastos se reparten sobre el volumen contratado: si las líneas ocupan
+  // menos, el resto queda para recepciones futuras de este mismo lote.
+  const unallocatedCbm = Number(containerCbm) - volumeCbm;
+  const linesCbmText = volumeCbm.toFixed(6).replace(/\.?0+$/, "");
+  const showUnallocatedWarning = totalCost > 0 && volumeCbm > 0 && unallocatedCbm > 0.0000001;
+  const hasErrors = form.formState.submitCount > 0 && Object.keys(form.formState.errors).length > 0;
 
   function handleAddLine(result: SearchResult) {
     append({
@@ -135,7 +146,7 @@ export function CreateImportBatchPage() {
       ) : null}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <form ref={formRef} onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           <section className="grid grid-cols-1 gap-4 rounded-md border p-4 sm:grid-cols-2">
             <h2 className="sm:col-span-2 text-lg font-semibold">Lote</h2>
             <FormField control={form.control} name="containerType" render={({ field }) => (
@@ -268,6 +279,14 @@ export function CreateImportBatchPage() {
                 volumeCbm={volumeCbm}
                 originTotal={originTotal}
               />
+              {showUnallocatedWarning ? (
+                <p className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm" role="status">
+                  Las líneas suman {linesCbmText} CBM de {Number(containerCbm)} contratados: a esta
+                  mercadería se le cargan ${(proration * volumeCbm).toFixed(2)} de los ${totalCost.toFixed(2)} de gastos del lote.
+                  El resto queda para mercadería que recibas después en este mismo lote. Si no llegará nada más, ingresa{" "}
+                  {linesCbmText} en el volumen contratado.
+                </p>
+              ) : null}
             </section>
           ) : null}
 
@@ -283,7 +302,12 @@ export function CreateImportBatchPage() {
             />
           </section>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {hasErrors ? (
+              <p className="text-sm font-medium text-destructive" role="alert">
+                Hay datos por corregir: revisa los campos marcados en rojo, incluida la bodega al final de cada línea.
+              </p>
+            ) : null}
             <Button type="button" variant="outline" onClick={() => navigate("/import-batches")}>
               Cancelar
             </Button>
