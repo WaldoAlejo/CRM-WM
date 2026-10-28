@@ -220,3 +220,26 @@ describe("IVA del producto", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("Canales de publicación", () => {
+  it("un producto nuevo no se publica en ningún canal hasta marcarlo", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { category } = await createCategoryFixture();
+
+    const created = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Perfume de prueba", categoryId: category.id });
+    expect(created.status).toBe(201);
+    expect(created.body.showOnWm).toBe(false);
+    expect(created.body.showOnKestore).toBe(false);
+
+    const updated = await request(app)
+      .patch(`/api/products/${created.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ showOnKestore: true });
+    expect(updated.status).toBe(200);
+    expect(updated.body.showOnWm).toBe(false);
+    expect(updated.body.showOnKestore).toBe(true);
+  });
+});

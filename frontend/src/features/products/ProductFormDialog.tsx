@@ -37,6 +37,8 @@ function toFormValues(product: ProductFormDialogProps["product"]): ProductFormVa
     subcategoryId: product.subcategory?.id ?? "",
     brandId: product.brand?.id ?? "",
     ivaCode: product.ivaCode ?? "",
+    showOnWm: product.showOnWm,
+    showOnKestore: product.showOnKestore,
   };
 }
 
@@ -105,6 +107,8 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
       subcategoryId: isEdit ? values.subcategoryId || null : values.subcategoryId || undefined,
       brandId: isEdit ? values.brandId || null : values.brandId || undefined,
       ivaCode: canSetTax ? values.ivaCode || undefined : undefined,
+      showOnWm: values.showOnWm,
+      showOnKestore: values.showOnKestore,
     };
 
     const action = isEdit
@@ -319,6 +323,34 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
                 />
               ) : null}
             </div>
+
+            {/* Canales independientes: un producto puede venderse en Kestore sin aparecer en el sitio de WM. */}
+            <fieldset className="grid gap-2 rounded-md border p-3">
+              <legend className="px-1 text-sm font-medium">Publicar en</legend>
+              {([
+                ["showOnWm", "Sitio web de WM"],
+                ["showOnKestore", "Kestore"],
+              ] as const).map(([name, label]) => (
+                <FormField
+                  key={name}
+                  control={form.control}
+                  name={name}
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          className="size-4"
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal">{label}</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              ))}
+            </fieldset>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

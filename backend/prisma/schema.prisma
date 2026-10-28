@@ -352,6 +352,12 @@ model Product {
   barcode     String?       @unique // EAN/UPC de fábrica, opcional.
   status      ProductStatus @default(ACTIVE)
 
+  // Canales donde se publica el producto. Son independientes: un perfume puede
+  // venderse en Kestore sin aparecer en el sitio de WM. Por defecto ninguno,
+  // para que un producto recién creado no se publique antes de estar completo.
+  showOnWm      Boolean @default(false)
+  showOnKestore Boolean @default(false)
+
   categoryId    String
   category      Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   subcategoryId String? // Opcional: puede clasificarse solo por categoría al inicio.
@@ -441,6 +447,9 @@ model ProductVariant {
 
   sku        String  @unique // Derivado del padre, ej: WM-0012-NEGRO
   barcode    String? @unique
+  // Código del producto en Kestore (ej. "PERKE111"): la llave con la que ambos
+  // sistemas reconocen la misma variante al sincronizar catálogo y stock.
+  kestoreCode String? @unique
   attributes Json // Ej: { "color": "Negro", "capacidad": "5L" }
   label      String? // Texto legible derivado de attributes, ej: "Negro / 5L"
 

@@ -129,6 +129,8 @@ interface CreateProductInput {
   subcategoryId?: string;
   brandId?: string;
   ivaCode?: IvaCode;
+  showOnWm?: boolean;
+  showOnKestore?: boolean;
 }
 
 export async function createProduct(data: CreateProductInput, userId?: string) {
@@ -168,6 +170,8 @@ interface UpdateProductInput {
   subcategoryId?: string | null;
   brandId?: string | null;
   ivaCode?: IvaCode;
+  showOnWm?: boolean;
+  showOnKestore?: boolean;
 }
 
 export async function updateProduct(id: string, data: UpdateProductInput, userId?: string) {

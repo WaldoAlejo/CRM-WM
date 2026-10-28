@@ -4,7 +4,7 @@ import { buildLabel, generateUniqueVariantSku } from "../../lib/sku";
 import { badRequest, conflict, notFound } from "../../utils/httpError";
 import { serializeVariantForRole } from "./variants.serializer";
 
-// P2002 (unique constraint) puede ser por `sku` o por `barcode`: se traduce
+// P2002 (unique constraint) puede ser por `sku`, `barcode` o `kestoreCode`: se traduce
 // a un mensaje específico con el campo exacto, nunca un "ya existe" genérico.
 function mapUniqueConstraintError(err: unknown): never {
   if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -15,6 +15,9 @@ function mapUniqueConstraintError(err: unknown): never {
     if (target.includes("barcode")) {
       throw conflict("Ya existe una variante con ese código de barras", { field: "barcode" });
     }
+    if (target.includes("kestoreCode")) {
+      throw conflict("Ya existe una variante con ese código de Kestore", { field: "kestoreCode" });
+    }
   }
   throw err;
 }
@@ -23,6 +26,7 @@ interface CreateVariantInput {
   attributes: Record<string, string>;
   sku?: undefined;
   barcode?: string;
+  kestoreCode?: string;
   warehouseLocation?: string;
   minStock?: number;
   weightKg?: number;
@@ -65,6 +69,7 @@ interface UpdateVariantInput {
   attributes?: Record<string, string>;
   sku?: undefined;
   barcode?: string | null;
+  kestoreCode?: string | null;
   warehouseLocation?: string | null;
   minStock?: number | null;
   weightKg?: number | null;

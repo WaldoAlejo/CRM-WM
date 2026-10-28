@@ -1,0 +1,571 @@
+{
+  "source": "frontke/cargas/Perfumes-WM-Capital-2026-10-23/perfumes-wm-capital-2026-10-23.xlsx",
+  "products": [
+    {
+      "kestoreCode": "FOUR003",
+      "name": "Amber Oud Gold Edition 125mL EDP Men",
+      "brand": "Al Haramain",
+      "subcategory": "Hombre",
+      "description": "Amber Oud Gold Edition Extreme de Al Haramain es una fragancia unisex sofisticada y envolvente que combina frescura, dulzura y calidez. Su salida vibrante de bergamota y notas verdes se fusiona con un corazón jugoso de melón, piña, cedro y ámbar, para culminar en un fondo profundo y sensual de mirra, maderas nobles, almizcle y vainilla.\n\nFamilia olfativa: Ámbar, amaderada, oriental\n\nNotas de salida: Bergamota, notas verdes\n\nNotas de corazón: Melón, piña, cedro, ámbar\n\nNotas de fondo: Mirra, maderas nobles, almizcle, vainilla\n\nTamaño: 3.4 fl oz (100 ml)\n\nUso recomendado: Ideal para ocasiones especiales o uso nocturno\n\nUn aroma elegante y duradero que deja una estela sofisticada y memorable.",
+      "kestorePrice": 54,
+      "kestorePvp": 110,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/0fd2c565b74d4a0bbfcbe64fafc8af09.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE111",
+      "name": "Armaf Odyssey Bahamas EDP 100mL",
+      "brand": "Armaf",
+      "subcategory": "Hombre",
+      "description": "Odyssey Ba Ha Mas de Armaf es un eau de parfum acuático aromático, fresco, afrutado y moderno. Lanzado en 2025, combina acordes marinos, toques salados y matices gourmand que crean una fragancia vibrante, unisex y perfecta para climas cálidos.\n\nCon una salida jugosa de manzana, melón y pera, esta fragancia evoluciona hacia un corazón acuático con incienso y musgo de roble que aporta profundidad y elegancia. Su fondo de cedro, ámbar, azúcar y almizcle deja una estela limpia, dulce y contemporánea.\n\nSu frasco tropical y artístico —con detalles amarillos, motivos multicolor y correa lateral— aporta un estilo moderno que representa perfectamente el espíritu veraniego de la fragancia.\n\nPirámide Olfativa\n\nNotas de salida: Manzana Granny Smith, melón, pera, ciruela, algas, sal\nNotas de corazón: Notas acuáticas, incienso, nenúfar, musgo de roble\nNotas de fondo: Cedro, ámbar, azúcar, almizcle\n\nApertura fresca y afrutada, corazón marino elegante y un fondo suave y ligeramente dulce.\n\nPor qué te encantará\n\nFragancia unisex, fresca y moderna.\n\nPerfecta para clima cálido, días soleados y uso diario.\n\nCombina notas marinas con un toque frutal y un fondo amaderado-dulce.\n\nEstela equilibrada y buena duración.\n\nIdeal para quienes buscan un aroma veraniego y vibrante.",
+      "kestorePrice": 35,
+      "kestorePvp": 76,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/67ae9093416a4b888e5382a88306d504.jpeg",
+        "https://keimage.kestore.com.ec/images/288/beefc1c17c7f49f5a7695a9df41d7af9.jpeg",
+        "https://keimage.kestore.com.ec/images/288/ef0885ba0604463ba9bb1f53cdad48e5.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE110",
+      "name": "Armaf Odyssey Black Forest EDP 100mL",
+      "brand": "Armaf",
+      "subcategory": "Hombre",
+      "description": "Odyssey Black Forest es una fragancia oriental vainilla intensa y envolvente, creada para quienes aman los aromas dulces, cálidos y sofisticados. Su carácter unisex y su toque gourmand la convierten en una experiencia irresistible que deja huella desde el primer instante.\n\nLa apertura combina caramelo, cereza y canela en una mezcla golosa y cremosa. En el corazón, los dátiles, la miel y la nuez moscada añaden una dulzura especiada y sensual. Finalmente, un fondo de praliné, haba tonka, vainilla y maderas suaves crea una estela cálida, aterciopelada y adictiva.\n\nPirámide Olfativa\n\nFamilia: Oriental • Vainilla • Gourmand\n\nNotas de salida: Caramelo, cereza, canela, lactonas, flores blancas\nApertura dulce, especiada y cremosa.\n\nNotas de corazón: Dátiles, miel, nuez moscada\nDulzura dorada y profundidad sensual.\n\nNotas de fondo: Praliné, haba tonka, vainilla, almizcle, maderas suaves\nEstela cálida, suave y adictiva.\n\nPor qué te encantará\n\nFragancia unisex, dulce y elegante.\n\nCombina notas golosas como caramelo y miel con un fondo cremoso de vainilla.\n\nExcelente duración y proyección.\n\nIdeal para noches frías, clima otoñal/invernal y ocasiones especiales.",
+      "kestorePrice": 37,
+      "kestorePvp": 83,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/95b3beb12c5f43adaa944bd1e078a96f.jpeg",
+        "https://keimage.kestore.com.ec/images/288/839cd072077d42749a638a1052ee6a79.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE112",
+      "name": "Armaf Odyssey Mango EDP 100mL",
+      "brand": "Armaf",
+      "subcategory": "Hombre",
+      "description": "Odyssey Go Mango de Armaf es un eau de parfum floral oriental unisex, lanzado en 2025. Su acorde exótico gira en torno al mango jugoso, mezclado con especias vibrantes y maderas cálidas para crear una fragancia moderna, energética y deliciosamente tropical.\n\nForma parte de la colección Odyssey, conocida por sus composiciones frescas, atrevidas y llenas de personalidad.\n\nPirámide Olfativa\n\nNotas de salida: Pimienta rosa, jengibre, limón, flores blancas\nNotas de corazón: Mango, haba tonka, maderas secas\nNotas de fondo: Vainilla, notas de nuez, ámbar, almizcle, madera de guayaco\n\nApertura especiada y cítrica, corazón jugoso y tropical, y un fondo cálido, suave y levemente dulce.\n\nPor qué te encantará\n\nFragancia unisex con carácter tropical y exótico.\n\nPerfecta para clima cálido, días soleados y uso diario.\n\nCombina mango jugoso con especias, notas florales y maderas sensuales.\n\nBuena intensidad y duración en piel.\n\nIdeal para quienes buscan un aroma veraniego, alegre y diferente.",
+      "kestorePrice": 35,
+      "kestorePvp": 72,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/6625f20975a9487e9ba653666d8e997f.jpeg",
+        "https://keimage.kestore.com.ec/images/288/1e2ce563db664666a41ac881530487ab.jpeg",
+        "https://keimage.kestore.com.ec/images/288/93cac088bc5a472188c7b99ab219c07c.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR013",
+      "name": "Club De Nuit Intense 105mL EDT",
+      "brand": "Armaf",
+      "subcategory": "Hombre",
+      "description": "Club De Nuit Intense Perfume Oil de Armaf es una fragancia femenina intensa y duradera que combina sofisticación y calidez en cada aplicación. Su apertura vibrante de rosa, azafrán y geranio da paso a un corazón especiado de nuez moscada, pimienta, violeta e hinojo, para culminar en un fondo profundo y sensual de pachulí, vainilla, ámbar y oud.\n\nFamilia olfativa: Oriental, floral, amaderada\n\nNotas de salida: Rosa, azafrán, geranio\n\nNotas de corazón: Nuez moscada, pimienta, violeta, hinojo\n\nNotas de fondo: Pachulí, vainilla, ámbar, oud\n\nTamaño: 3.4 fl oz (100 ml)\n\nUso recomendado: Ideal para ocasiones especiales y uso nocturno\n\nUna fragancia femenina intensa que deja una estela elegante y duradera.",
+      "kestorePrice": 39,
+      "kestorePvp": 80,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/827c15ca419741f9b3fba973523b79dd.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE106",
+      "name": "Club De Nuit Intense Man UAE National Day Special Edition Armaf 105mL EDP",
+      "brand": "Armaf",
+      "subcategory": "Hombre",
+      "description": "Lanzado en 2024 para conmemorar el 53º Día Nacional de los Emiratos Árabes Unidos, Club de Nuit Intense Man Special Edition es un homenaje al espíritu nacional, con un diseño exclusivo y una concentración aún más intensa y refinada que la versión original.\n\nMás que una fragancia, es un elixir de elegancia y modernidad, pensado para el hombre que busca dejar huella con un aroma distintivo y duradero.\n\nFamilia olfativa: Aromática – Cítrica – Frutal – Amaderada\n\nPirámide olfativa:\n\nNotas de Salida: Limón, Piña, Grosella Negra, Bergamota, Manzana – apertura fresca, frutal y vibrante.\n\nNotas de Corazón: Abedul, Jazmín, Rosa – un corazón floral y amaderado con carácter elegante.\n\nNotas de Fondo: Almizcle, Ámbar Gris, Pachulí, Vainilla – un cierre cálido, intenso y seductor.\n\nCaracterísticas principales:\n\nVersión especial y concentrada del clásico Club de Nuit Intense Man.\n\nAroma sofisticado y duradero, ideal para ocasiones importantes y uso nocturno.\n\nEdición conmemorativa con un frasco de diseño exclusivo.\n\nPerfume que combina frescura inicial, corazón floral y un fondo cálido y amaderado.\n\nEstilo: Elegante, poderoso y conmemorativo.",
+      "kestorePrice": 34.99,
+      "kestorePvp": 80,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/9946ca1bea144c2f90ea0485a8e16f61.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR025",
+      "name": "Odyssey Artisto (The Red Edition) 100mL EDP Men",
+      "brand": "Armaf",
+      "subcategory": "Hombre",
+      "description": "Sumérgete en la opulencia y sofisticación con Armaf Odyssey Artisto Red, una fragancia unisex que combina intensidad y elegancia en cada nota. Diseñada para espíritus aventureros con un gusto refinado, esta esencia cautivadora es perfecta para quienes buscan destacar con un aroma atrevido y sensual.\n\nPirámide olfativa:\n\nNotas Principales: Ámbar, Cuero, Pimienta Especiada – una mezcla cálida, audaz y envolvente que despierta los sentidos.\n\nCaracterísticas principales:\n\nAroma oriental y especiado, ideal para noches especiales o eventos elegantes.\n\nFragancia unisex, perfecta para quienes buscan un estilo sofisticado y diferente.\n\nProyección intensa y gran durabilidad para dejar una impresión inolvidable.\n\nEstilo: Aventurero, elegante y cautivador.",
+      "kestorePrice": 50,
+      "kestorePvp": 85,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/cc8c7bfaf78849e98292b58d9762b9a4.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR020",
+      "name": "Hugo Man 125mL EDT Men",
+      "brand": "Hugo Boss",
+      "subcategory": "Hombre",
+      "description": "Hugo Man de Hugo Boss es una fragancia masculina moderna y dinámica que combina la frescura de la manzana verde con la intensidad aromática del bálsamo de abeto y notas vibrantes que despiertan los sentidos. Diseñada para hombres auténticos y no convencionales, esta esencia ofrece un aroma energizante y duradero ideal para cualquier ocasión.\n\nFamilia olfativa: Aromática, fresca\n\nNotas principales: Manzana verde, bálsamo de abeto, notas aromáticas vibrantes\n\nVolumen: 4.2 fl oz (125 ml)\n\nUso recomendado: Perfecta para el día a día o actividades al aire libre\n\nUn perfume fresco y versátil que refleja confianza y estilo contemporáneo.",
+      "kestorePrice": 45.5,
+      "kestorePvp": 105,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/c15d5a277a444fe68b569cfa6c786abe.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE107",
+      "name": "Game of Spades Wildcard Jo Milano 100mL Parfum Men",
+      "brand": "Jo Milano",
+      "subcategory": "Hombre",
+      "description": "Inspirado en Bond No. 9 Lafayette Street, Game of Spades Wildcard es una fragancia lujosa, intrigante y sofisticada que equilibra lo amaderado y ámbar con acordes aromáticos y dulces. Como un comodín en el juego de las fragancias, sorprende por su versatilidad y elegancia, convirtiéndose en un perfume ideal para hombres que buscan un aroma exclusivo y distintivo.\n\nPirámide olfativa:\n\nNotas de Salida: Bergamota, Flores, Cilantro – apertura fresca, especiada y luminosa.\n\nNotas de Corazón: Manzana, Ambroxan, Vainilla – corazón frutal y avainillado con un matiz moderno y sensual.\n\nNotas de Fondo: Haba Tonka, Ámbar Gris, Notas Amaderadas – base cálida, sofisticada y duradera.\n\nCaracterísticas principales:\n\nPerfume masculino árabe, de carácter elegante y magnético.\n\nFragancia ámbar-avainillada con matices aromáticos.\n\nIdeal para otoño y primavera, perfecto para climas templados y frescos.\n\nAlta concentración (Parfum) que garantiza una fijación intensa y prolongada.\n\nAño de lanzamiento: 2023 | Origen: Estados Unidos.\n\nEstilo: Exclusivo, sofisticado y cautivador.",
+      "kestorePrice": 55.99,
+      "kestorePvp": 115,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/3ca481940b684a5dbae86f07ed1a3056.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR006",
+      "name": "Bade'e Al Oud Honor & Glory 100mL EDP",
+      "brand": "Lattafa",
+      "subcategory": "Hombre",
+      "description": "Bade’e Al Oud Honor & Glory de Lattafa Perfumes es una fragancia unisex moderna y sofisticada, creada para quienes buscan un aroma único y envolvente. Su salida tropical de piña brûlée da paso a un corazón especiado de cúrcuma, canela, pimienta negra y benjuí, culminando en un fondo cálido y amaderado de vainilla, cashmeran, sándalo y musgo que aporta profundidad y elegancia.\n\nFamilia olfativa: Amaderada, especiada, oriental\n\nNotas de salida: Piña brûlée\n\nNotas de corazón: Cúrcuma, canela, pimienta negra, benjuí\n\nNotas de fondo: Vainilla, cashmeran, sándalo, musgo\n\nTamaño: 3.4 fl oz (100 ml)\n\nUso recomendado: Ideal para ocasiones especiales y uso nocturno\n\nUn perfume cautivador y versátil que deja una estela intensa y memorable.",
+      "kestorePrice": 35.5,
+      "kestorePvp": 66,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/1e01469f8c6546e8a3239de90be13f9b.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR018",
+      "name": "Fakhar Lattafa 100mL EDP Men",
+      "brand": "Lattafa",
+      "subcategory": "Hombre",
+      "description": "Descubre la esencia de la elegancia masculina con Fakhar Lattafa Men, una fragancia que combina frescura, sofisticación y un carácter amaderado irresistible. Diseñada para el hombre moderno, seguro de sí mismo y con estilo, esta creación es perfecta para cualquier ocasión.\n\nPirámide olfativa:\n\nNotas de Salida: Bergamota, Orris, Acordes marinos – una apertura fresca y vibrante.\n\nNotas de Corazón: Violeta, Ámbar – aportan calidez y un toque refinado.\n\nNotas de Fondo: Musgo de roble, Pachulí – un final amaderado, intenso y masculino.\n\nCaracterísticas principales:\n\nFragancia amaderada y fougère con matices frescos y especiados.\n\nAroma sofisticado y duradero, ideal para uso diario o eventos especiales.\n\nCombina frescura marina con la profundidad del pachulí y la calidez del ámbar.\n\nEstilo: Moderno, elegante y versátil.",
+      "kestorePrice": 34,
+      "kestorePvp": 67,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/710680f1ac5c48ecbd68d98927fe8ba2.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE104",
+      "name": "Cerulean Blue Maison Alhambra 100mL EDP Men",
+      "brand": "Maison Alhambra",
+      "subcategory": "Hombre",
+      "description": "Maison Alhambra Cerulean Blue es una fragancia sofisticada, fresca y amaderada diseñada para el hombre moderno que busca reflejar elegancia y seguridad en cada momento. Su aroma combina notas cítricas revitalizantes con un corazón aromático y un fondo cálido, creando una estela duradera y refinada.\n\nPirámide olfativa:\n\nNotas de Salida: Bergamota, Limón – apertura fresca y cítrica que aporta energía y vitalidad.\n\nNotas de Corazón: Lavanda, Romero – un corazón aromático, elegante y equilibrado.\n\nNotas de Fondo: Cedro, Ámbar – un cierre cálido, masculino y sofisticado que aporta profundidad.\n\nCaracterísticas principales:\n\nPerfume masculino con equilibrio entre frescura y calidez.\n\nAroma versátil y duradero, ideal para uso diario o eventos especiales.\n\nFrasco elegante y moderno, reflejo de la sofisticación de la fragancia.\n\nRecomendada para aplicar en puntos de pulso: cuello, muñecas y detrás de las orejas.\n\nEstilo: Moderno, masculino y refinado.",
+      "kestorePrice": 15.99,
+      "kestorePvp": 58,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/b82734e9fa8f4202a9879b1c47e8030c.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE105",
+      "name": "True Word Maison Alhambra 100mL EDP Men",
+      "brand": "Maison Alhambra",
+      "subcategory": "Hombre",
+      "description": "Notas de Salida: Bergamota, Manzana, Café, Piña – un inicio fresco, vibrante y energizante con un toque intrigante.\n\nNotas de Corazón: Geranio, Madera de Guayaco, Flores Blancas – un corazón elegante y equilibrado entre lo floral y lo amaderado.\n\nNotas de Fondo: Ámbar, Vetiver, Haba Tonka, Caramelo, Almizcle – un cierre cálido, sensual y adictivo que envuelve los sentidos.\n\nCaracterísticas principales:\n\nFragancia unisex, ideal para quienes buscan destacar con personalidad.\n\nAroma intenso y envolvente, perfecto para noches especiales o climas frescos.\n\nEquilibrio entre frescura frutal, calidez amaderada y dulzura gourmand.\n\nLarga duración y estela seductora que deja huella.\n\nEstilo: Magnético, apasionado y elegante.",
+      "kestorePrice": 29.99,
+      "kestorePvp": 61,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/cb9089e6715f4e36bedfc8706c253765.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR017",
+      "name": "Emblem 100mL EDT",
+      "brand": "Montblanc",
+      "subcategory": "Hombre",
+      "description": "Montblanc Emblem es una fragancia amaderada, aromática y fresca que combina sofisticación y carácter. Diseñada para el hombre moderno, carismático y seguro de sí mismo, esta esencia ofrece un equilibrio perfecto entre frescura vibrante y calidez masculina.\n\nPirámide olfativa:\n\nNotas de Salida: Salvia, Cardamomo, Pomelo – un inicio chispeante y especiado que aporta energía y vitalidad.\n\nNotas de Corazón: Hojas de Violeta, Hojas de Canela – un toque verde y cálido que realza la elegancia de la fragancia.\n\nNotas de Fondo: Semillas de Tonka, Maderas Preciosas – un fondo intenso, masculino y duradero.\n\nCaracterísticas principales:\n\nFragancia refinada y equilibrada para uso diario o ocasiones especiales.\n\nEstilo elegante, sofisticado y con personalidad.\n\nAroma versátil que combina frescura y calidez en perfecta armonía.\n\nEstilo: Moderno, carismático y elegante.",
+      "kestorePrice": 45,
+      "kestorePvp": 105,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/0f4611a0388240ec83560f675296242a.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE115",
+      "name": "Armaf Club de Nuit 200 mL EDP Women",
+      "brand": "Armaf",
+      "subcategory": "Mujer",
+      "description": "Club De Nuit de Armaf es una fragancia femenina sofisticada y cautivadora que combina frescura y calidez en perfecta armonía. Su salida chispeante de bergamota, naranja, melocotón y pomelo se funde con un corazón floral de rosa, litchi, jazmín y geranio, para finalizar con un fondo envolvente de pachulí, vetiver, almizcle y vainilla que aporta profundidad y sensualidad.\n\nFamilia olfativa: Floral, frutal, amaderada\n\nNotas de salida: Bergamota, naranja, melocotón, pomelo\n\nNotas de corazón: Rosa, litchi, jazmín, geranio\n\nNotas de fondo: Pachulí, vetiver, almizcle, vainilla\n\nUso recomendado: Ideal para uso diario y ocasiones especiales\n\nUn aroma elegante y duradero que deja una estela inolvidable.",
+      "kestorePrice": 40,
+      "kestorePvp": 130,
+      "heightCm": 16,
+      "widthCm": 10,
+      "depthCm": 8,
+      "weightKg": 0.8,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/274b4b42550f451eb64703ab8d8cf528.jpeg",
+        "https://keimage.kestore.com.ec/images/288/6ef0a35e2f4d4db3b89cb2985f03d57d.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR014",
+      "name": "Club De Nuit Untold 105mL EDP Women",
+      "brand": "Armaf",
+      "subcategory": "Mujer",
+      "description": "Club de Nuit Untold es una fragancia elegante, misteriosa y cautivadora que combina especias exóticas, maderas preciosas y un toque ambarado para crear un aroma sofisticado y envolvente. Perfecta para quienes buscan un perfume con carácter y gran proyección.\n\nPirámide olfativa:\n\nNotas de Salida: Azafrán, Jazmín – una apertura especiada y floral que seduce desde el primer instante.\n\nNotas de Corazón: Madera de Ámbar, Ámbar Gris – calidez intensa y profundidad aromática.\n\nNotas de Fondo: Resina de Abeto, Cedro – un cierre amaderado, balsámico y elegante.\n\nCaracterísticas principales:\n\nFragancia unisex, intensa y duradera.\n\nAroma oriental-amaderado con un equilibrio perfecto entre especias y calidez resinosa.\n\nIdeal para noches especiales y climas frescos donde su carácter elegante puede brillar al máximo.\n\nEstilo: Sofisticado, sensual y con personalidad.",
+      "kestorePrice": 50,
+      "kestorePvp": 72,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/4be67f55236f4795913ab346311abf1e.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR012",
+      "name": "Club de Nuit 105mL EDP Women",
+      "brand": "Armaf",
+      "subcategory": "Mujer",
+      "description": "Club De Nuit de Armaf es una fragancia femenina sofisticada y cautivadora que combina frescura y calidez en perfecta armonía. Su salida chispeante de bergamota, naranja, melocotón y pomelo se funde con un corazón floral de rosa, litchi, jazmín y geranio, para finalizar con un fondo envolvente de pachulí, vetiver, almizcle y vainilla que aporta profundidad y sensualidad.\n\nFamilia olfativa: Floral, frutal, amaderada\n\nNotas de salida: Bergamota, naranja, melocotón, pomelo\n\nNotas de corazón: Rosa, litchi, jazmín, geranio\n\nNotas de fondo: Pachulí, vetiver, almizcle, vainilla\n\nUso recomendado: Ideal para uso diario y ocasiones especiales\n\nUn aroma elegante y duradero que deja una estela inolvidable.",
+      "kestorePrice": 36.5,
+      "kestorePvp": 68.42,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/37c6219f944e49ba9c0f1d5679aa1f6f.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE103",
+      "name": "Club de Nuit Precieux IV Armaf Extract de Perfume 100mL Women",
+      "brand": "Armaf",
+      "subcategory": "Mujer",
+      "description": "Club De Nuit Precieux IV de ARMAF es una fragancia sofisticada, elegante y magnética, diseñada para quienes desean dejar huella con una presencia distinguida y segura. Con un balance entre modernidad y elegancia clásica, este perfume unisex combina notas cítricas, florales y orientales que se funden en un fondo cálido y envolvente.\n\nPirámide olfativa:\n\nNotas de Salida: Bergamota, Mandarina, Pimienta Rosa – apertura chispeante y especiada que transmite frescura y vitalidad.\n\nNotas de Corazón: Jazmín, Rosa, Pachulí – un corazón floral y terroso que aporta carácter y sofisticación.\n\nNotas de Fondo: Ámbar, Almizcle, Cedro, Vainilla – un cierre cálido, sensual y duradero que deja una estela irresistible.\n\nCaracterísticas principales:\n\nPerfume unisex con un aroma refinado y versátil.\n\nIdeal para uso diario, entornos profesionales o noches especiales.\n\nLarga duración y proyección equilibrada, gracias a aceites esenciales importados de Francia, España e Italia.\n\nMás que una fragancia, es una declaración de distinción y carisma moderno.\n\nEstilo: Elegante, versátil y cautivador.",
+      "kestorePrice": 49.99,
+      "kestorePvp": 89,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/2868de77c3d84f8fa38259f6bb5d2a60.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR015",
+      "name": "Delights Yum Yum 100mL EDP Women",
+      "brand": "Armaf",
+      "subcategory": "Mujer",
+      "description": "Yum Yum es una fragancia dulce, vibrante y femenina que celebra la alegría y la sofisticación. Lanzada en 2024 por la marca árabe Armaf, esta esencia está diseñada para mujeres que buscan un perfume moderno, adictivo y con encanto único.\n\nPirámide olfativa:\n\nNotas de Salida: Bayas Silvestres, Cereza, Bergamota, Naranja – una apertura chispeante, frutal y llena de energía.\n\nNotas de Corazón: Vainilla, Flores Blancas, Rosa – suavidad cremosa con un toque floral romántico.\n\nNotas de Fondo: Notas Atalcadas, Ámbar, Almizcle – un final cálido, envolvente y seductor.\n\nCaracterísticas principales:\n\nPerfume femenino con acordes frutales, avainillados y florales.\n\nIdeal para primavera, verano y otoño, adaptándose a climas cálidos y templados.\n\nAroma dulce y sofisticado que deja una estela duradera y memorable.\n\nEstilo: Alegre, moderno y cautivador.",
+      "kestorePrice": 50,
+      "kestorePvp": 93,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/d84d7b39d45d4b2789b35b3c879429a7.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR021",
+      "name": "Island Bliss Delights 100mL EDP Women",
+      "brand": "Armaf",
+      "subcategory": "Mujer",
+      "description": "ARMAF Island Bliss Delights es una fragancia femenina que captura la esencia del verano tropical en cada gota. Con su combinación de notas frutales, florales y cremosas, transporta a una isla exótica con brisas cálidas y cócteles refrescantes. Ideal para mujeres que desean irradiar alegría, frescura y feminidad durante todo el día.\n\nFamilia olfativa: Gourmand – Floral – Frutal – Cremosa\n\nPirámide olfativa:\n\nNotas de Salida: Frutos del bosque, Notas verdes – apertura dulce y vibrante.\n\nNotas de Corazón: Coco, Flor de Azahar, Lirio Acuático, Acordes Cremosos – corazón tropical y femenino.\n\nNotas de Fondo: Vainilla, Almizcle, Haba Tonka – base cálida, envolvente y deliciosa.\n\nCaracterísticas principales:\n\nFragancia femenina, tropical y gourmand, perfecta para climas cálidos.\n\nAroma dulce y refrescante que proyecta energía y vitalidad.\n\nIdeal para uso diario, vacaciones, salidas casuales y días soleados.\n\nEstilo: Alegre, femenino y veraniego.",
+      "kestorePrice": 50,
+      "kestorePvp": 93,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/3f02233e0a184180a9e150d304594ce6.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR030",
+      "name": "Velvet Rose Mast 100mL EDP Women",
+      "brand": "Bharara",
+      "subcategory": "Mujer",
+      "description": "Velvet Rose es un perfume árabe de alta gama que despierta los sentidos con una combinación de aromas tropicales, dulces y florales. Comparado con el famoso Yara de Lattafa, este perfume ofrece mayor duración y proyección, convirtiéndolo en una opción irresistible para mujeres que buscan sofisticación y sensualidad en cada nota.\n\nPirámide olfativa:\n\nNotas de Salida: Orquídea, Heliotropo, Naranja Tangerina – una apertura fresca, floral y ligeramente cítrica.\n\nNotas de Corazón: Acorde Goloso, Frutas Tropicales – un corazón dulce y exótico que aporta calidez y alegría.\n\nNotas de Fondo: Vainilla, Almizcle, Sándalo – un cierre cremoso, envolvente y sensual.\n\nCaracterísticas principales:\n\nPerfume femenino, floral y avainillado con toques atalcados.\n\nIdeal para primavera y otoño, adaptándose a climas templados y cálidos.\n\nAlta duración y proyección, con un estilo elegante y moderno.\n\nEstilo: Dulce, sensual y sofisticado.",
+      "kestorePrice": 40,
+      "kestorePvp": 75,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/207ef5c43e9943c49d2346e40ffedf63.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR016",
+      "name": "Eclaire 100mL EDP",
+      "brand": "Lattafa",
+      "subcategory": "Mujer",
+      "description": "Eclaire de Lattafa Perfumes es una fragancia femenina gourmand y sofisticada que combina dulzura cremosa con delicadeza floral y un toque cálido y sensual. Su salida golosa de caramelo, leche y azúcar cautiva los sentidos, mientras que su corazón de flores blancas y miel aporta suavidad y feminidad. El fondo de vainilla, praliné y almizcle envuelve con calidez y elegancia, dejando una estela duradera y acogedora.\n\nFamilia olfativa: Gourmand, floral, oriental\n\nNotas de salida: Caramelo, leche, azúcar\n\nNotas de corazón: Flores blancas, miel\n\nNotas de fondo: Vainilla, praliné, almizcle\n\nTamaño: 3.4 fl oz (100 ml)\n\nUso recomendado: Ideal para ocasiones especiales o climas frescos\n\nUna fragancia femenina y cautivadora que combina dulzura y sofisticación en cada aplicación.",
+      "kestorePrice": 37,
+      "kestorePvp": 74.46,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/1069d701f0ff48f589f4a7f6a061c4d0.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR032",
+      "name": "Yara 100mL EDP Women",
+      "brand": "Lattafa",
+      "subcategory": "Mujer",
+      "description": "Yara de Lattafa Perfumes es una fragancia femenina dulce y elegante que combina frescura y sensualidad en perfecta armonía. Su salida chispeante de naranja tangerina y flores tropicales se une a un corazón cremoso de vainilla y coco, para culminar en un fondo cálido y sofisticado de almizcle, sándalo y ámbar que deja una estela envolvente y duradera.\n\nFamilia olfativa: Ámbar, vainilla, floral\n\nNotas de salida: Naranja tangerina, flores tropicales\n\nNotas de corazón: Vainilla, coco\n\nNotas de fondo: Almizcle, sándalo, ámbar\n\nTamaño: 3.4 fl oz (100 ml)\n\nUso recomendado: Ideal para el día a día y ocasiones especiales\n\nUn perfume femenino y moderno que destaca por su dulzura, elegancia y larga duración.",
+      "kestorePrice": 36,
+      "kestorePvp": 62,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/523dc0c9300b42b2ab8b619a24897937.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR033",
+      "name": "Yara Candy 100mL EDP Women",
+      "brand": "Lattafa",
+      "subcategory": "Mujer",
+      "description": "Yara Candy de Lattafa Perfumes es una fragancia femenina dulce y moderna que mezcla frescura frutal con toques cremosos y cálidos. Su salida chispeante de grosellas negras y mandarina verde se combina con un corazón divertido de strawberry fizz candy y gardenia, para terminar en un fondo sensual de vainilla, ámbar, almizcle y sándalo que deja una estela envolvente y duradera.\n\nFamilia olfativa: Floral, frutal, gourmand\n\nNotas de salida: Grosellas negras, mandarina verde\n\nNotas de corazón: Strawberry fizz candy, gardenia\n\nNotas de fondo: Vainilla, ámbar, almizcle, sándalo\n\nTamaño: 3.4 fl oz (100 ml)\n\nUso recomendado: Perfecta para el día a día y ocasiones especiales\n\nUna fragancia femenina y encantadora que aporta dulzura y sofisticación en cada aplicación.",
+      "kestorePrice": 33,
+      "kestorePvp": 70,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/7710984c2d454a678dccd7256f411e56.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE113",
+      "name": "Hawas Diva Rasasi 100ml EDP",
+      "brand": "Rasasi",
+      "subcategory": "Mujer",
+      "description": "Hawas Diva para Ella de Rasasi es un eau de parfum oriental floral, lanzado en 2025. Representa la fuerza, elegancia y sensualidad de la mujer moderna, combinando una apertura frutal brillante, un corazón floral-amaderado y un fondo cálido y envolvente.\n\nUna fragancia vibrante y sofisticada que demuestra la maestría de Rasasi en creaciones femeninas intensas y elegantes.\n\nPirámide Olfativa\n\nNotas de salida: Frutos rojos, ruibarbo, lichi\nNotas de corazón: Cedro, rosa, incienso\nNotas de fondo: Vainilla, ámbar gris, almizcle\n\nApertura afrutada y luminosa, corazón floral amaderado y un fondo cálido, sensual y persistente.\n\nPor qué te encantará\n\nAroma femenino, moderno y con carácter.\n\nPerfecta mezcla de frutos rojos, rosa, maderas y vainilla.\n\nExcelente duración y estela seductora.\n\nIdeal para noches especiales, clima fresco o uso diario elegante.\n\nUna alternativa sofisticada dentro del universo oriental floral.",
+      "kestorePrice": 35,
+      "kestorePvp": 78,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/362a13f252054062b6d0f241081d8c7d.jpeg",
+        "https://keimage.kestore.com.ec/images/288/9aacaf9f722a44f6b1d21b3f51ed28c0.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE101",
+      "name": "Vulcan Feu French Avenue 100mL EDP Unisex",
+      "brand": "French Avenue",
+      "subcategory": "Unisex",
+      "description": "Vulcan Feu es una fragancia intensa, vibrante y sofisticada, creada para quienes buscan un perfume con carácter ardiente y magnético. Su composición mezcla la frescura frutal y especiada con un corazón floral y amaderado, para culminar en un fondo cálido y poderoso.\n\nPirámide olfativa:\n\nNotas de Salida: Mango, Jengibre, Limón, Frutos Rojos – una apertura jugosa, fresca y chispeante con un toque especiado.\n\nNotas de Corazón: Cumarina, Jazmín, Cedro – un corazón floral-amaderado con matices dulces y elegantes.\n\nNotas de Fondo: Almizcle, Ámbar, Oud, Aceite de Chipriol – un cierre profundo, oriental y envolvente que deja huella.\n\nCaracterísticas principales:\n\nPerfume unisex, equilibrado entre frescura y calidez.\n\nAroma oriental-amaderado con acentos frutales y especiados.\n\nIdeal para uso nocturno o climas frescos, perfecto para destacar en ocasiones especiales.\n\nGran durabilidad y estela intensa que no pasa desapercibida.\n\nEstilo: Magnético, elegante y apasionado.",
+      "kestorePrice": 45.99,
+      "kestorePvp": 85,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/6812ebd527f14fb2bc0dde58a2081da9.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR005",
+      "name": "Bade'e Al Oud for Glory 100mL EDP Unisex",
+      "brand": "Lattafa",
+      "subcategory": "Unisex",
+      "description": "Sumérgete en el lujo y la intensidad de Badee Al Oud – Oud for Glory de Lattafa Perfumes, una fragancia ámbar-amaderada diseñada para hombres y mujeres que buscan un aroma poderoso, sofisticado y con gran personalidad.\n\nPirámide olfativa:\n\nNotas de Salida: Bergamota, Pimienta Rosa, Grosella Negra – un inicio fresco, especiado y vibrante.\n\nNotas de Corazón: Peonía, Caramelo, Madera de Oud – una combinación floral y dulce con la majestuosidad del oud.\n\nNotas de Fondo: Frambuesa, Pachulí, Ámbar Seco – un final profundo, cálido y seductor.\n\nCaracterísticas principales:\n\nFragancia unisex con una proyección intensa y duradera.\n\nEquilibrio perfecto entre dulzura, especias y maderas orientales.\n\nIdeal para quienes buscan un perfume elegante, misterioso y distintivo.\n\nEstilo: Lujoso, sofisticado y con carácter.",
+      "kestorePrice": 37,
+      "kestorePvp": 70,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/7001c7e7fbfd49a784c2b5b8cbd6ab47.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PFKE001",
+      "name": "Eclaire Banoffi Lattafa 100mL EDP Unisex",
+      "brand": "Lattafa",
+      "subcategory": "Unisex",
+      "description": "Lattafa Eclaire Banoffi es una fragancia gourmand, dulce y adictiva inspirada en el clásico postre banoffee. Con su mezcla cremosa y deliciosa, transmite un aroma juguetón pero sofisticado, ideal para quienes disfrutan de perfumes cálidos y reconfortantes con un toque irresistible de dulzura.\n\nPirámide olfativa:\n\nNotas de Salida: Crema de Plátano, Dulce de Leche – apertura cremosa, frutal y tentadora.\n\nNotas de Corazón: Crema Batida, Vainilla – un corazón suave, dulce y envolvente.\n\nNotas de Fondo: Praliné, Galleta, Almizcle – un cierre cálido, goloso y acogedor que deja una estela adictiva.\n\nCaracterísticas principales:\n\nPerfume gourmand y unisex, perfecto para los amantes de aromas dulces y cremosos.\n\nFragancia atrevida y reconfortante, ideal para climas frescos o uso nocturno.\n\nDuración prolongada con una estela cálida y deliciosa.\n\nEstilo: Dulce, indulgente y sofisticado.",
+      "kestorePrice": 45,
+      "kestorePvp": 90,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/cd2b6e9543ce4434b551a7c45757bfed.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PFKE002",
+      "name": "Eclaire Pistache Lattafa 100 mL EDP Unisex",
+      "brand": "Lattafa",
+      "subcategory": "Unisex",
+      "description": "Lattafa Eclaire Pistache es una fragancia gourmand, cremosa y moderna que celebra el encanto del pistacho en todas sus formas. Dulce y envolvente, equilibra la calidez de los frutos secos con notas lácteas y vainilladas, creando un perfume adictivo y reconfortante, ideal como firma diaria.\n\nPirámide olfativa:\n\nNotas de Salida: Crema de Pistacho, Pistacho Tostado – una apertura cremosa, cálida y tentadora.\n\nNotas de Corazón: Coco, Cacao, Crema Batida – un corazón goloso y exótico con matices suaves y aterciopelados.\n\nNotas de Fondo: Vainilla, Leche, Almizcle – un cierre cálido, limpio y envolvente que deja una estela suave y adictiva.\n\nCaracterísticas principales:\n\nPerfume unisex con perfil gourmand cremoso.\n\nFragancia versátil y fácil de llevar, perfecta para uso diario.\n\nDulce, acogedor y elegante, con un toque moderno y reconfortante.\n\nDuración prolongada y estela suave pero adictiva.\n\nEstilo: Cálido, cremoso y sofisticado.",
+      "kestorePrice": 45,
+      "kestorePvp": 95,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/49aab0b81eea446d865cd01ec2a60cfd.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR022",
+      "name": "Khamrah Qahwa 100mL EDP Unisex",
+      "brand": "Lattafa",
+      "subcategory": "Unisex",
+      "description": "Khamrah Dukhan U de Lattafa Perfumes es una fragancia unisex intensa y sofisticada que fusiona especias cálidas, resinas profundas y acordes ahumados para crear un aroma cautivador. Su apertura vibrante de mandarina, pimiento y especias se funde con un corazón complejo de ládano, incienso, flor de naranja y pachulí, culminando en un fondo rico y dulce de haba tonka, praliné, ámbar y benjuí que aporta calidez y profundidad duradera.\n\nFamilia olfativa: Ámbar, especiada, oriental\n\nNotas de salida: Mandarina, pimiento, especias\n\nNotas de corazón: Ládano, incienso, flor de naranja, pachulí\n\nNotas de fondo: Haba tonka, praliné, ámbar, benjuí\n\nTamaño: 3.4 fl oz (100 ml)\n\nUso recomendado: Perfecta para noches especiales y clima frío\n\nUn perfume potente y elegante que deja una estela intensa y memorable.",
+      "kestorePrice": 37.5,
+      "kestorePvp": 70,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/c83442dbf28e4e2192750ff1b579beba.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE102",
+      "name": "Xerjoff Erba Pura 100mL EDP Unisex",
+      "brand": "Xerjoff",
+      "subcategory": "Unisex",
+      "description": "Erba Pura es un elixir moderno, fresco y afrutado que envuelve con su energía luminosa y su encanto seductor. Diseñado para espíritus contemporáneos que buscan un aroma vibrante y sofisticado, esta fragancia combina la vitalidad de los cítricos italianos con un corazón frutal exuberante y una base cálida y sensual.\n\nPirámide olfativa:\n\nNotas de Salida: Naranja Siciliana, Limón Siciliano – apertura chispeante, fresca y energética.\n\nNotas de Corazón: Canasta de Frutas Mediterráneas – un corazón jugoso y moderno, lleno de vitalidad.\n\nNotas de Fondo: Almizcle Blanco, Ámbar, Vainilla de Madagascar – un cierre envolvente, sensual y adictivo que evoluciona con el tiempo.\n\nCaracterísticas principales:\n\nFragancia unisex, fresca y sofisticada.\n\nAroma luminoso y moderno, perfecto para destacar en cualquier ocasión.\n\nPresentación única con un pañuelo de seda exclusivo de Xerjoff, producido en el Lago Como, Italia.\n\nDuración prolongada con una estela afrutada y elegante.\n\nEstilo: Vibrante, sofisticado y contemporáneo.",
+      "kestorePrice": 182.99,
+      "kestorePvp": 240,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/05ec7a4af70b43f2ba55a72a32e29768.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "FOUR007",
+      "name": "Bade'e Al Oud Noble Blush 100mL EDP Unisex",
+      "brand": "Lattafa",
+      "subcategory": "Unisex",
+      "description": "Déjate envolver por la elegancia y el encanto de Lattafa Bade'e Al Oud Noble Blush, una fragancia unisex que transforma cada momento en una experiencia sensorial única. Su aroma combina dulzura, calidez y sofisticación, ideal para quienes buscan un perfume versátil y cautivador.\n\nPirámide olfativa:\n\nNotas de Salida: Rosa y un toque cremoso de leche que aporta suavidad y frescura.\n\nNotas de Corazón: Almendro y merengue que añaden un matiz dulce y gourmand irresistible.\n\nNotas de Fondo: Sándalo, vainilla y almizcle, creando una base cálida, envolvente y duradera.\n\nCaracterísticas:\n\nFragancia unisex: perfecta para él y para ella.\n\nVersátil: apta para uso diario o para ocasiones especiales.\n\nEstela envolvente con un equilibrio perfecto entre dulzura y sensualidad.\n\nSi buscas un perfume que combine suavidad floral, dulzura gourmand y un fondo cálido y sofisticado, Bade'e Al Oud Noble Blush será tu nueva esencia favorita.",
+      "kestorePrice": 36.5,
+      "kestorePvp": 75,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [
+        "https://keimage.kestore.com.ec/images/288/6a87f57ecb524c11b77af0846df42966.jpeg"
+      ],
+      "taxed": true
+    },
+    {
+      "kestoreCode": "PERKE116",
+      "name": "Game of Spades Emerald Jo Milano Unisex",
+      "brand": "Jo Milano",
+      "subcategory": "Unisex",
+      "description": null,
+      "kestorePrice": 55.99,
+      "kestorePvp": 110,
+      "heightCm": 14,
+      "widthCm": 10,
+      "depthCm": 7,
+      "weightKg": 0.5,
+      "images": [],
+      "taxed": true
+    }
+  ]
+}

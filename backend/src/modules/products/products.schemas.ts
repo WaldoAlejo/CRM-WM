@@ -15,6 +15,8 @@ export const createProductSchema = z.object({
   brandId: z.string().min(1).optional(),
   // Tarifa de IVA (precios sin IVA). Sin valor, el producto nace con la general.
   ivaCode: z.enum(IVA_CODES).optional(),
+  showOnWm: z.boolean().optional(),
+  showOnKestore: z.boolean().optional(),
 });
 
 // El SKU no cambia nunca (tampoco al cambiar de categoría): ya puede estar impreso.
@@ -29,6 +31,8 @@ export const updateProductSchema = z.object({
   subcategoryId: z.string().min(1).nullable().optional(),
   brandId: z.string().min(1).nullable().optional(),
   ivaCode: z.enum(IVA_CODES).optional(),
+  showOnWm: z.boolean().optional(),
+  showOnKestore: z.boolean().optional(),
 });
 
 export const listProductsQuerySchema = z.object({

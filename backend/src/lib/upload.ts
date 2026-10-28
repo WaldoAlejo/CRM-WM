@@ -103,6 +103,8 @@ export function buildPublicUrl(
 // error real. Cualquier otro problema se loguea pero nunca bloquea la
 // operación que lo llamó (borrar el registro en BD es lo importante).
 export function deleteFileSafely(publicUrl: string) {
+  // Imágenes externas (p. ej. las de Kestore importadas por URL): no hay archivo local.
+  if (!publicUrl.startsWith("/uploads/")) return;
   const relative = publicUrl.replace(/^\/uploads\//, "");
   const filePath = path.join(UPLOADS_ROOT, relative);
   fs.unlink(filePath, (err) => {

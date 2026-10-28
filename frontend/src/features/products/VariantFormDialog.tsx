@@ -40,6 +40,7 @@ function toFormValues(variant: Variant | null, retailPriceOverride?: number): Va
   return {
     attributePairs: attributesToPairs(variant.attributes),
     barcode: variant.barcode ?? "",
+    kestoreCode: variant.kestoreCode ?? "",
     minStock: variant.minStock ?? undefined,
     weightKg: variant.weightKg ? Number(variant.weightKg) : undefined,
     maxStackUnits: variant.maxStackUnits ?? 1,
@@ -92,6 +93,7 @@ export function VariantFormDialog({
       ? {
           attributes,
           barcode: values.barcode || null,
+          kestoreCode: values.kestoreCode || null,
           minStock: values.minStock ?? null,
           weightKg: values.weightKg ?? null,
           maxStackUnits: values.maxStackUnits ?? 1,
@@ -102,6 +104,7 @@ export function VariantFormDialog({
       : {
           attributes,
           barcode: values.barcode || undefined,
+          kestoreCode: values.kestoreCode || undefined,
           minStock: values.minStock,
           weightKg: values.weightKg,
           maxStackUnits: values.maxStackUnits ?? 1,
@@ -145,7 +148,7 @@ export function VariantFormDialog({
               </p>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="barcode"
@@ -154,6 +157,19 @@ export function VariantFormDialog({
                     <FormLabel>Código de barras</FormLabel>
                     <FormControl>
                       <Input placeholder="Opcional" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="kestoreCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código en Kestore</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: PERKE111" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

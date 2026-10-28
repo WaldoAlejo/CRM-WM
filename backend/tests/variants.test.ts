@@ -154,3 +154,42 @@ describe("DELETE /api/variants/:id", () => {
     expect(res.status).toBe(204);
   });
 });
+
+describe("Código de Kestore de la variante", () => {
+  it("guarda kestoreCode y rechaza con 409 uno repetido", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { category } = await createCategoryFixture();
+    const product = await createProductFixture({ categoryId: category.id });
+
+    const first = await request(app)
+      .post(`/api/products/${product.id}/variants`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ attributes: { tamaño: "100 mL" }, kestoreCode: "PERKE111" });
+    expect(first.status).toBe(201);
+    expect(first.body.kestoreCode).toBe("PERKE111");
+
+    const duplicate = await request(app)
+      .post(`/api/products/${product.id}/variants`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ attributes: { tamaño: "200 mL" }, kestoreCode: "PERKE111" });
+    expect(duplicate.status).toBe(409);
+    expect(JSON.stringify(duplicate.body)).toContain("código de Kestore");
+  });
+
+  it("permite quitar el kestoreCode con null", async () => {
+    const { token } = await createTestUser("ADMIN");
+    const { category } = await createCategoryFixture();
+    const product = await createProductFixture({ categoryId: category.id });
+    const variant = await prisma.productVariant.create({
+      data: { productId: product.id, sku: `${product.sku}-X`, attributes: { x: "1" }, kestoreCode: "FOUR003" },
+    });
+
+    const res = await request(app)
+      .patch(`/api/variants/${variant.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ kestoreCode: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.kestoreCode).toBeNull();
+  });
+});

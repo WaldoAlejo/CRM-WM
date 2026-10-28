@@ -17,6 +17,8 @@ export const productFormSchema = z.object({
   subcategoryId: optionalString(z.string().min(1)),
   brandId: optionalString(z.string().min(1)),
   ivaCode: optionalString(z.string().min(1)),
+  showOnWm: z.boolean(),
+  showOnKestore: z.boolean(),
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
@@ -30,4 +32,6 @@ export const productDefaultValues: ProductFormValues = {
   subcategoryId: "",
   brandId: "",
   ivaCode: DEFAULT_IVA_CODE,
+  showOnWm: false,
+  showOnKestore: false,
 };

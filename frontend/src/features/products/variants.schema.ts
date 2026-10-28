@@ -41,6 +41,7 @@ const attributePairsSchema = z
 export const variantFormSchema = z.object({
   attributePairs: attributePairsSchema,
   barcode: optionalString(z.string().max(50)),
+  kestoreCode: optionalString(z.string().trim().max(50)),
   minStock: optionalNumber(z.number().int().nonnegative("No puede ser negativo")),
   weightKg: optionalNumber(z.number().positive("Debe ser mayor a 0")),
   maxStackUnits: optionalNumber(z.number().int().min(1).max(1000)),
@@ -58,6 +59,7 @@ export type VariantFormValues = z.infer<typeof variantFormSchema>;
 export const variantDefaultValues: VariantFormValues = {
   attributePairs: [{ key: "", value: "" }],
   barcode: "",
+  kestoreCode: "",
   minStock: undefined,
   weightKg: undefined,
   maxStackUnits: 1,

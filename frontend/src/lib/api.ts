@@ -18,6 +18,8 @@ export function setApiBaseUrl(url: string) {
 // "/uploads/products/<id>/<archivo>.jpg"); esto arma la URL completa
 // quitando el sufijo /api de la base configurada.
 export function getAssetUrl(relativeUrl: string): string {
+  // Imágenes externas (p. ej. las de Kestore importadas por URL) ya son absolutas.
+  if (/^https?:\/\//.test(relativeUrl)) return relativeUrl;
   const origin = apiBaseUrl.replace(/\/api\/?$/, "");
   return `${origin}${relativeUrl}`;
 }

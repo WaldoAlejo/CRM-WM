@@ -24,6 +24,8 @@ export interface ProductListItem {
   name: string;
   model: string | null;
   status: ProductStatus;
+  showOnWm: boolean;
+  showOnKestore: boolean;
   category: CategoryRef;
   subcategory: SubcategoryRef | null;
   brand: BrandRef | null;
@@ -76,6 +78,7 @@ export interface Variant {
   productId: string;
   sku: string;
   barcode: string | null;
+  kestoreCode: string | null;
   attributes: Record<string, string>;
   label: string | null;
   weightKg: string | null;
@@ -106,6 +109,8 @@ export interface ProductDetail {
   model: string | null;
   barcode: string | null;
   status: ProductStatus;
+  showOnWm: boolean;
+  showOnKestore: boolean;
   categoryId: string;
   category: CategoryRef;
   subcategoryId: string | null;
