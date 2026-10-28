@@ -88,8 +88,8 @@ X-Crm-Signature: sha256=4f1c…
 | --- | --- |
 | `codigo` | Código de Kestore del producto |
 | `stock` | Unidades **disponibles** para vender: el total de todas las bodegas de WM menos lo reservado por despachos pendientes, incluidos los pedidos de Kestore aún no entregados. Nunca es negativo |
-| `precio` | Precio de venta a Kestore, **con IVA**. Es el precio que Kestore debe publicar |
-| `precioSinIva` | Mismo precio, sin IVA |
+| `precio` | Precio al que WM le vende a Kestore, **con IVA** (referencia) |
+| `precioSinIva` | El mismo precio **sin IVA**. Es el precio para Kestore (`product.price`); el PVP lo sigue definiendo Kestore |
 | `activo` | `false` cuando WM deja de publicar el producto en Kestore, lo descontinúa o le cambia el código. En ese caso `stock` llega en 0 y el producto debe ocultarse |
 
 **Lo que Kestore debe hacer al recibirlo:**
@@ -265,7 +265,7 @@ Un producto se publica en Kestore cuando cumple todo esto:
 - El producto tiene marcada la casilla **Publicar en Kestore**.
 - Ni el producto ni la variante están descontinuados ni eliminados.
 
-El precio que recibe Kestore es el precio mayorista del CRM más el IVA del
-producto, redondeado al centavo. Como el CRM guarda los precios sin IVA, algunos
-precios redondos de Kestore quedan a un centavo; por ejemplo, $35,00 se guarda
-como $30,43 sin IVA y vuelve como $34,99.
+`precioSinIva` es exactamente el precio mayorista guardado en el CRM. `precio`
+le suma el IVA del producto y se redondea al centavo, así que puede diferir en
+un centavo del precio con IVA original (por ejemplo, $35,00 se guarda como
+$30,43 sin IVA y vuelve como $34,99). Por eso Kestore debe tomar `precioSinIva`.

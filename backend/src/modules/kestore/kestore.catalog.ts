@@ -35,7 +35,7 @@ export function kestoreState(variant: StateInput) {
     stock: active ? Math.max(0, variant.stock - variant.reservedStock) : 0,
     priceWithoutIva: priceWithoutIva.toDecimalPlaces(2),
     ivaRate,
-    // Los precios del CRM no incluyen IVA; Kestore publica el precio con IVA.
+    // Los precios del CRM no incluyen IVA; el precio con IVA va de referencia.
     price: priceWithoutIva.times(ivaRate.div(100).plus(1)).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
   };
 }
