@@ -29,5 +29,6 @@ Promise.resolve().then(() => {
     // createApp(): los tests nunca deben arrancar un job real.
     (require("./jobs/scheduler") as typeof import("./jobs/scheduler")).startScheduler();
     (require("./jobs/fiscalWorker") as typeof import("./jobs/fiscalWorker")).startFiscalWorker();
+    (require("./jobs/kestoreSync") as typeof import("./jobs/kestoreSync")).startKestoreSync();
   });
 });

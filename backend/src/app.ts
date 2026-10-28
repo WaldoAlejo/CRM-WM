@@ -18,6 +18,7 @@ import { imagesRouter } from "./modules/images/images.routes";
 import { importBatchesRouter } from "./modules/importBatches/importBatches.routes";
 import { insuranceClaimsRouter } from "./modules/insuranceClaims/insuranceClaims.routes";
 import { inventoryRouter } from "./modules/inventory/inventory.routes";
+import { kestoreRouter } from "./modules/kestore/kestore.routes";
 import { locationsRouter } from "./modules/locations/locations.routes";
 import { consignmentRouter } from "./modules/consignment/consignment.routes";
 import { productsRouter } from "./modules/products/products.routes";
@@ -37,6 +38,8 @@ export function createApp() {
   const app = express();
 
   app.use(cors(buildCorsOptions()));
+  // Antes de express.json(): verifica la firma sobre el cuerpo crudo.
+  app.use("/api/integrations/kestore", kestoreRouter);
   app.use(express.json());
 
   app.get("/health", async (_req, res) => {

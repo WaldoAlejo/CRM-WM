@@ -47,6 +47,7 @@ Variables del servicio (pestaña Variables del servicio, nunca Shared Variables)
 | `FISCAL_PRODUCTION_ENABLED` | `false` hasta completar las pruebas con el SRI |
 | `FISCAL_WORKER_ENABLED` | `true` |
 | `REMINDERS_ENABLED` | `false` hasta verificar el correo; luego `true` |
+| `KESTORE_WEBHOOK_SECRET`, `KESTORE_WEBHOOK_URL`, `KESTORE_WHOLESALER_RUC` | Integración con Kestore; ver [INTEGRACION_KESTORE.md](INTEGRACION_KESTORE.md) |
 
 `CORS_ORIGIN` es obligatoria en producción y acepta varios orígenes separados por
 comas, sin espacios ni `/` final. Cambiar una variable redespliega el servicio.

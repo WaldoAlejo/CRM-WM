@@ -508,6 +508,7 @@ model ProductVariant {
   dispatchItems    DispatchOrderItem[]
   consignmentLines ConsignmentLine[]
   returnLines      ReturnLine[]
+  kestoreSyncState KestoreSyncState?
 
   deletedAt DateTime? // Soft delete.
   createdAt DateTime  @default(now())
@@ -768,6 +769,7 @@ model DispatchOrder {
   fiscalIssuer FiscalIssuer? @relation(fields: [fiscalIssuerId], references: [id], onDelete: Restrict)
   fiscalEnvironment String?
   fiscalDocuments FiscalDocument[]
+  kestoreOrder    KestoreOrder?
   // Cache de notas autorizadas/anulaciones confirmadas; no representa un pago.
   fiscalCreditTotal Decimal @default(0) @db.Decimal(12, 2)
   id          String @id @default(cuid())
@@ -1482,4 +1484,31 @@ model MailDelivery {
   createdAt  DateTime        @default(now())
 
   @@index([documentId, createdAt])
+}
+
+// Último estado de cada variante que Kestore confirmó recibir por el webhook de
+// stock. El worker compara contra el estado actual y solo envía lo que cambió;
+// así cualquier cambio (ingreso, despacho, reserva, precio, publicación) llega a
+// Kestore sin tener que avisar desde cada lugar que toca el stock.
+model KestoreSyncState {
+  variantId String         @id
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  code      String // kestoreCode enviado: si cambia, el código viejo se envía inactivo.
+  stock     Int
+  price     Decimal        @db.Decimal(10, 2) // Con IVA, como lo publica Kestore.
+  active    Boolean
+  sentAt    DateTime
+}
+
+// Pedido pagado en Kestore convertido en despacho PENDIENTE para el mayorista
+// Kestore. orderNumber es el número de Kestore: un reintento con el mismo
+// número devuelve el despacho ya creado en vez de reservar stock dos veces.
+model KestoreOrder {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
+  requestHash     String // sha256 del cuerpo: el mismo número con otro contenido se rechaza.
+  dispatchOrderId String        @unique
+  dispatchOrder   DispatchOrder @relation(fields: [dispatchOrderId], references: [id], onDelete: Restrict)
+  cancelledAt     DateTime?
+  createdAt       DateTime      @default(now())
 }
