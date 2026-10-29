@@ -68,6 +68,10 @@ describe("GET /catalog", () => {
       dimensionesCm: { largo: 10, ancho: 7, alto: 14 }, pesoKg: 0.5 });
     expect(yara.imagenes[0]).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/uploads\/products\/yara\.jpg$/);
     expect(hidden).toMatchObject({ codigo: "PERKE999", activo: false, stock: 0 });
+
+    // Detrás del proxy de Railway las fotos deben salir con el protocolo público.
+    const proxied = await signed("get", "/catalog").set("X-Forwarded-Proto", "https");
+    expect(proxied.body.items[0].imagenes[0]).toMatch(/^https:\/\/127\.0\.0\.1:\d+\/uploads\//);
   });
 });
 

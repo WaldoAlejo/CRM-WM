@@ -23,6 +23,15 @@ describe("Precios automáticos en el producto", () => {
     expect(payload).not.toHaveProperty("costPriceUSD");
     expect(payload).not.toHaveProperty("wholesaleDiscountPct");
   });
+  it("envía el precio mayorista solo cuando se cambia (llega a Kestore)", async () => {
+    update.mockClear();
+    render(<VariantFormDialog open onOpenChange={() => {}} productId="p1" productStatus="ACTIVE" variant={variant} />);
+    fireEvent.change(screen.getByLabelText("Precio mayorista / para Kestore (USD, sin IVA)"), { target: { value: "34.48" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(update).toHaveBeenCalledOnce());
+    expect(update.mock.calls[0][0].values).toMatchObject({ wholesalePrice: 34.48 });
+    expect(update.mock.calls[0][0].values).not.toHaveProperty("retailPrice");
+  });
   it("indica que los precios se completarán al recibir una variante nueva", () => {
     render(<VariantFormDialog open onOpenChange={() => {}} productId="p1" productStatus="ACTIVE" variant={null} />);
     expect(screen.getByText("Pendiente de recibir una importación con costo y CBM.")).toBeInTheDocument();

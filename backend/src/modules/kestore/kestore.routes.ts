@@ -34,7 +34,9 @@ function parseJson(body: Buffer) {
 kestoreRouter.use(requireKestoreSignature);
 
 kestoreRouter.get("/catalog", asyncHandler(async (req, res) => {
-  const baseUrl = process.env.PUBLIC_API_URL?.trim() || `${req.protocol}://${req.get("host")}`;
+  // Railway termina el HTTPS en su proxy: el protocolo original llega en X-Forwarded-Proto.
+  const protocol = req.get("x-forwarded-proto")?.split(",")[0].trim() || req.protocol;
+  const baseUrl = process.env.PUBLIC_API_URL?.trim() || `${protocol}://${req.get("host")}`;
   const items = (await findKestoreVariants()).filter((v) => v.kestoreCode).map((v) => toCatalogItem(v, baseUrl));
   res.json({ ok: true, generadoEn: new Date().toISOString(), items });
 }));

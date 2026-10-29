@@ -99,7 +99,10 @@ export function VariantFormDialog({
           maxStackUnits: values.maxStackUnits ?? 1,
           dimensionsCm: values.dimensionsCm || null,
           ...(retailPriceOverride !== undefined && { retailPrice: values.retailPrice }),
-          ...(wholesalePriceOverride !== undefined && { wholesalePrice: values.wholesalePrice }),
+          // Solo si se tocó (guardar otros datos no reescribe precios) y solo
+          // quien ve precios: el backend rechaza el campo para OPERATOR.
+          ...((wholesalePriceOverride !== undefined || (canSeePricing && form.formState.dirtyFields.wholesalePrice))
+            && { wholesalePrice: values.wholesalePrice ?? null }),
         }
       : {
           attributes,
@@ -109,6 +112,7 @@ export function VariantFormDialog({
           weightKg: values.weightKg,
           maxStackUnits: values.maxStackUnits ?? 1,
           dimensionsCm: values.dimensionsCm || undefined,
+          ...(canSeePricing && values.wholesalePrice !== undefined && { wholesalePrice: values.wholesalePrice }),
           force: values.force,
         };
 
@@ -234,6 +238,22 @@ export function VariantFormDialog({
                 <div>
                   <div className="text-sm"><p>Costo real promedio ponderado (USD)</p><p className="font-medium">{realCost != null ? '$' + realCost.toFixed(2) : "Pendiente de importación"}</p></div>
                 </div>
+                <FormField
+                  control={form.control}
+                  name="wholesalePrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Precio mayorista / para Kestore (USD, sin IVA)</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={0} step="any" placeholder="Opcional" {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormDescription>
+                        Es el precio al que WM le vende a Kestore. Si el producto se publica en Kestore, el cambio llega en unos segundos.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </section>
             ) : null}
 
