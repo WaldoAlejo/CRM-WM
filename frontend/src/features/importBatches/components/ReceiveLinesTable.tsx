@@ -8,7 +8,7 @@ import { FormControl, FormField, FormItem, FormMessage } from "@/components/ui/f
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ReceiveLineFormValues } from "../importBatches.schema";
-import { landedUnitCost, volumeCostPerUnit } from "../landedCost";
+import { landedUnitCost, lineExpenses, type LandedAllocation } from "../landedCost";
 
 // Tanto la pantalla de "nuevo lote" como la de "recibir más mercadería"
 // comparten esta tabla: solo cambia el form que la contiene, y ambos tienen
@@ -22,9 +22,9 @@ interface ReceiveLinesTableProps<T extends FormWithLines> {
   errors: FieldErrors<T>;
   fields: FieldArrayWithId<T, ArrayPath<T>, "id">[];
   remove: (index: number) => void;
-  // Prorrateo por unidad ya calculado (null = no mostrar costo puesto: es
+  // Reparto de gastos del lote (null = no mostrar costo puesto: es
   // OPERATOR, que ni siquiera ve costos del lote).
-  costPerCbm: number | null;
+  allocation: LandedAllocation | null;
   disabled?: boolean;
 }
 
@@ -33,7 +33,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
   errors,
   fields,
   remove,
-  costPerCbm,
+  allocation,
   disabled,
 }: ReceiveLinesTableProps<T>) {
   const form = useFormContext();
@@ -52,7 +52,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
     );
   }
 
-  const showLanded = costPerCbm !== null;
+  const showLanded = allocation !== null;
 
   return (
     <div className="space-y-2">
@@ -72,7 +72,10 @@ export function ReceiveLinesTable<T extends FormWithLines>({
         <TableBody>
           {fields.map((field, index) => {
             const line = lines[index];
-            const landed = showLanded ? landedUnitCost(Number(line?.unitCost ?? 0) || 0, volumeCostPerUnit(costPerCbm!, Number(line?.volumeCbm) || 0, Number(line?.quantity) || 0)) : null;
+            const quantity = Number(line?.quantity) || 0;
+            const unitCost = Number(line?.unitCost ?? 0) || 0;
+            const expenses = allocation ? lineExpenses(allocation, Number(line?.volumeCbm) || 0, quantity * unitCost) : 0;
+            const landed = showLanded ? landedUnitCost(unitCost, quantity > 0 ? expenses / quantity : 0) : null;
             return (
               <TableRow key={field.id}>
                 <TableCell>
@@ -120,7 +123,7 @@ export function ReceiveLinesTable<T extends FormWithLines>({
                   <FormItem><FormControl><Input type="number" min="0.000001" step="any" aria-label={`CBM totales ${line?.sku}`} disabled={disabled} {...f} /></FormControl><FormMessage /></FormItem>
                 )} /></TableCell>
                 {showLanded ? (
-                  <><TableCell>${((costPerCbm ?? 0) * (Number(line?.volumeCbm) || 0)).toFixed(2)}</TableCell><TableCell className="text-sm font-medium">${landed?.toFixed(2)}</TableCell></>
+                  <><TableCell>${expenses.toFixed(2)}</TableCell><TableCell className="text-sm font-medium">${landed?.toFixed(2)}</TableCell></>
                 ) : null}
                 <TableCell>
                   <FormField

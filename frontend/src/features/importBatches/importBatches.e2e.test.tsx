@@ -13,7 +13,7 @@ import { CreateImportBatchPage } from "./CreateImportBatchPage";
 import { ImportBatchDetailPage } from "./ImportBatchDetailPage";
 import { ImportBatchesPage } from "./ImportBatchesPage";
 import { ReceiveStockPage } from "./ReceiveStockPage";
-import { landedUnitCost, costPerCbm, volumeCostPerUnit, totalBatchCost } from "./landedCost";
+import { landedUnitCost } from "./landedCost";
 
 globalThis.fetch = undiciFetch as unknown as typeof fetch;
 
@@ -179,12 +179,13 @@ describe("Importaciones — lote → recepción → stock por ubicación, contra
     fireEvent.click(screen.getByRole("combobox", { name: /proveedor/i }));
     fireEvent.click(await findLastByTextEventually(SUPPLIER_NAME));
 
-    // Vista previa en vivo: (30+20+10) / 10 unidades = $0.86 por unidad;
-    // costo puesto = 5 + (60 / 70 × 1 / 10) = $5.09.
+    // Vista previa en vivo: flete + otros = 40 / 70 CBM = $0.57 por CBM; la
+    // aduana (20) va completa a la única línea por valor.
+    // Costo puesto = 5 + (40 / 70 × 1 + 20) / 10 = $7.06.
     const preview = await screen.findByTestId("landed-cost-preview");
     expect(preview.textContent).toContain("$60.00");
-    expect(preview.textContent).toContain("$0.86");
-    await findLastByTextEventually("$5.09");
+    expect(preview.textContent).toContain("$0.57");
+    await findLastByTextEventually("$7.06");
 
     fireEvent.click(screen.getByRole("button", { name: /crear lote y recibir/i }));
 
@@ -202,24 +203,24 @@ describe("Importaciones — lote → recepción → stock por ubicación, contra
       movements: { quantity: number; unitCost: string; landedCostPerUnit: string; toLocationId: string }[];
     }>(`/import-batches/${batchId}`);
     expect(detail.movements).toHaveLength(1);
-    const proration = volumeCostPerUnit(costPerCbm(totalBatchCost({ freightCost: 30, customsCost: 20, otherCosts: 10 }), 70), 1, 10);
+    const proration = (40 / 70 * 1 + 20) / 10;
     expect(Number(detail.movements[0].landedCostPerUnit)).toBeCloseTo(proration, 6);
-    expect(landedUnitCost(5, proration)).toBe(5.09);
+    expect(landedUnitCost(5, proration)).toBe(7.06);
     expect(detail.movements[0].toLocationId).toBe(locationId);
 
     expect(await netStockAtLocation()).toBe(10);
   }, 45000);
 
-  it("segunda tanda sobre el mismo lote: mantiene la tarifa por CBM del lote y suma al stock de la ubicación", async () => {
+  it("segunda tanda sobre el mismo lote: mantiene la tarifa por CBM, recalcula la aduana por valor y suma al stock de la ubicación", async () => {
     const admin = await loginAs("admin");
     setSession(admin.token, admin.user);
     renderApp(`/import-batches/${batchId}/receive`);
 
     await screen.findByRole("heading", { name: new RegExp(REFERENCE) }, { timeout: 8000 });
     await addLine("5", "4");
-    // 60 / 5 unidades = $0.86 por unidad en ESTA tanda.
+    // Flete + otros por CBM no cambia entre tandas.
     const preview = await screen.findByTestId("landed-cost-preview");
-    expect(preview.textContent).toContain("$0.86");
+    expect(preview.textContent).toContain("$0.57");
 
     fireEvent.click(screen.getByRole("button", { name: /^recibir mercadería$/i }));
     await screen.findByRole("heading", { name: REFERENCE }, { timeout: 10000 });
@@ -228,7 +229,9 @@ describe("Importaciones — lote → recepción → stock por ubicación, contra
       `/import-batches/${batchId}`
     );
     expect(detail.movements).toHaveLength(2);
-    expect(Number(detail.movements.find((m) => m.quantity === 5)!.landedCostPerUnit)).toBeCloseTo(60 / 70 / 10, 6);
+    // FOB del lote: 10 × 5 + 5 × 4 = 70 -> la aduana (20) se reparte 50/70 y 20/70.
+    expect(Number(detail.movements.find((m) => m.quantity === 5)!.landedCostPerUnit)).toBeCloseTo((40 / 70 * 0.5 + 20 * 20 / 70) / 5, 6);
+    expect(Number(detail.movements.find((m) => m.quantity === 10)!.landedCostPerUnit)).toBeCloseTo((40 / 70 * 1 + 20 * 50 / 70) / 10, 6);
     expect(await netStockAtLocation()).toBe(15);
   }, 45000);
 

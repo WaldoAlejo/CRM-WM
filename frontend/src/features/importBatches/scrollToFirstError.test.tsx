@@ -14,7 +14,7 @@ function FormExample() {
   const fields = useFieldArray({ control: form.control, name: 'lines' });
   const formRef = useScrollToFirstError(form.formState);
   return <Form {...form}><form ref={formRef} onSubmit={form.handleSubmit(() => {})}>
-    <ReceiveLinesTable control={form.control} errors={form.formState.errors} fields={fields.fields} remove={fields.remove} costPerCbm={null} />
+    <ReceiveLinesTable control={form.control} errors={form.formState.errors} fields={fields.fields} remove={fields.remove} allocation={null} />
     <button type="submit">Guardar</button>
   </form></Form>;
 }

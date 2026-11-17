@@ -9,7 +9,7 @@ function FormExample() {
   const form = useForm<ReceiveFormValues>({ defaultValues: { lines: [{ variantId: 'v', sku: 'PRODUCTO-1', productName: 'Producto', label: null, quantity: 1, unitCost: 10, volumeCbm: 3.79, locationId: 'l' }] } });
   const fields = useFieldArray({ control: form.control, name: 'lines' });
   const lines = useWatch({ control: form.control, name: 'lines' });
-  return <Form {...form}><ReceiveLinesTable control={form.control} errors={form.formState.errors} fields={fields.fields} remove={fields.remove} costPerCbm={null} /><output data-testid="values">{JSON.stringify(lines)}</output></Form>;
+  return <Form {...form}><ReceiveLinesTable control={form.control} errors={form.formState.errors} fields={fields.fields} remove={fields.remove} allocation={null} /><output data-testid="values">{JSON.stringify(lines)}</output></Form>;
 }
 describe('Recepción por cartones', () => {
   it('calcula 210 unidades, 12 pilas y conserva 3.79 CBM sin pedir dimensiones', () => {

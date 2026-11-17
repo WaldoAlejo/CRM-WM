@@ -18,7 +18,7 @@ import { ReceiveLinesTable } from "./components/ReceiveLinesTable";
 import { VariantSearchAddLine } from "./components/VariantSearchAddLine";
 import { createImportBatchDefaultValues, createImportBatchFormSchema } from "./importBatches.schema";
 import type { CreateImportBatchFormValues } from "./importBatches.schema";
-import { costPerCbm, totalBatchCost } from "./landedCost";
+import { buildAllocation, lineExpenses, totalBatchCost } from "./landedCost";
 import { useScrollToFirstError } from "./scrollToFirstError";
 import { useImportBatchMutations } from "./useImportBatchMutations";
 import { useSupplierOptions } from "./useSupplierOptions";
@@ -60,10 +60,15 @@ export function CreateImportBatchPage() {
     customsCost: Number(customsCost) || 0,
     otherCosts: Number(otherCosts) || 0,
   });
-  const proration = costPerCbm(totalCost, Number(containerCbm));
+  const allocation = buildAllocation(
+    { freightCost: Number(freightCost) || 0, customsCost: Number(customsCost) || 0, otherCosts: Number(otherCosts) || 0 },
+    Number(containerCbm), originTotal,
+  );
   const volumeCbm = lines.reduce((sum, l) => sum + (Number(l?.volumeCbm) || 0), 0);
-  // Los gastos se reparten sobre el volumen contratado: si las líneas ocupan
-  // menos, el resto queda para recepciones futuras de este mismo lote.
+  const expensesTotal = lineExpenses(allocation, volumeCbm, originTotal);
+  // Flete y otros se reparten sobre el volumen contratado: si las líneas ocupan
+  // menos, ese resto queda para recepciones futuras de este mismo lote. La
+  // aduana se reparte por valor entre todo lo recibido.
   const unallocatedCbm = Number(containerCbm) - volumeCbm;
   const linesCbmText = volumeCbm.toFixed(6).replace(/\.?0+$/, "");
   const showUnallocatedWarning = totalCost > 0 && volumeCbm > 0 && unallocatedCbm > 0.0000001;
@@ -275,14 +280,14 @@ export function CreateImportBatchPage() {
               <LandedCostPreview
                 totalCost={totalCost}
                 totalUnits={totalUnits}
-                costPerCbm={proration}
-                volumeCbm={volumeCbm}
+                volumeRate={allocation.volumeRate}
+                expensesTotal={expensesTotal}
                 originTotal={originTotal}
               />
               {showUnallocatedWarning ? (
                 <p className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm" role="status">
                   Las líneas suman {linesCbmText} CBM de {Number(containerCbm)} contratados: a esta
-                  mercadería se le cargan ${(proration * volumeCbm).toFixed(2)} de los ${totalCost.toFixed(2)} de gastos del lote.
+                  mercadería se le cargan ${expensesTotal.toFixed(2)} de los ${totalCost.toFixed(2)} de gastos del lote.
                   El resto queda para mercadería que recibas después en este mismo lote. Si no llegará nada más, ingresa{" "}
                   {linesCbmText} en el volumen contratado.
                 </p>
@@ -298,7 +303,7 @@ export function CreateImportBatchPage() {
               errors={form.formState.errors}
               fields={fields}
               remove={remove}
-              costPerCbm={isAdmin ? proration : null}
+              allocation={isAdmin ? allocation : null}
             />
           </section>
 

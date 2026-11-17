@@ -7,6 +7,7 @@ import { serializeMovementForRole } from "../inventory/inventory.movementSeriali
 import { serializeImportBatchForRole } from "./importBatches.serializer";
 import { computeReceiveRequestHash } from "./receiveRequestHash";
 import type { CartonPackaging } from '../../lib/cartonPackaging';
+import { reallocateBatchLandedCosts } from "./landedCostAllocation";
 
 interface CreateImportBatchInput {
   containerType: "20" | "40" | "40HC" | "LCL";
@@ -177,10 +178,6 @@ export async function receiveStock(
   if (!batch.containerCbm || !batch.containerType) {
     throw badRequest("Este lote histórico no tiene volumen de contenedor. Crea un lote con CBM para las nuevas recepciones.");
   }
-  const totalBatchCost = new Prisma.Decimal(batch.freightCost ?? 0)
-    .plus(batch.customsCost ?? 0).plus(batch.otherCosts ?? 0);
-  const costPerCbm = totalBatchCost.dividedBy(batch.containerCbm);
-
   const result = await prisma.$transaction(async (tx) => {
     // Updating the immutable reference to itself locks the batch in Prisma's
     // configured schema, including isolated test schemas behind a pooler.
@@ -212,7 +209,8 @@ export async function receiveStock(
         type: MovementType.INGRESO,
         quantity: line.quantity,
         unitCost: line.unitCost,
-        landedCostPerUnit: costPerCbm.times(line.volumeCbm).dividedBy(line.quantity).toNumber(),
+        // Valor provisional: reallocateBatchLandedCosts lo recalcula abajo.
+        landedCostPerUnit: 0,
         volumeCbm: line.volumeCbm,
         notes: line.notes,
         locationId: line.locationId,
@@ -225,6 +223,11 @@ export async function receiveStock(
       });
       movements.push(movement);
     }
+    // Recalcula todo el lote: la aduana se reparte sobre el FOB total recibido.
+    await reallocateBatchLandedCosts(tx, batch);
+    const reallocated = await tx.inventoryMovement.findMany({ where: { id: { in: movements.map((m) => m.id) } } });
+    const byId = new Map(reallocated.map((m) => [m.id, m]));
+    movements.splice(0, movements.length, ...movements.map((m) => byId.get(m.id) ?? m));
 
     // JSON.parse(JSON.stringify(...)) fuerza a texto plano (Decimal -> string
     // vía su propio toJSON, Date -> ISO string): es justo lo que necesita el

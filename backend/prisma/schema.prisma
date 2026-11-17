@@ -553,7 +553,8 @@ model ImportBatch {
   notes       String?
   createdAt   DateTime  @default(now())
 
-  // Gastos en USD, excluyen la compra. Tarifa = suma / containerCbm.
+  // Gastos en USD, excluyen la compra. Flete y otros: tarifa = (flete + otros) / containerCbm.
+  // Aduana: se reparte por valor FOB de las líneas recibidas (ver landedCostAllocation.ts).
   // Cada ingreso conserva volumeCbm y su gasto unitario en landedCostPerUnit.
   freightCost Decimal? @db.Decimal(10, 2) // Flete internacional del lote completo.
   customsCost Decimal? @db.Decimal(10, 2) // Aranceles/impuestos de nacionalización.

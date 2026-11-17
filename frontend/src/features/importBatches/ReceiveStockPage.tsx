@@ -16,7 +16,7 @@ import { ReceiveLinesTable } from "./components/ReceiveLinesTable";
 import { VariantSearchAddLine } from "./components/VariantSearchAddLine";
 import { receiveFormDefaultValues, receiveFormSchema } from "./importBatches.schema";
 import type { ReceiveFormValues } from "./importBatches.schema";
-import { costPerCbm, totalBatchCost } from "./landedCost";
+import { buildAllocation, lineExpenses, totalBatchCost } from "./landedCost";
 import { useScrollToFirstError } from "./scrollToFirstError";
 import { useImportBatch } from "./useImportBatches";
 import { useImportBatchMutations } from "./useImportBatchMutations";
@@ -55,8 +55,15 @@ export function ReceiveStockPage() {
     customsCost: Number(batch.customsCost) || 0,
     otherCosts: Number(batch.otherCosts) || 0,
   });
-  const proration = costPerCbm(totalCost, Number(batch.containerCbm));
+  // La aduana se reparte por valor entre lo ya recibido y estas líneas; al
+  // guardar, el servidor recalcula también los ingresos anteriores del lote.
+  const receivedFob = batch.movements.reduce((sum, m) => sum + m.quantity * (Number(m.unitCost) || 0), 0);
+  const allocation = buildAllocation(
+    { freightCost: Number(batch.freightCost) || 0, customsCost: Number(batch.customsCost) || 0, otherCosts: Number(batch.otherCosts) || 0 },
+    Number(batch.containerCbm), receivedFob + originTotal,
+  );
   const volumeCbm = lines.reduce((sum, l) => sum + (Number(l?.volumeCbm) || 0), 0);
+  const expensesTotal = lineExpenses(allocation, volumeCbm, originTotal);
 
   function handleAddLine(result: SearchResult) {
     append({
@@ -112,8 +119,8 @@ export function ReceiveStockPage() {
             <LandedCostPreview
               totalCost={totalCost}
               totalUnits={totalUnits}
-              costPerCbm={proration}
-                volumeCbm={volumeCbm}
+              volumeRate={allocation.volumeRate}
+              expensesTotal={expensesTotal}
               originTotal={originTotal}
             />
           ) : null}
@@ -127,7 +134,7 @@ export function ReceiveStockPage() {
               errors={form.formState.errors}
               fields={fields}
               remove={remove}
-              costPerCbm={isAdmin ? proration : null}
+              allocation={isAdmin ? allocation : null}
             />
           </section>
           <div className="flex justify-end gap-2">

@@ -357,7 +357,7 @@ describe("Ubicación de destino en /receive", () => {
 });
 
 describe("Prorrateo de landedCostPerUnit en /receive", () => {
-  it("reparte gastos por volumen y luego por las unidades de cada línea", async () => {
+  it("reparte flete y otros por volumen y la aduana por valor FOB", async () => {
     const { token } = await createTestUser("ADMIN");
     const { variant: variantA } = await setupProductWithVariant();
     const { variant: variantB } = await setupProductWithVariant();
@@ -371,7 +371,7 @@ describe("Prorrateo de landedCostPerUnit en /receive", () => {
       },
     });
 
-    // total del lote = 160, total unidades de ESTE receive = 12 + 8 = 20 -> landedCostPerUnit = 8
+    // flete + otros = 110 sobre 70 CBM; aduana 50 por FOB (120 y 120 -> 25 cada línea).
     const res = await request(app)
       .post(`/api/import-batches/${batch.id}/receive`)
       .set("Authorization", `Bearer ${token}`)
@@ -386,7 +386,7 @@ describe("Prorrateo de landedCostPerUnit en /receive", () => {
     const movements = await prisma.inventoryMovement.findMany({ where: { importBatchId: batch.id } });
     expect(movements).toHaveLength(2);
     for (const m of movements) {
-      expect(Number(m.landedCostPerUnit)).toBeCloseTo(160 / 70 / m.quantity, 6);
+      expect(Number(m.landedCostPerUnit)).toBeCloseTo((110 / 70 + 25) / m.quantity, 6);
     }
   });
 
@@ -472,10 +472,15 @@ describe("Costeo CBM", () => {
     const first = await send(204, 4.68, "cbm-1");
     expect(first.status).toBe(201);
     expect(Number(first.body.movements[0].volumeCbm)).toBe(4.68);
-    expect(Number(first.body.movements[0].landedCostPerUnit)).toBeCloseTo(14.747899, 6);
+    // Flete + otros: 35000 / 70 = 500 por CBM. Aduana: toda la de la única línea.
+    expect(Number(first.body.movements[0].landedCostPerUnit)).toBeCloseTo((500 * 4.68 + 10000) / 204, 6);
     const second = await send(102, 2.34, "cbm-2");
     expect(second.status).toBe(201);
-    expect(second.body.movements[0].landedCostPerUnit).toBe(first.body.movements[0].landedCostPerUnit);
+    // Con el mismo costo unitario y CBM por unidad, ambas recepciones quedan iguales
+    // tras recalcular el lote (la aduana se reparte ahora entre 306 unidades).
+    const saved = await prisma.inventoryMovement.findMany({ where: { importBatchId: batch.id }, orderBy: { createdAt: "asc" } });
+    expect(Number(saved[0].landedCostPerUnit)).toBeCloseTo((500 * 4.68 + 10000 * 204 / 306) / 204, 5);
+    expect(saved[1].landedCostPerUnit!.toString()).toBe(saved[0].landedCostPerUnit!.toString());
     expect((await send(204, 4.68, "cbm-1")).status).toBe(201);
     expect((await send(204, 4.69, "cbm-1")).status).toBe(422);
     expect((await send(1, 64, "cbm-over")).status).toBe(400);
@@ -501,7 +506,7 @@ describe("Costeo CBM", () => {
 });
 
 describe("Carga suelta LCL", () => {
-  it("reparte los gastos propios sobre 26 CBM y conserva la tarifa entre recepciones", async () => {
+  it("reparte flete y otros sobre 26 CBM, la aduana por valor y recalcula entre recepciones", async () => {
     const { token } = await createTestUser("ADMIN");
     const { variant: powerStationA } = await setupProductWithVariant();
     const { variant: powerStationB } = await setupProductWithVariant();
@@ -516,14 +521,18 @@ describe("Carga suelta LCL", () => {
       request(app).post(`/api/import-batches/${created.body.id}/receive`).set("Authorization", `Bearer ${token}`).send({ lines: [{ locationId: receiptLocationId, variantId, quantity, volumeCbm, unitCost }] });
     const first = await receive(powerStationA.id, 10, 6, 150);
     expect(first.status).toBe(201);
-    expect(Number(first.body.movements[0].landedCostPerUnit)).toBe(120);
+    const volumeRate = (2600 + 600) / 26;
+    expect(Number(first.body.movements[0].landedCostPerUnit)).toBeCloseTo((volumeRate * 6 + 2000) / 10, 5);
     const second = await receive(powerStationB.id, 20, 20, 100);
     expect(second.status).toBe(201);
-    expect(Number(second.body.movements[0].landedCostPerUnit)).toBe(200);
+    // FOB: A = 1500, B = 2000 -> la aduana se reparte 1500/3500 y 2000/3500.
+    expect(Number(second.body.movements[0].landedCostPerUnit)).toBeCloseTo((volumeRate * 20 + 2000 * 2000 / 3500) / 20, 5);
+    const firstSaved = await prisma.inventoryMovement.findUniqueOrThrow({ where: { id: first.body.movements[0].id } });
+    expect(Number(firstSaved.landedCostPerUnit)).toBeCloseTo((volumeRate * 6 + 2000 * 1500 / 3500) / 10, 5);
     const saved = await prisma.productVariant.findUniqueOrThrow({ where: { id: powerStationB.id } });
     expect(saved.wholesalePrice).toBeNull();
     expect(saved.retailPrice).toBeNull();
-    expect(10 * Number(first.body.movements[0].landedCostPerUnit) + 20 * Number(second.body.movements[0].landedCostPerUnit)).toBe(5200);
+    expect(10 * Number(firstSaved.landedCostPerUnit) + 20 * Number(second.body.movements[0].landedCostPerUnit)).toBeCloseTo(5200, 3);
     expect((await receive(powerStationA.id, 1, 0.01, 150)).status).toBe(400);
     const detail = await request(app).get(`/api/import-batches/${created.body.id}`).set("Authorization", `Bearer ${token}`);
     expect(detail.body.containerType).toBe("LCL");
