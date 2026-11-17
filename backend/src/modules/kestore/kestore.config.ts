@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { KestoreTarget } from "@prisma/client";
 
 // Integración con Kestore (ver INTEGRACION_KESTORE.md en la raíz). Misma firma que el
 // webhook de Siglo 21 que Kestore ya recibe: HMAC-SHA256 con un secreto
@@ -17,6 +18,33 @@ export function kestoreSecret(env: NodeJS.ProcessEnv = process.env): string | nu
 export function kestoreWebhookUrl(env: NodeJS.ProcessEnv = process.env): string | null {
   const url = env.KESTORE_WEBHOOK_URL?.trim();
   return url && /^https?:\/\//.test(url) ? url : null;
+}
+
+// kestore-dev: destino opcional para probar. Necesita su propio secreto, distinto
+// del de producción, para que el CRM sepa quién le habla: con él, el catálogo
+// muestra activos los productos "Solo kestore-dev" y los pedidos se rechazan.
+export function kestoreDevSecret(env: NodeJS.ProcessEnv = process.env): string | null {
+  const secret = env.KESTORE_DEV_WEBHOOK_SECRET?.trim();
+  return secret && secret.length >= 32 && secret !== kestoreSecret(env) ? secret : null;
+}
+
+export function kestoreDevWebhookUrl(env: NodeJS.ProcessEnv = process.env): string | null {
+  const url = env.KESTORE_DEV_WEBHOOK_URL?.trim();
+  return url && /^https?:\/\//.test(url) ? url : null;
+}
+
+export interface KestoreDestination { target: KestoreTarget; url: string; secret: string }
+
+// Destinos del webhook de stock, en orden de envío: primero kestore-dev, luego producción.
+export function kestoreDestinations(env: NodeJS.ProcessEnv = process.env): KestoreDestination[] {
+  const destinations: KestoreDestination[] = [];
+  const devUrl = kestoreDevWebhookUrl(env);
+  const devSecret = kestoreDevSecret(env);
+  if (devUrl && devSecret) destinations.push({ target: KestoreTarget.DEV, url: devUrl, secret: devSecret });
+  const url = kestoreWebhookUrl(env);
+  const secret = kestoreSecret(env);
+  if (url && secret) destinations.push({ target: KestoreTarget.PROD, url, secret });
+  return destinations;
 }
 
 export function signKestorePayload(secret: string, timestamp: string, body: Buffer | string): string {

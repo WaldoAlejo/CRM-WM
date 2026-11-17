@@ -126,6 +126,91 @@ describe("webhook de stock hacia Kestore", () => {
   });
 });
 
+describe("kestore-dev como segundo destino", () => {
+  const DEV_SECRET = "d".repeat(40);
+  const DEV_URL = "https://kestore-dev.test/crm/webhook/stock";
+
+  beforeEach(() => {
+    vi.stubEnv("KESTORE_DEV_WEBHOOK_SECRET", DEV_SECRET);
+    vi.stubEnv("KESTORE_DEV_WEBHOOK_URL", DEV_URL);
+  });
+
+  function signedDev(method: "get" | "post", path: string, body?: unknown) {
+    const raw = body === undefined ? "" : JSON.stringify(body);
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const req = request(app)[method](`${BASE}${path}`)
+      .set("X-Crm-Timestamp", timestamp)
+      .set("X-Crm-Signature", signKestorePayload(DEV_SECRET, timestamp, raw));
+    return body === undefined ? req : req.set("Content-Type", "application/json").send(raw);
+  }
+
+  it("envía primero a kestore-dev y luego a producción; lo de 'Solo kestore-dev' va inactivo a producción", async () => {
+    const variant = await perfume({ stock: 5 });
+    await prisma.product.update({ where: { id: variant.productId }, data: { kestoreDevOnly: true } });
+    const calls: { url: string; body: string; headers: Record<string, string> }[] = [];
+    const fetchOk = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), body: String(init!.body), headers: init!.headers as Record<string, string> });
+      return new Response('{"ok":true}', { status: 200 });
+    }) as unknown as typeof fetch;
+
+    // Producción no conocía el producto y no se publica allá: no se le envía nada.
+    await runKestoreSync(fetchOk);
+    expect(calls.map((c) => c.url)).toEqual([DEV_URL]);
+    expect(isValidKestoreSignature(DEV_SECRET, calls[0].headers["X-Crm-Timestamp"], calls[0].headers["X-Crm-Signature"], Buffer.from(calls[0].body))).toBe(true);
+    expect(JSON.parse(calls[0].body).items).toEqual([{ codigo: "FOUR032", stock: 5, precio: 36, precioSinIva: 31.3, activo: true }]);
+
+    // Al aprobarlo para producción, se publica allá; kestore-dev no cambia.
+    await prisma.product.update({ where: { id: variant.productId }, data: { kestoreDevOnly: false } });
+    await runKestoreSync(fetchOk);
+    expect(calls.map((c) => c.url)).toEqual([DEV_URL, "https://kestore.test/crm/webhook/stock"]);
+    expect(JSON.parse(calls[1].body).items).toEqual([{ codigo: "FOUR032", stock: 5, precio: 36, precioSinIva: 31.3, activo: true }]);
+
+    // Si vuelve a quedar solo para kestore-dev, producción lo recibe inactivo.
+    await prisma.product.update({ where: { id: variant.productId }, data: { kestoreDevOnly: true } });
+    await runKestoreSync(fetchOk);
+    expect(calls).toHaveLength(3);
+    expect(JSON.parse(calls[2].body).items).toEqual([{ codigo: "FOUR032", stock: 0, precio: 36, precioSinIva: 31.3, activo: false }]);
+    expect(await prisma.kestoreSyncState.count()).toBe(2);
+  });
+
+  it("si kestore-dev falla, producción igual recibe sus cambios", async () => {
+    await perfume();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const fetchDevDown = vi.fn(async (url: string | URL | Request) =>
+      new Response(String(url) === DEV_URL ? "caído" : '{"ok":true}', { status: String(url) === DEV_URL ? 500 : 200 })) as unknown as typeof fetch;
+    await runKestoreSync(fetchDevDown);
+    expect(fetchDevDown).toHaveBeenCalledTimes(2);
+    expect(await prisma.kestoreSyncState.findMany({ select: { target: true } })).toEqual([{ target: "PROD" }]);
+    expect((await pendingKestoreChanges("DEV")).items).toHaveLength(1);
+    error.mockRestore();
+  });
+
+  it("el catálogo pedido por kestore-dev publica lo de 'Solo kestore-dev'; el de producción no", async () => {
+    const variant = await perfume();
+    await prisma.product.update({ where: { id: variant.productId }, data: { kestoreDevOnly: true } });
+    expect((await signedDev("get", "/catalog")).body.items[0]).toMatchObject({ codigo: "FOUR032", activo: true, stock: 5 });
+    expect((await signed("get", "/catalog")).body.items[0]).toMatchObject({ codigo: "FOUR032", activo: false, stock: 0 });
+  });
+
+  it("kestore-dev no puede registrar ni consultar pedidos", async () => {
+    await perfume();
+    const order = { pedido: "KE-DEV-1", items: [{ codigo: "FOUR032", cantidad: 1 }], envio: { provincia: "Pichincha", ciudad: "Quito", direccion: "Av. Amazonas" } };
+    expect((await signedDev("post", "/orders", order)).status).toBe(403);
+    expect((await signedDev("get", "/orders/KE-DEV-1")).status).toBe(403);
+    expect((await signedDev("post", "/orders/KE-DEV-1/cancel")).status).toBe(403);
+    expect(await prisma.dispatchOrder.count()).toBe(0);
+  });
+
+  it("un secreto de dev igual al de producción no habilita a kestore-dev", async () => {
+    vi.stubEnv("KESTORE_DEV_WEBHOOK_SECRET", SECRET);
+    await perfume();
+    const fetchOk = vi.fn(async () => new Response('{"ok":true}', { status: 200 })) as unknown as typeof fetch;
+    await runKestoreSync(fetchOk);
+    expect(fetchOk).toHaveBeenCalledTimes(1);
+    expect(fetchOk).toHaveBeenCalledWith("https://kestore.test/crm/webhook/stock", expect.anything());
+  });
+});
+
 describe("pedidos de Kestore", () => {
   const order = { pedido: "KE-1001", items: [{ codigo: "FOUR032", cantidad: 2 }], envio: { provincia: "Pichincha", ciudad: "Quito", direccion: "Av. Amazonas" }, cliente: { nombre: "Ana Pérez", telefono: "0999999999" } };
 

@@ -258,12 +258,34 @@ entrega a WM la URL de su webhook.
 | `KESTORE_WHOLESALER_RUC` | RUC del mayorista "Kestore" registrado en el CRM. Los pedidos se registran a su nombre, a crédito, con sus días de crédito por defecto (30 si no tiene configurados) |
 | `KESTORE_SYNC_ENABLED` | `false` para pausar el envío de stock sin borrar la configuración |
 | `PUBLIC_API_URL` | Opcional: `https://crm-wm-production.up.railway.app`. Base para las fotos subidas al CRM en el catálogo; las fotos con URL externa no la necesitan |
+| `KESTORE_DEV_WEBHOOK_URL` | Opcional: webhook de stock de **kestore-dev**, para probar antes de publicar en producción |
+| `KESTORE_DEV_WEBHOOK_SECRET` | Secreto de kestore-dev (32 caracteres o más, **distinto** del de producción). Sin él, o si es igual al de producción, kestore-dev no se usa |
 
 Un producto se publica en Kestore cuando cumple todo esto:
 
 - La variante tiene **código de Kestore** y **precio mayorista**.
 - El producto tiene marcada la casilla **Publicar en Kestore**.
 - Ni el producto ni la variante están descontinuados ni eliminados.
+- Para Kestore producción, además, el producto **no** tiene marcada la casilla
+  **Kestore: solo kestore-dev (en prueba)**.
+
+### kestore-dev
+
+Con `KESTORE_DEV_WEBHOOK_URL` y `KESTORE_DEV_WEBHOOK_SECRET`, el CRM envía cada
+cambio primero a kestore-dev y luego a producción. Cada destino lleva su propio
+registro de lo enviado, así que si uno está caído el otro sigue recibiendo.
+
+kestore-dev firma sus peticiones con **su** secreto (`WmCrm:Secret` en
+kestore-dev). Así el CRM sabe quién llama:
+
+- `GET /catalog` firmado por kestore-dev publica activos los productos
+  marcados **solo kestore-dev**; firmado por producción los muestra inactivos.
+- kestore-dev **no** puede registrar, consultar ni anular pedidos (`403`): un
+  pedido de prueba nunca reserva stock real.
+
+Flujo para un producto nuevo: marcar **Publicar en Kestore** y **solo
+kestore-dev**, revisarlo en kestore-dev (nombre, fotos, subcategoría, PVP) y
+desmarcar **solo kestore-dev** para que pase a producción.
 
 `precioSinIva` es exactamente el precio mayorista guardado en el CRM. `precio`
 le suma el IVA del producto y se redondea al centavo, así que puede diferir en

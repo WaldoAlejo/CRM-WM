@@ -1,6 +1,6 @@
-import { Prisma } from "@prisma/client";
+import { KestoreTarget, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
-import { kestoreSecret, kestoreWebhookUrl, signKestorePayload } from "../modules/kestore/kestore.config";
+import { kestoreDestinations, signKestorePayload, type KestoreDestination } from "../modules/kestore/kestore.config";
 import { findKestoreVariants, kestoreState } from "../modules/kestore/kestore.catalog";
 
 const INTERVAL_MS = 10_000;
@@ -10,15 +10,20 @@ const REQUEST_TIMEOUT_MS = 15_000;
 interface StockItem { codigo: string; stock: number; precio: number; precioSinIva: number; activo: boolean }
 interface PendingState { variantId: string; code: string; stock: number; price: Prisma.Decimal; active: boolean }
 
-// Compara el estado actual de cada variante con el último que Kestore aceptó y
-// arma solo los cambios. Si cambió el código de Kestore, el código viejo se
-// envía inactivo para que no quede publicado con un stock que ya no se mueve.
-export async function pendingKestoreChanges() {
+const LABEL: Record<KestoreTarget, string> = { PROD: "kestore", DEV: "kestore-dev" };
+
+// Compara el estado actual de cada variante con el último que ese Kestore
+// aceptó y arma solo los cambios. Si cambió el código de Kestore, el código
+// viejo se envía inactivo para que no quede publicado con un stock que ya no se
+// mueve.
+export async function pendingKestoreChanges(target: KestoreTarget = KestoreTarget.PROD) {
   const items: StockItem[] = [];
   const states: PendingState[] = [];
   for (const variant of await findKestoreVariants()) {
-    const state = kestoreState(variant);
-    const previous = variant.kestoreSyncState;
+    const previous = variant.kestoreSyncStates.find((s) => s.target === target);
+    // Una variante sin código que este destino nunca recibió no le interesa.
+    if (!variant.kestoreCode && !previous) continue;
+    const state = kestoreState(variant, target);
     const code = variant.kestoreCode ?? previous!.code;
     if (previous && previous.code !== code && previous.active) {
       items.push({ codigo: previous.code, stock: 0, precio: previous.price.toNumber(), precioSinIva: 0, activo: false });
@@ -45,17 +50,15 @@ export async function sendKestoreStock(url: string, secret: string, items: Stock
   if (!response.ok) throw new Error(`Kestore respondió ${response.status}: ${(await response.text()).slice(0, 200)}`);
 }
 
+// Reintentos independientes por destino: un Kestore caído no frena al otro.
+const backoff = new Map<KestoreTarget, { failures: number; nextAttemptAt: number }>();
 let running = false;
-let failures = 0;
-let nextAttemptAt = 0;
 
-export async function runKestoreSync(fetchImpl: typeof fetch = fetch) {
-  const url = kestoreWebhookUrl();
-  const secret = kestoreSecret();
-  if (!url || !secret || running || Date.now() < nextAttemptAt) return;
-  running = true;
+async function syncDestination({ target, url, secret }: KestoreDestination, fetchImpl: typeof fetch) {
+  const retry = backoff.get(target) ?? { failures: 0, nextAttemptAt: 0 };
+  if (Date.now() < retry.nextAttemptAt) return;
   try {
-    const { items, states } = await pendingKestoreChanges();
+    const { items, states } = await pendingKestoreChanges(target);
     for (let start = 0; start < items.length; start += MAX_ITEMS) {
       await sendKestoreStock(url, secret, items.slice(start, start + MAX_ITEMS), fetchImpl);
     }
@@ -63,27 +66,39 @@ export async function runKestoreSync(fetchImpl: typeof fetch = fetch) {
     // vuelve a calcular y reenvía (Kestore aplica el último valor recibido).
     const sentAt = new Date();
     for (const { variantId, ...data } of states) {
-      await prisma.kestoreSyncState.upsert({ where: { variantId }, create: { variantId, ...data, sentAt }, update: { ...data, sentAt } });
+      await prisma.kestoreSyncState.upsert({
+        where: { variantId_target: { variantId, target } },
+        create: { variantId, target, ...data, sentAt },
+        update: { ...data, sentAt },
+      });
     }
-    if (items.length) console.log(`[kestore] ${items.length} producto(s) enviados.`);
-    failures = 0;
+    if (items.length) console.log(`[${LABEL[target]}] ${items.length} producto(s) enviados.`);
+    backoff.delete(target);
   } catch (error) {
-    failures++;
+    const failures = retry.failures + 1;
     // Espera creciente hasta 5 minutos para no insistir contra un Kestore caído.
-    nextAttemptAt = Date.now() + Math.min(300_000, INTERVAL_MS * 2 ** failures);
-    console.error(`[kestore] No se pudo enviar el stock (intento ${failures}): ${error instanceof Error ? error.message : error}`);
+    backoff.set(target, { failures, nextAttemptAt: Date.now() + Math.min(300_000, INTERVAL_MS * 2 ** failures) });
+    console.error(`[${LABEL[target]}] No se pudo enviar el stock (intento ${failures}): ${error instanceof Error ? error.message : error}`);
+  }
+}
+
+// Envía a cada destino configurado, primero kestore-dev y luego producción.
+export async function runKestoreSync(fetchImpl: typeof fetch = fetch) {
+  if (running) return;
+  running = true;
+  try {
+    for (const destination of kestoreDestinations()) await syncDestination(destination, fetchImpl);
   } finally {
     running = false;
   }
 }
 
 export function resetKestoreSyncBackoff() {
-  failures = 0;
-  nextAttemptAt = 0;
+  backoff.clear();
 }
 
 export function startKestoreSync() {
-  if (process.env.KESTORE_SYNC_ENABLED === "false" || !kestoreWebhookUrl() || !kestoreSecret()) return () => {};
+  if (process.env.KESTORE_SYNC_ENABLED === "false" || kestoreDestinations().length === 0) return () => {};
   const run = () => void runKestoreSync();
   const timer = setInterval(run, INTERVAL_MS);
   timer.unref();

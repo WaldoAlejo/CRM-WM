@@ -131,6 +131,7 @@ interface CreateProductInput {
   ivaCode?: IvaCode;
   showOnWm?: boolean;
   showOnKestore?: boolean;
+  kestoreDevOnly?: boolean;
 }
 
 export async function createProduct(data: CreateProductInput, userId?: string) {
@@ -172,6 +173,7 @@ interface UpdateProductInput {
   ivaCode?: IvaCode;
   showOnWm?: boolean;
   showOnKestore?: boolean;
+  kestoreDevOnly?: boolean;
 }
 
 export async function updateProduct(id: string, data: UpdateProductInput, userId?: string) {

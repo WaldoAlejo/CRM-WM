@@ -26,6 +26,7 @@ export interface ProductListItem {
   status: ProductStatus;
   showOnWm: boolean;
   showOnKestore: boolean;
+  kestoreDevOnly: boolean;
   category: CategoryRef;
   subcategory: SubcategoryRef | null;
   brand: BrandRef | null;
@@ -111,6 +112,7 @@ export interface ProductDetail {
   status: ProductStatus;
   showOnWm: boolean;
   showOnKestore: boolean;
+  kestoreDevOnly: boolean;
   categoryId: string;
   category: CategoryRef;
   subcategoryId: string | null;

@@ -1,10 +1,10 @@
-import { Prisma, ProductStatus, type Product, type ProductVariant } from "@prisma/client";
+import { KestoreTarget, Prisma, ProductStatus, type Product, type ProductVariant } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { parseDimensions } from "../../lib/storageVolume";
 
 const variantInclude = {
   images: { select: { url: true }, orderBy: { position: "asc" } },
-  kestoreSyncState: true,
+  kestoreSyncStates: true,
   product: {
     include: {
       brand: { select: { name: true } },
@@ -18,15 +18,17 @@ const variantInclude = {
 
 type KestoreVariant = Prisma.ProductVariantGetPayload<{ include: typeof variantInclude }>;
 type StateInput = Pick<ProductVariant, "kestoreCode" | "wholesalePrice" | "isActive" | "deletedAt" | "stock" | "reservedStock">
-  & { product: Pick<Product, "showOnKestore" | "status" | "deletedAt" | "ivaRate"> };
+  & { product: Pick<Product, "showOnKestore" | "kestoreDevOnly" | "status" | "deletedAt" | "ivaRate"> };
 
 // Lo que Kestore debe mostrar de una variante. Solo se publica si tiene código
 // de Kestore, precio mayorista, el producto está marcado para Kestore y nada
-// está descontinuado ni borrado; si no, va inactiva y con stock 0.
-export function kestoreState(variant: StateInput) {
+// está descontinuado ni borrado; si no, va inactiva y con stock 0. Un producto
+// "Solo kestore-dev" se publica en kestore-dev y va inactivo a producción.
+export function kestoreState(variant: StateInput, target: KestoreTarget = KestoreTarget.PROD) {
   const { product } = variant;
   const active = !!variant.kestoreCode && variant.wholesalePrice !== null && variant.isActive && !variant.deletedAt
-    && product.showOnKestore && product.status === ProductStatus.ACTIVE && !product.deletedAt;
+    && product.showOnKestore && product.status === ProductStatus.ACTIVE && !product.deletedAt
+    && (target === KestoreTarget.DEV || !product.kestoreDevOnly);
   const priceWithoutIva = variant.wholesalePrice ?? new Prisma.Decimal(0);
   const ivaRate = product.ivaRate ?? new Prisma.Decimal(0);
   return {
@@ -45,7 +47,7 @@ export function kestoreState(variant: StateInput) {
 // ya se le enviaron (para avisarle cuando dejan de publicarse).
 export function findKestoreVariants() {
   return prisma.productVariant.findMany({
-    where: { OR: [{ kestoreCode: { not: null } }, { kestoreSyncState: { isNot: null } }] },
+    where: { OR: [{ kestoreCode: { not: null } }, { kestoreSyncStates: { some: {} } }] },
     include: variantInclude,
     orderBy: { kestoreCode: "asc" },
   });
@@ -63,8 +65,8 @@ function catalogName(variant: KestoreVariant) {
   return variant.product._count.variants > 1 && variant.label ? `${name} - ${variant.label}` : name;
 }
 
-export function toCatalogItem(variant: KestoreVariant, baseUrl: string) {
-  const state = kestoreState(variant);
+export function toCatalogItem(variant: KestoreVariant, baseUrl: string, target: KestoreTarget = KestoreTarget.PROD) {
+  const state = kestoreState(variant, target);
   const dimensions = parseDimensions(variant.dimensionsCm);
   const images = [...variant.images, ...variant.product.images].map((image) => absoluteUrl(image.url, baseUrl));
   return {

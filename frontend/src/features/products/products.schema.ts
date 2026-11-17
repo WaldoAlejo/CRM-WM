@@ -19,6 +19,7 @@ export const productFormSchema = z.object({
   ivaCode: optionalString(z.string().min(1)),
   showOnWm: z.boolean(),
   showOnKestore: z.boolean(),
+  kestoreDevOnly: z.boolean(),
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
@@ -34,4 +35,5 @@ export const productDefaultValues: ProductFormValues = {
   ivaCode: DEFAULT_IVA_CODE,
   showOnWm: false,
   showOnKestore: false,
+  kestoreDevOnly: false,
 };

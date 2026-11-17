@@ -357,6 +357,9 @@ model Product {
   // para que un producto recién creado no se publique antes de estar completo.
   showOnWm      Boolean @default(false)
   showOnKestore Boolean @default(false)
+  // Solo kestore-dev: se publica en kestore-dev para probarlo y Kestore
+  // producción lo recibe inactivo hasta que se apruebe (se desmarca).
+  kestoreDevOnly Boolean @default(false)
 
   categoryId    String
   category      Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -508,7 +511,7 @@ model ProductVariant {
   dispatchItems    DispatchOrderItem[]
   consignmentLines ConsignmentLine[]
   returnLines      ReturnLine[]
-  kestoreSyncState KestoreSyncState?
+  kestoreSyncStates KestoreSyncState[]
 
   deletedAt DateTime? // Soft delete.
   createdAt DateTime  @default(now())
@@ -1491,14 +1494,25 @@ model MailDelivery {
 // stock. El worker compara contra el estado actual y solo envía lo que cambió;
 // así cualquier cambio (ingreso, despacho, reserva, precio, publicación) llega a
 // Kestore sin tener que avisar desde cada lugar que toca el stock.
+// Destino del webhook de stock: Kestore producción o kestore-dev.
+enum KestoreTarget {
+  PROD
+  DEV
+}
+
+// Último estado que cada Kestore aceptó por variante: cada destino tiene el
+// suyo, así un Kestore caído no frena al otro.
 model KestoreSyncState {
-  variantId String         @id
+  variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  target    KestoreTarget  @default(PROD)
   code      String // kestoreCode enviado: si cambia, el código viejo se envía inactivo.
   stock     Int
   price     Decimal        @db.Decimal(10, 2) // Con IVA, como lo publica Kestore.
   active    Boolean
   sentAt    DateTime
+
+  @@id([variantId, target])
 }
 
 // Pedido pagado en Kestore convertido en despacho PENDIENTE para el mayorista

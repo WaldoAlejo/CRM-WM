@@ -39,6 +39,7 @@ function toFormValues(product: ProductFormDialogProps["product"]): ProductFormVa
     ivaCode: product.ivaCode ?? "",
     showOnWm: product.showOnWm,
     showOnKestore: product.showOnKestore,
+    kestoreDevOnly: product.kestoreDevOnly,
   };
 }
 
@@ -109,6 +110,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
       ivaCode: canSetTax ? values.ivaCode || undefined : undefined,
       showOnWm: values.showOnWm,
       showOnKestore: values.showOnKestore,
+      kestoreDevOnly: values.kestoreDevOnly,
     };
 
     const action = isEdit
@@ -330,6 +332,8 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
               {([
                 ["showOnWm", "Sitio web de WM"],
                 ["showOnKestore", "Kestore"],
+                // En prueba: llega a kestore-dev y Kestore producción lo recibe inactivo hasta desmarcarlo.
+                ["kestoreDevOnly", "Kestore: solo kestore-dev (en prueba)"],
               ] as const).map(([name, label]) => (
                 <FormField
                   key={name}
