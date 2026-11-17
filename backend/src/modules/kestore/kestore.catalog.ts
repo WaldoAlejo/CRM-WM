@@ -11,6 +11,7 @@ const variantInclude = {
       category: { select: { name: true } },
       subcategory: { select: { name: true } },
       images: { select: { url: true }, orderBy: { position: "asc" } },
+      _count: { select: { variants: { where: { deletedAt: null } } } },
     },
   },
 } satisfies Prisma.ProductVariantInclude;
@@ -54,6 +55,14 @@ function absoluteUrl(url: string, baseUrl: string) {
   return /^https?:\/\//.test(url) ? url : `${baseUrl.replace(/\/$/, "")}${url}`;
 }
 
+// Kestore crea un producto por código y lo nombra con este texto: si el
+// producto tiene varias variantes (colores, modelos), el nombre lleva la
+// variante para que no queden productos repetidos con el mismo nombre.
+function catalogName(variant: KestoreVariant) {
+  const name = variant.product.name.replace(/\s+/g, " ").trim();
+  return variant.product._count.variants > 1 && variant.label ? `${name} - ${variant.label}` : name;
+}
+
 export function toCatalogItem(variant: KestoreVariant, baseUrl: string) {
   const state = kestoreState(variant);
   const dimensions = parseDimensions(variant.dimensionsCm);
@@ -61,7 +70,7 @@ export function toCatalogItem(variant: KestoreVariant, baseUrl: string) {
   return {
     codigo: variant.kestoreCode,
     sku: variant.sku,
-    nombre: variant.product.name,
+    nombre: catalogName(variant),
     variante: variant.label,
     descripcion: variant.product.description,
     marca: variant.product.brand?.name ?? null,

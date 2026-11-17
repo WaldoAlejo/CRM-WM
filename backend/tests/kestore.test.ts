@@ -73,6 +73,17 @@ describe("GET /catalog", () => {
     const proxied = await signed("get", "/catalog").set("X-Forwarded-Proto", "https");
     expect(proxied.body.items[0].imagenes[0]).toMatch(/^https:\/\/127\.0\.0\.1:\d+\/uploads\//);
   });
+
+  it("agrega la variante al nombre cuando el producto tiene más de una", async () => {
+    const variant = await perfume();
+    await perfume({ code: "PERKE999" });
+    const other = await createVariantFixture({ productId: variant.productId });
+    await prisma.productVariant.update({ where: { id: other.id }, data: { label: "200 mL", kestoreCode: "FOUR033", wholesalePrice: 50 } });
+    await prisma.productVariant.update({ where: { id: variant.id }, data: { label: "100 mL" } });
+    const items = (await signed("get", "/catalog")).body.items as { codigo: string; nombre: string }[];
+    const byCode = Object.fromEntries(items.map((i) => [i.codigo, i.nombre]));
+    expect(byCode).toMatchObject({ FOUR032: "Yara 100mL EDP - 100 mL", FOUR033: "Yara 100mL EDP - 200 mL", PERKE999: "Yara 100mL EDP" });
+  });
 });
 
 describe("webhook de stock hacia Kestore", () => {
