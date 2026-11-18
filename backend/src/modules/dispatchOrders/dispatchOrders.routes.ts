@@ -29,8 +29,11 @@ dispatchOrdersRouter.use(requireAuth);
 
 dispatchOrdersRouter.get("/", asyncHandler(listDispatchOrdersController));
 dispatchOrdersRouter.get("/pricing/:variantId", requireRole(Role.ADMIN), asyncHandler(async (req, res) => {
-  const costs = await negotiatedCost(prisma, String(req.params.variantId));
-  res.json({ realCost: costs.landedCostSnapshot });
+  const variantId = String(req.params.variantId);
+  const costs = await negotiatedCost(prisma, variantId);
+  const variant = await prisma.productVariant.findUnique({ where: { id: variantId }, select: { product: { select: { ivaRate: true } } } });
+  // ivaRate permite al formulario mostrar precios con IVA incluido; el total real lo calcula el servidor.
+  res.json({ realCost: costs.landedCostSnapshot, ivaRate: variant?.product.ivaRate ?? null });
 }));
 dispatchOrdersRouter.get("/:id", asyncHandler(getDispatchOrderController));
 dispatchOrdersRouter.post("/", asyncHandler(createDispatchOrderController));

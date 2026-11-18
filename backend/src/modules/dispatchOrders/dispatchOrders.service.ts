@@ -15,7 +15,7 @@ import { computeOrderTotal, recalculatePaymentStatus } from "../../lib/paymentRe
 import { classifyReceivable, dueSoonUpperBound, type CollectionStatus } from "../../lib/receivableStatus";
 import { prisma } from "../../lib/prisma";
 import { reserveStock, releaseStock } from "../../lib/stockReservation";
-import { negotiatedCost, negotiatedUnitPrice } from "./negotiatedPricing";
+import { markupFromPrice, negotiatedCost, negotiatedUnitPrice, priceWithoutIva } from "./negotiatedPricing";
 import { hasAdminAccess } from "../../lib/roles";
 import { badRequest, conflict, forbidden, notFound } from "../../utils/httpError";
 import { serializeDispatchOrderForRole } from "./dispatchOrders.serializer";
@@ -27,6 +27,7 @@ interface CreateOrderItemInput {
   priceType: "MAYORISTA" | "PVP";
   unitPrice?: number;
   markupPct?: number;
+  targetPrice?: number;
   expectedRealCost?: number;
   discountPct?: number;
   locationId?: string;
@@ -42,6 +43,8 @@ interface CreateOrderInput {
   creditDays?: number;
   reviewIntervalDays?: number;
   notes?: string;
+  // true = los unitPrice escritos ya incluyen el IVA de cada producto.
+  pricesIncludeIva?: boolean;
   items: CreateOrderItemInput[];
 }
 
@@ -144,15 +147,27 @@ export async function createDispatchOrder(data: CreateOrderInput, userId: string
       const fiscal = await fiscalOrderContext(tx, data.items);
       for (const item of data.items) {
         const base = { variantId: item.variantId, quantity: item.quantity, priceType: item.priceType, locationId: item.locationId };
+        // Con "precios con IVA incluido" el precio escrito es el que paga el
+        // cliente: se guarda sin IVA para que al sumarle el IVA dé lo acordado.
+        const net = (price: number | undefined) => price === undefined ? undefined
+          : data.pricesIncludeIva ? priceWithoutIva(new Prisma.Decimal(price), fiscal.taxes.get(item.variantId)?.ivaRate)
+          : new Prisma.Decimal(price);
         if (item.markupPct !== undefined) {
+          // En líneas con incremento, unitPrice del cliente se ignora: solo
+          // cuenta targetPrice, el precio que el administrador escribió a propósito.
+          const typedPrice = net(item.targetPrice);
           const costs = await negotiatedCost(tx, item.variantId);
           if (item.expectedRealCost !== undefined && !costs.landedCostSnapshot.equals(item.expectedRealCost)) {
             throw conflict("El costo real cambió. Actualiza el producto en el despacho y revisa la negociación.", { field: "items" });
           }
+          // Si el administrador escribió el precio, manda el precio y el
+          // incremento se deduce; si solo escribió el incremento, se calcula el precio.
+          const unitPrice = typedPrice ?? negotiatedUnitPrice(costs.landedCostSnapshot, item.markupPct);
+          const markupPct = typedPrice ? markupFromPrice(costs.landedCostSnapshot, typedPrice) : item.markupPct;
           pricedItems.push({ ...base, priceType: data.buyerType === "MAYORISTA" ? "MAYORISTA" as const : "PVP" as const,
-            ...costs, markupPct: item.markupPct, unitPrice: negotiatedUnitPrice(costs.landedCostSnapshot, item.markupPct) });
+            ...costs, markupPct, unitPrice });
         } else {
-          pricedItems.push({ ...base, unitPrice: new Prisma.Decimal(item.unitPrice!), discountPct: item.discountPct });
+          pricedItems.push({ ...base, unitPrice: net(item.unitPrice)!, discountPct: item.discountPct });
         }
       }
       const created = await tx.dispatchOrder.create({

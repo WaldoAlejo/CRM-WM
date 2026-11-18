@@ -60,10 +60,12 @@ export function CreateDispatchOrderPage() {
     if (loadingCost) return;
     setLoadingCost(true);
     try {
-    const quote = canNegotiate ? await apiFetch<{ realCost: string }>(`/dispatch-orders/pricing/${result.variantId}`) : null;
+    const quote = canNegotiate ? await apiFetch<{ realCost: string; ivaRate: string | null }>(`/dispatch-orders/pricing/${result.variantId}`) : null;
     append({
       costBased: canNegotiate,
       costAtAdd: quote ? Number(quote.realCost) : undefined,
+      ivaRateAtAdd: quote?.ivaRate != null ? Number(quote.ivaRate) : undefined,
+      priceTyped: false,
       markupPct: undefined,
       variantId: result.variantId,
       sku: result.sku,
@@ -89,11 +91,14 @@ export function CreateDispatchOrderPage() {
       creditDays: ["CREDITO", "CONSIGNACION"].includes(values.paymentMethod) ? values.creditDays : undefined,
       reviewIntervalDays: values.paymentMethod === "CONSIGNACION" ? values.reviewIntervalDays : undefined,
       notes: values.notes || undefined,
+      pricesIncludeIva: values.pricesIncludeIva || undefined,
       items: values.items.map((item) => ({
         variantId: item.variantId,
         quantity: item.quantity,
         priceType: values.buyerType === "MAYORISTA" ? "MAYORISTA" as const : "PVP" as const,
-        ...(item.costBased ? { markupPct: item.markupPct, expectedRealCost: item.costAtAdd } : { unitPrice: item.unitPrice, discountPct: item.discountPct }),
+        ...(item.costBased
+          ? { markupPct: item.markupPct, expectedRealCost: item.costAtAdd, targetPrice: item.priceTyped ? item.unitPrice : undefined }
+          : { unitPrice: item.unitPrice, discountPct: item.discountPct }),
         locationId: item.locationId || undefined,
       })),
     };
@@ -268,6 +273,17 @@ export function CreateDispatchOrderPage() {
           <section className="space-y-3 rounded-md border p-4">
             <h2 className="text-lg font-semibold">Ítems</h2>
             <VariantSearchAdd existingVariantIds={existingVariantIds} onAdd={handleAddItem} />
+            <FormField
+              control={form.control}
+              name="pricesIncludeIva"
+              render={({ field }) => (
+                <label className="flex w-fit items-center gap-2 text-sm font-medium">
+                  <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
+                  Precios con IVA incluido
+                  <span className="font-normal text-muted-foreground">(escribe el precio final que paga el cliente)</span>
+                </label>
+              )}
+            />
             <OrderItemsTable
               control={form.control}
               errors={form.formState.errors}

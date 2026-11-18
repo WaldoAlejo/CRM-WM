@@ -60,6 +60,37 @@ describe("Negociación sobre costo real por comprador", () => {
     const quote = await request(app).get(`/api/dispatch-orders/pricing/${variant.id}`).set("Authorization", `Bearer ${token}`);
     expect(Number(quote.body.realCost)).toBe(32.75);
   });
+  it("con precios con IVA incluido guarda el precio sin IVA, deduce el incremento y el total cobrado es el escrito", async () => {
+    const { token, variant } = await setup();
+    await prisma.product.update({ where: { id: (await prisma.productVariant.findUniqueOrThrow({ where: { id: variant.id } })).productId }, data: { ivaCode: "4", ivaRate: 15 } });
+    const buyer = { finalCustomerId: (await createFinalCustomerFixture()).id };
+    const data = body(buyer, variant.id, 0);
+    // 1 unidad a $75 con IVA = $75 cobrados; costo real 32,75. (unitPrice del cliente se ignora.)
+    const created = await request(app).post("/api/dispatch-orders").set("Authorization", `Bearer ${token}`)
+      .send({ ...data, pricesIncludeIva: true, items: [{ ...data.items[0], quantity: 1, targetPrice: 75, unitPrice: 1 }] });
+    expect(created.status).toBe(201);
+    expect(Number(created.body.items[0].unitPrice)).toBe(65.22);
+    expect(Number(created.body.items[0].markupPct)).toBe(99.15);
+    const order = await prisma.dispatchOrder.findUniqueOrThrow({ where: { id: created.body.id }, include: { items: true } });
+    const { computeOrderTotal } = await import("../src/lib/paymentRecalculation");
+    expect(Number(computeOrderTotal(order.items))).toBe(75);
+    // Sin la casilla, el precio escrito se toma sin IVA.
+    const plain = await request(app).post("/api/dispatch-orders").set("Authorization", `Bearer ${token}`)
+      .send({ ...data, items: [{ ...data.items[0], targetPrice: 75 }] });
+    expect(Number(plain.body.items[0].unitPrice)).toBe(75);
+  });
+  it("rechaza un precio con IVA que queda por debajo del costo real", async () => {
+    const { token, variant } = await setup();
+    await prisma.product.update({ where: { id: (await prisma.productVariant.findUniqueOrThrow({ where: { id: variant.id } })).productId }, data: { ivaCode: "4", ivaRate: 15 } });
+    const buyer = { finalCustomerId: (await createFinalCustomerFixture()).id };
+    const data = body(buyer, variant.id, 0);
+    // $36 con IVA = $31,30 sin IVA, menos que el costo de $32,75.
+    const res = await request(app).post("/api/dispatch-orders").set("Authorization", `Bearer ${token}`)
+      .send({ ...data, pricesIncludeIva: true, items: [{ ...data.items[0], targetPrice: 36 }] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/debajo del costo/);
+    expect(await prisma.dispatchOrder.count()).toBe(0);
+  });
   it("oculta costo y porcentaje a operadores y protege la consulta de negociación", async () => {
     const { token, variant } = await setup();
     const { token: operator } = await createTestUser("OPERATOR");

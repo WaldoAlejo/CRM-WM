@@ -9,6 +9,7 @@ interface CreateOrderItemPayload {
   priceType: PriceType;
   unitPrice?: number;
   markupPct?: number;
+  targetPrice?: number;
   expectedRealCost?: number;
   discountPct?: number;
 }
@@ -23,6 +24,7 @@ interface CreateOrderPayload {
   creditDays?: number;
   reviewIntervalDays?: number;
   notes?: string;
+  pricesIncludeIva?: boolean;
   items: CreateOrderItemPayload[];
 }
 

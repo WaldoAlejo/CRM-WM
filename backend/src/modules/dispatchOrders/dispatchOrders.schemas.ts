@@ -11,6 +11,8 @@ export const createDispatchOrderSchema = z.object({
   reviewIntervalDays: z.number().int().min(1).max(90).default(20),
   creditDays: z.number().int().positive().optional(),
   notes: z.string().max(2000).optional(),
+  // true = los unitPrice escritos ya incluyen el IVA (se guardan sin IVA).
+  pricesIncludeIva: z.boolean().optional(),
   items: z
     .array(
       z.object({
@@ -19,6 +21,9 @@ export const createDispatchOrderSchema = z.object({
         priceType: z.nativeEnum(PriceType),
         unitPrice: z.number().nonnegative().optional(),
         markupPct: z.number().min(0).max(10000).multipleOf(0.01).optional(),
+        // Precio escrito por el administrador en una línea con incremento: manda
+        // sobre markupPct (el incremento se deduce del costo real).
+        targetPrice: z.number().positive().optional(),
         expectedRealCost: z.number().positive().optional(),
         discountPct: z.number().min(0).max(100).optional(),
         // Ubicación de origen elegida al crear la orden. Se usa recién al

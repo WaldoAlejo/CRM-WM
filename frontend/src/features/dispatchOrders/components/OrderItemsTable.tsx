@@ -3,7 +3,7 @@ import { negotiatedPrice } from "../negotiatedPricing";
 import type { DispatchOrderItemFormValues } from "../dispatchOrders.schema";
 import { Trash2Icon } from "lucide-react";
 import type { Control, FieldArrayWithId, FieldErrors } from "react-hook-form";
-import { useWatch } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -22,8 +22,30 @@ interface OrderItemsTableProps {
   remove: (index: number) => void;
 }
 
-function unitPrice(item: DispatchOrderItemFormValues): number {
-  return item.costBased ? negotiatedPrice(item.costAtAdd ?? 0, Number(item.markupPct) || 0) : Number(item.unitPrice) || 0;
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+function ivaFactor(item: DispatchOrderItemFormValues, includeIva: boolean): number {
+  return includeIva ? 1 + (item.ivaRateAtAdd ?? 0) / 100 : 1;
+}
+
+// Precio tal como se ve y se escribe en la fila: con IVA si la casilla
+// "Precios con IVA incluido" está marcada. El total real lo calcula el servidor.
+function unitPrice(item: DispatchOrderItemFormValues, includeIva: boolean): number {
+  if (item.costBased && !item.priceTyped) {
+    return round2(negotiatedPrice(item.costAtAdd ?? 0, Number(item.markupPct) || 0) * ivaFactor(item, includeIva));
+  }
+  return Number(item.unitPrice) || 0;
+}
+
+// Precio sin IVA (solo filas con incremento sobre costo, que conocen su tasa).
+function netPrice(item: DispatchOrderItemFormValues, includeIva: boolean): number {
+  return round2(unitPrice(item, includeIva) / ivaFactor(item, includeIva));
+}
+
+// Incremento que resulta de un precio escrito a mano (mismo cálculo que el servidor).
+function markupFromPrice(item: DispatchOrderItemFormValues, includeIva: boolean): number {
+  const cost = item.costAtAdd ?? 0;
+  return cost > 0 ? round2((netPrice(item, includeIva) / cost - 1) * 100) : 0;
 }
 
 // La tabla de líneas del borrador: no es un CrudColumn genérico porque cada
@@ -32,6 +54,8 @@ function unitPrice(item: DispatchOrderItemFormValues): number {
 // lectura".
 export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsTableProps) {
   const watchedItems = useWatch({ control, name: "items" }) ?? [];
+  const includeIva = useWatch({ control, name: "pricesIncludeIva" }) ?? false;
+  const { setValue } = useFormContext<DispatchOrderFormValues>();
   // El array de filas puede actualizarse antes que useWatch al agregar o quitar.
   // Cada variante aparece una sola vez: conservar su identidad evita cruzar
   // costos y porcentajes cuando cambia el índice de una fila.
@@ -47,7 +71,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
     (errors.items as { message?: string } | undefined)?.message;
 
   const total = items.reduce(
-    (sum, item) => sum + unitPrice(item) * (Number(item.quantity) || 0),
+    (sum, item) => sum + unitPrice(item, includeIva) * (Number(item.quantity) || 0),
     0
   );
 
@@ -67,7 +91,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
             <TableHead>Producto</TableHead>
             <TableHead className="w-24">Cantidad</TableHead>
             <TableHead className="w-28">Tipo</TableHead>
-            <TableHead className="w-28">P. Unit.</TableHead>
+            <TableHead className="w-28">{includeIva ? "P. Unit. con IVA" : "P. Unit. sin IVA"}</TableHead>
             <TableHead className="w-24">{costBased ? "Incremento sobre costo (%)" : "Desc. %"}</TableHead>
             {costBased ? <><TableHead>Costo real unitario</TableHead><TableHead>Ganancia de la línea</TableHead></> : null}
             <TableHead className="w-40">Bodega y ubicación</TableHead>
@@ -129,7 +153,19 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                     render={({ field: f }) => (
                       <FormItem>
                         <FormControl>
-                          <Input type="number" min={0} step="any" {...f} readOnly={item?.costBased} value={item?.costBased ? unitPrice(item) : f.value} aria-label={`Precio unitario ${item?.sku}`} />
+                          <Input
+                            type="number" min={0} step="any" {...f}
+                            value={item?.costBased ? unitPrice(item, includeIva) : f.value}
+                            onChange={(e) => {
+                              f.onChange(e);
+                              if (!item?.costBased) return;
+                              // El precio escrito manda: el incremento se deduce del costo real.
+                              const typed = { ...item, unitPrice: Number(e.target.value) || 0, priceTyped: true };
+                              setValue(`items.${index}.priceTyped`, true);
+                              setValue(`items.${index}.markupPct`, markupFromPrice(typed, includeIva), { shouldValidate: true });
+                            }}
+                            aria-label={`Precio unitario ${item?.sku}`}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -143,14 +179,23 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                     render={({ field: f }) => (
                       <FormItem>
                         <FormControl>
-                          <Input type="number" min={0} max={item?.costBased ? 10000 : 100} step="0.01" {...f} value={f.value ?? ""} aria-label={`${item?.costBased ? "Incremento sobre costo" : "Descuento"} ${item?.sku}`} />
+                          <Input
+                            type="number" min={0} max={item?.costBased ? 10000 : 100} step="0.01" {...f}
+                            value={item?.costBased && item.priceTyped ? markupFromPrice(item, includeIva) : f.value ?? ""}
+                            onChange={(e) => {
+                              f.onChange(e);
+                              // Escribir el incremento vuelve a calcular el precio desde el costo.
+                              if (item?.costBased) setValue(`items.${index}.priceTyped`, false);
+                            }}
+                            aria-label={`${item?.costBased ? "Incremento sobre costo" : "Descuento"} ${item?.sku}`}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </TableCell>
-                {costBased ? <><TableCell>${Number(item?.costAtAdd ?? 0).toFixed(2)}</TableCell><TableCell>${((unitPrice(item) - Number(item?.costAtAdd ?? 0)) * (Number(item?.quantity) || 0)).toFixed(2)}</TableCell></> : null}
+                {costBased ? <><TableCell>${Number(item?.costAtAdd ?? 0).toFixed(2)}</TableCell><TableCell>${((netPrice(item, includeIva) - Number(item?.costAtAdd ?? 0)) * (Number(item?.quantity) || 0)).toFixed(2)}</TableCell></> : null}
                 <TableCell>
                   <FormField
                     control={control}
@@ -164,7 +209,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                   />
                 </TableCell>
                 <TableCell className="text-sm">
-                  ${(unitPrice(item) * (Number(item?.quantity) || 0)).toFixed(2)}
+                  ${(unitPrice(item, includeIva) * (Number(item?.quantity) || 0)).toFixed(2)}
                 </TableCell>
                 <TableCell>
                   {/* Aviso, no bloqueo: el backend sigue siendo la
@@ -188,9 +233,12 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
 
       {arrayLevelError ? <p className="text-sm font-medium text-destructive">{arrayLevelError}</p> : null}
 
-      {costBased ? <p className="text-sm text-muted-foreground">Precio = costo real promedio ponderado × (1 + incremento / 100). El costo y porcentaje quedan registrados con la venta. Si el costo cambia antes de guardar, vuelve a agregar el producto para revisar la negociación.</p> : null}
-      <p className="text-right text-sm"><span className="font-medium">Subtotal sin IVA: ${total.toFixed(2)}</span><span className="block text-xs text-muted-foreground">El IVA de cada producto se suma al crear la orden.</span></p>
-      <p className="text-right text-xs text-muted-foreground">El IVA configurado se sumará al guardar la orden con emisor fiscal.</p>
+      {costBased ? <p className="text-sm text-muted-foreground">Escribe el precio o el incremento: el otro se calcula solo con el costo real promedio ponderado. El costo y el porcentaje quedan registrados con la venta. Si el costo cambia antes de guardar, vuelve a agregar el producto para revisar la negociación.</p> : null}
+      {includeIva ? (
+        <p className="text-right text-sm"><span className="font-medium">Total con IVA: ${total.toFixed(2)}</span><span className="block text-xs text-muted-foreground">Los precios incluyen IVA: al guardar se registran sin IVA y el total cobrado queda igual (puede variar un centavo por redondeo).</span></p>
+      ) : (
+        <p className="text-right text-sm"><span className="font-medium">Subtotal sin IVA: ${total.toFixed(2)}</span><span className="block text-xs text-muted-foreground">El IVA de cada producto se suma al crear la orden. Si tus precios ya incluyen IVA, marca «Precios con IVA incluido».</span></p>
+      )}
     </div>
   );
 }

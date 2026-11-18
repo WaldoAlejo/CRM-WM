@@ -15,7 +15,12 @@ export const dispatchOrderItemSchema = z.object({
   priceType: z.enum(["MAYORISTA", "PVP"]),
   costBased: z.boolean().optional(),
   costAtAdd: z.number().positive().optional(),
-  markupPct: optionalNumber(z.number().min(0).max(10000).multipleOf(0.01)),
+  markupPct: optionalNumber(z.number().min(0, "El precio queda por debajo del costo real").max(10000).multipleOf(0.01)),
+  // true = el administrador escribió el precio (el incremento se deduce);
+  // false = escribió el incremento (el precio se calcula).
+  priceTyped: z.boolean().optional(),
+  // Tasa de IVA del producto (solo para mostrar precios con IVA en el borrador).
+  ivaRateAtAdd: z.number().optional(),
   unitPrice: z.coerce.number().nonnegative("El precio no puede ser negativo"),
   discountPct: optionalNumber(z.number().min(0).max(100, "Debe estar entre 0 y 100")),
   availableStockAtAdd: z.number(),
@@ -63,6 +68,7 @@ export const dispatchOrderFormSchema = z
     reviewIntervalDays: optionalNumber(z.number().int().min(1).max(90)),
     creditDays: optionalNumber(z.number().int().positive()),
     notes: optionalString(z.string().max(2000)),
+    pricesIncludeIva: z.boolean(),
     items: itemsArraySchema,
   })
   .superRefine((values, ctx) => {
@@ -104,6 +110,8 @@ export const dispatchOrderDefaultValues: DispatchOrderFormValues = {
   creditDays: undefined,
   reviewIntervalDays: 20,
   notes: "",
+  // Por defecto se escribe el precio final que paga el cliente (con IVA).
+  pricesIncludeIva: true,
   items: [],
 };
 
