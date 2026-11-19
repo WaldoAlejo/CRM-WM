@@ -6,6 +6,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { Form } from "@/components/ui/form";
 import { OrderItemsTable } from "./components/OrderItemsTable";
 import { negotiatedPrice } from "./negotiatedPricing";
+import { applyListDiscount } from "./listPricing";
 import { dispatchOrderDefaultValues, dispatchOrderItemSchema, type DispatchOrderFormValues } from "./dispatchOrders.schema";
 vi.mock("@/features/warehouses/useWarehouseOptions", () => ({ useWarehouseOptions: () => ({ data: [] }) }));
 vi.mock("@/hooks/usePricingVisibility", () => ({ usePricingVisibility: () => true }));
@@ -65,6 +66,34 @@ describe("Porcentajes negociados sobre costo", () => {
     expect(screen.getByText("Total con IVA: $150.00")).toBeInTheDocument();
     // Ganancia de la línea sobre el precio sin IVA: (65,22 − 32,75) × 2
     expect(screen.getByText("$64.94")).toBeInTheDocument();
+  });
+});
+
+describe("Descuento sobre el precio de lista", () => {
+  const listed = { ...item, ivaRateAtAdd: 15, listWholesaleAtAdd: 73.5, listRetailAtAdd: 100 };
+  function ListHarness() {
+    const form = useForm<DispatchOrderFormValues>({ defaultValues: { ...dispatchOrderDefaultValues, items: [{ ...listed, ...applyListDiscount(listed, 0, true) }] } });
+    const { fields, remove } = useFieldArray({ control: form.control, name: "items" });
+    return <Form {...form}><OrderItemsTable control={form.control} errors={form.formState.errors} fields={fields} remove={remove} /></Form>;
+  }
+  it("arranca en el PVP con IVA y un descuento reescribe precio e incremento", () => {
+    render(<ListHarness />);
+    expect(screen.getByText("Lista: $115.00")).toBeInTheDocument();
+    expect(screen.getByLabelText("Precio unitario AIR")).toHaveValue(115);
+    expect(screen.getByLabelText("Descuento sobre lista AIR")).toHaveValue(0);
+    fireEvent.change(screen.getByLabelText("Descuento sobre lista AIR"), { target: { value: "10" } });
+    // 115 × 0,90 = 103,50 con IVA → 90 sin IVA → (90 / 32,75 − 1) = 174,81 %
+    expect(screen.getByLabelText("Precio unitario AIR")).toHaveValue(103.5);
+    expect(screen.getByLabelText("Incremento sobre costo AIR")).toHaveValue(174.81);
+    expect(screen.getByText("Total con IVA: $207.00")).toBeInTheDocument();
+    // Escribir el precio deja ver el descuento que representa.
+    fireEvent.change(screen.getByLabelText("Precio unitario AIR"), { target: { value: "92" } });
+    expect(screen.getByLabelText("Descuento sobre lista AIR")).toHaveValue(20);
+  });
+  it("sobre el mayorista usa su lista y redondea al centavo", () => {
+    expect(applyListDiscount({ ...listed, priceType: "MAYORISTA" }, 0, true)?.unitPrice).toBe(84.53);
+    expect(applyListDiscount({ ...listed, priceType: "MAYORISTA" }, 5, false)?.unitPrice).toBe(69.83);
+    expect(applyListDiscount({ ...item, priceType: "PVP" }, 10, true)).toBeUndefined();
   });
 });
 

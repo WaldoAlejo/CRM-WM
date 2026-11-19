@@ -1,5 +1,6 @@
 import { WarehouseLocationSelect } from "@/features/locations/WarehouseLocationSelect";
 import { negotiatedPrice } from "../negotiatedPricing";
+import { applyListDiscount, ivaFactor, listDiscountFromNet, listPrice } from "../listPricing";
 import type { DispatchOrderItemFormValues } from "../dispatchOrders.schema";
 import { Trash2Icon } from "lucide-react";
 import type { Control, FieldArrayWithId, FieldErrors } from "react-hook-form";
@@ -23,10 +24,6 @@ interface OrderItemsTableProps {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
-
-function ivaFactor(item: DispatchOrderItemFormValues, includeIva: boolean): number {
-  return includeIva ? 1 + (item.ivaRateAtAdd ?? 0) / 100 : 1;
-}
 
 // Precio tal como se ve y se escribe en la fila: con IVA si la casilla
 // "Precios con IVA incluido" está marcada. El total real lo calcula el servidor.
@@ -62,6 +59,17 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
   const watchedByVariant = new Map(watchedItems.map(item => [item.variantId, item]));
   const items = fields.map(field => watchedByVariant.get(field.variantId) ?? field);
   const costBased = items.some(item => item.costBased);
+  const hasList = items.some(item => item.costBased && (item.listWholesaleAtAdd || item.listRetailAtAdd));
+
+  // Escribir un descuento sobre la lista (o cambiar la base) reescribe el precio de la fila.
+  function setListDiscount(index: number, item: DispatchOrderItemFormValues, discountPct: number, typed?: string) {
+    const next = applyListDiscount(item, discountPct, includeIva);
+    if (!next) return;
+    setValue(`items.${index}.listDiscountInput`, typed);
+    setValue(`items.${index}.unitPrice`, next.unitPrice);
+    setValue(`items.${index}.priceTyped`, true);
+    setValue(`items.${index}.markupPct`, next.markupPct, { shouldValidate: true });
+  }
 
   // Mismo chequeo defensivo que AttributesFieldArray: el error de "agregá al
   // menos un ítem" (.min(1) del array completo) puede quedar en .root o
@@ -92,6 +100,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
             <TableHead className="w-24">Cantidad</TableHead>
             <TableHead className="w-28">Tipo</TableHead>
             <TableHead className="w-28">{includeIva ? "P. Unit. con IVA" : "P. Unit. sin IVA"}</TableHead>
+            {hasList ? <TableHead className="w-24">Desc. sobre lista %</TableHead> : null}
             <TableHead className="w-24">{costBased ? "Incremento sobre costo (%)" : "Desc. %"}</TableHead>
             {costBased ? <><TableHead>Costo real unitario</TableHead><TableHead>Ganancia de la línea</TableHead></> : null}
             <TableHead className="w-40">Bodega y ubicación</TableHead>
@@ -130,9 +139,17 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                     name={`items.${index}.priceType`}
                     render={({ field: f }) => (
                       <FormItem>
-                        <Select value={f.value} onValueChange={f.onChange} disabled={item?.costBased}>
+                        <Select
+                          value={f.value}
+                          onValueChange={(value) => {
+                            f.onChange(value);
+                            // En líneas con negociación, "Tipo" elige la lista base: el precio pasa a esa lista sin descuento.
+                            if (item?.costBased) setListDiscount(index, { ...item, priceType: value as DispatchOrderItemFormValues["priceType"] }, 0);
+                          }}
+                          disabled={item?.costBased && !item.listWholesaleAtAdd && !item.listRetailAtAdd}
+                        >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="min-w-32">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
@@ -141,6 +158,11 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                             <SelectItem value="PVP">PVP</SelectItem>
                           </SelectContent>
                         </Select>
+                        {item?.costBased && listPrice(item) !== undefined ? (
+                          <p className="whitespace-nowrap text-xs text-muted-foreground">
+                            Lista: ${(listPrice(item)! * ivaFactor(item, includeIva)).toFixed(2)}
+                          </p>
+                        ) : item?.costBased && hasList ? <p className="whitespace-nowrap text-xs text-muted-foreground">Sin precio de lista</p> : null}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -162,6 +184,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                               // El precio escrito manda: el incremento se deduce del costo real.
                               const typed = { ...item, unitPrice: Number(e.target.value) || 0, priceTyped: true };
                               setValue(`items.${index}.priceTyped`, true);
+                              setValue(`items.${index}.listDiscountInput`, undefined);
                               setValue(`items.${index}.markupPct`, markupFromPrice(typed, includeIva), { shouldValidate: true });
                             }}
                             aria-label={`Precio unitario ${item?.sku}`}
@@ -172,6 +195,18 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                     )}
                   />
                 </TableCell>
+                {hasList ? (
+                  <TableCell>
+                    {item?.costBased && listPrice(item) !== undefined ? (
+                      <Input
+                        type="number" min={0} max={100} step="0.01"
+                        value={item.listDiscountInput ?? listDiscountFromNet(item, netPrice(item, includeIva)) ?? ""}
+                        onChange={(e) => setListDiscount(index, item, Number(e.target.value) || 0, e.target.value)}
+                        aria-label={`Descuento sobre lista ${item.sku}`}
+                      />
+                    ) : null}
+                  </TableCell>
+                ) : null}
                 <TableCell>
                   <FormField
                     control={control}
@@ -185,7 +220,10 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
                             onChange={(e) => {
                               f.onChange(e);
                               // Escribir el incremento vuelve a calcular el precio desde el costo.
-                              if (item?.costBased) setValue(`items.${index}.priceTyped`, false);
+                              if (item?.costBased) {
+                                setValue(`items.${index}.priceTyped`, false);
+                                setValue(`items.${index}.listDiscountInput`, undefined);
+                              }
                             }}
                             aria-label={`${item?.costBased ? "Incremento sobre costo" : "Descuento"} ${item?.sku}`}
                           />
@@ -233,7 +271,7 @@ export function OrderItemsTable({ control, errors, fields, remove }: OrderItemsT
 
       {arrayLevelError ? <p className="text-sm font-medium text-destructive">{arrayLevelError}</p> : null}
 
-      {costBased ? <p className="text-sm text-muted-foreground">Escribe el precio o el incremento: el otro se calcula solo con el costo real promedio ponderado. El costo y el porcentaje quedan registrados con la venta. Si el costo cambia antes de guardar, vuelve a agregar el producto para revisar la negociación.</p> : null}
+      {costBased ? <p className="text-sm text-muted-foreground">{hasList ? "La línea arranca con el precio de lista del tipo elegido (mayorista o PVP); escribe un descuento sobre esa lista, el precio o el incremento. " : ""}Escribe el precio o el incremento: el otro se calcula solo con el costo real promedio ponderado. El costo y el porcentaje quedan registrados con la venta. Si el costo cambia antes de guardar, vuelve a agregar el producto para revisar la negociación.</p> : null}
       {includeIva ? (
         <p className="text-right text-sm"><span className="font-medium">Total con IVA: ${total.toFixed(2)}</span><span className="block text-xs text-muted-foreground">Los precios incluyen IVA: al guardar se registran sin IVA y el total cobrado queda igual (puede variar un centavo por redondeo).</span></p>
       ) : (

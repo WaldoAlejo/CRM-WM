@@ -22,6 +22,7 @@ import { dispatchOrderDefaultValues, dispatchOrderFormSchema } from "./dispatchO
 import type { DispatchOrderFormValues } from "./dispatchOrders.schema";
 import type { BuyerType } from "./dispatchOrders.types";
 import { useDispatchOrderMutations } from "./useDispatchOrderMutations";
+import { applyListDiscount, ivaFactor } from "./listPricing";
 
 export function CreateDispatchOrderPage() {
   const navigate = useNavigate();
@@ -44,7 +45,12 @@ export function CreateDispatchOrderPage() {
 
   function handleBuyerTypeChange(value: BuyerType) {
     form.setValue("buyerType", value);
-    form.setValue("items", form.getValues("items").map(item => ({ ...item, priceType: value === "MAYORISTA" ? "MAYORISTA" : "PVP" })));
+    const includeIva = form.getValues("pricesIncludeIva");
+    // Al cambiar de comprador, las líneas con precio de lista pasan a la lista que le corresponde, sin descuento.
+    form.setValue("items", form.getValues("items").map(item => {
+      const rebased = { ...item, priceType: value === "MAYORISTA" ? "MAYORISTA" as const : "PVP" as const };
+      return item.costBased ? { ...rebased, ...applyListDiscount(rebased, 0, includeIva), listDiscountInput: undefined } : rebased;
+    }));
     form.setValue("wholesalerId", undefined);
     form.setValue("finalCustomerId", undefined);
     // El crédito es exclusivo de mayoristas (mismo rechazo que hace el
@@ -60,23 +66,29 @@ export function CreateDispatchOrderPage() {
     if (loadingCost) return;
     setLoadingCost(true);
     try {
-    const quote = canNegotiate ? await apiFetch<{ realCost: string; ivaRate: string | null }>(`/dispatch-orders/pricing/${result.variantId}`) : null;
-    append({
+    const quote = canNegotiate
+      ? await apiFetch<{ realCost: string; ivaRate: string | null; wholesalePrice: string | null; retailPrice: string | null }>(`/dispatch-orders/pricing/${result.variantId}`)
+      : null;
+    const item = {
       costBased: canNegotiate,
       costAtAdd: quote ? Number(quote.realCost) : undefined,
       ivaRateAtAdd: quote?.ivaRate != null ? Number(quote.ivaRate) : undefined,
+      listWholesaleAtAdd: quote?.wholesalePrice != null ? Number(quote.wholesalePrice) : undefined,
+      listRetailAtAdd: quote?.retailPrice != null ? Number(quote.retailPrice) : undefined,
       priceTyped: false,
       markupPct: undefined,
       variantId: result.variantId,
       sku: result.sku,
       label: result.label,
       quantity: 1,
-      priceType: buyerType === "MAYORISTA" ? "MAYORISTA" : "PVP",
+      priceType: buyerType === "MAYORISTA" ? "MAYORISTA" as const : "PVP" as const,
       unitPrice: 0,
       discountPct: undefined,
       availableStockAtAdd: result.availableStock,
       locationId: undefined,
-    });
+    };
+    // Con precio de lista, la línea arranca en ese precio (0 % de descuento) y desde ahí se negocia.
+    append(quote ? { ...item, ...applyListDiscount(item, 0, form.getValues("pricesIncludeIva")) } : item);
     } catch (error) { applyApiErrorToForm(error, form); } finally { setLoadingCost(false); }
   }
 
@@ -278,7 +290,17 @@ export function CreateDispatchOrderPage() {
               name="pricesIncludeIva"
               render={({ field }) => (
                 <label className="flex w-fit items-center gap-2 text-sm font-medium">
-                  <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
+                  <input type="checkbox" checked={field.value} onChange={(e) => {
+                    field.onChange(e.target.checked);
+                    // Los precios escritos en líneas con negociación conservan su valor real:
+                    // se pasan a con IVA o sin IVA en vez de reinterpretar el mismo número.
+                    form.setValue("items", form.getValues("items").map(item => {
+                      if (!item.costBased || !item.priceTyped) return item;
+                      const factor = ivaFactor(item, true);
+                      const unitPrice = Math.round((e.target.checked ? item.unitPrice * factor : item.unitPrice / factor) * 100) / 100;
+                      return { ...item, unitPrice, listDiscountInput: undefined };
+                    }));
+                  }} />
                   Precios con IVA incluido
                   <span className="font-normal text-muted-foreground">(escribe el precio final que paga el cliente)</span>
                 </label>

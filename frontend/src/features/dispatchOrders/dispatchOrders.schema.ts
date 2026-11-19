@@ -21,6 +21,12 @@ export const dispatchOrderItemSchema = z.object({
   priceTyped: z.boolean().optional(),
   // Tasa de IVA del producto (solo para mostrar precios con IVA en el borrador).
   ivaRateAtAdd: z.number().optional(),
+  // Precios de lista sin IVA (mayorista y PVP) al agregar la línea: base del
+  // "descuento sobre lista". Solo existen en líneas con negociación (administrador).
+  listWholesaleAtAdd: z.number().optional(),
+  listRetailAtAdd: z.number().optional(),
+  // Texto tal como se escribe en "Desc. sobre lista %" (vacío = se deduce del precio).
+  listDiscountInput: z.string().optional(),
   unitPrice: z.coerce.number().nonnegative("El precio no puede ser negativo"),
   discountPct: optionalNumber(z.number().min(0).max(100, "Debe estar entre 0 y 100")),
   availableStockAtAdd: z.number(),

@@ -59,6 +59,11 @@ describe("Negociación sobre costo real por comprador", () => {
     expect(await prisma.dispatchOrder.count()).toBe(0);
     const quote = await request(app).get(`/api/dispatch-orders/pricing/${variant.id}`).set("Authorization", `Bearer ${token}`);
     expect(Number(quote.body.realCost)).toBe(32.75);
+    expect(quote.body.retailPrice).toBeNull();
+    await prisma.productVariant.update({ where: { id: variant.id }, data: { wholesalePrice: 73.5, retailPrice: 100 } });
+    const listed = await request(app).get(`/api/dispatch-orders/pricing/${variant.id}`).set("Authorization", `Bearer ${token}`);
+    expect(Number(listed.body.wholesalePrice)).toBe(73.5);
+    expect(Number(listed.body.retailPrice)).toBe(100);
   });
   it("con precios con IVA incluido guarda el precio sin IVA, deduce el incremento y el total cobrado es el escrito", async () => {
     const { token, variant } = await setup();
