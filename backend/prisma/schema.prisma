@@ -455,6 +455,9 @@ model ProductVariant {
   kestoreCode String? @unique
   attributes Json // Ej: { "color": "Negro", "capacidad": "5L" }
   label      String? // Texto legible derivado de attributes, ej: "Negro / 5L"
+  // Descripción propia de la variante (ficha de un modelo distinto dentro del
+  // mismo producto). Si está vacía, catálogos y Kestore usan la del producto.
+  description String?
 
   // Índice GIN sobre el JSON: con 35 SKUs no se nota, pero permite que
   // filtros como "todos los productos color negro" o "todos los de 5L"

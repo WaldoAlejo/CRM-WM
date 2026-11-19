@@ -85,6 +85,7 @@ export interface Variant {
   weightKg: string | null;
   maxStackUnits?: number;
   dimensionsCm: string | null;
+  description?: string | null;
   stock: number;
   minStock: number | null;
   warehouseLocation: string | null;

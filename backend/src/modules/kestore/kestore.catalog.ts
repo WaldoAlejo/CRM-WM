@@ -74,7 +74,8 @@ export function toCatalogItem(variant: KestoreVariant, baseUrl: string, target: 
     sku: variant.sku,
     nombre: catalogName(variant),
     variante: variant.label,
-    descripcion: variant.product.description,
+    // La ficha propia de la variante (otro modelo dentro del producto) manda.
+    descripcion: variant.description?.trim() || variant.product.description,
     marca: variant.product.brand?.name ?? null,
     categoria: variant.product.category.name,
     subcategoria: variant.product.subcategory?.name ?? null,

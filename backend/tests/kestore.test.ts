@@ -84,6 +84,17 @@ describe("GET /catalog", () => {
     const byCode = Object.fromEntries(items.map((i) => [i.codigo, i.nombre]));
     expect(byCode).toMatchObject({ FOUR032: "Yara 100mL EDP - 100 mL", FOUR033: "Yara 100mL EDP - 200 mL", PERKE999: "Yara 100mL EDP" });
   });
+
+  it("usa la descripción de la variante si tiene una; si no, la del producto", async () => {
+    const variant = await perfume();
+    const other = await createVariantFixture({ productId: variant.productId });
+    await prisma.product.update({ where: { id: variant.productId }, data: { description: "Ficha general" } });
+    await prisma.productVariant.update({ where: { id: other.id }, data: { kestoreCode: "FOUR033", wholesalePrice: 50, description: "Ficha del modelo con pantalla" } });
+    await prisma.productVariant.update({ where: { id: variant.id }, data: { description: "   " } });
+    const items = (await signed("get", "/catalog")).body.items as { codigo: string; descripcion: string }[];
+    const byCode = Object.fromEntries(items.map((i) => [i.codigo, i.descripcion]));
+    expect(byCode).toMatchObject({ FOUR032: "Ficha general", FOUR033: "Ficha del modelo con pantalla" });
+  });
 });
 
 describe("webhook de stock hacia Kestore", () => {

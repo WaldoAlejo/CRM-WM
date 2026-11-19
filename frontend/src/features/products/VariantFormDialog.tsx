@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { usePricingVisibility } from "@/hooks/usePricingVisibility";
 import { previewVariantSku } from "@/lib/sku";
 import { AttributesFieldArray } from "./components/AttributesFieldArray";
@@ -45,6 +46,7 @@ function toFormValues(variant: Variant | null, retailPriceOverride?: number): Va
     weightKg: variant.weightKg ? Number(variant.weightKg) : undefined,
     maxStackUnits: variant.maxStackUnits ?? 1,
     dimensionsCm: variant.dimensionsCm ?? "",
+    description: variant.description ?? "",
     costPriceUSD: variant.costPriceUSD ? Number(variant.costPriceUSD) : undefined,
     wholesalePrice: variant.wholesalePrice ? Number(variant.wholesalePrice) : undefined,
     wholesaleDiscountPct: variant.wholesaleDiscountPct ? Number(variant.wholesaleDiscountPct) : undefined,
@@ -98,6 +100,7 @@ export function VariantFormDialog({
           weightKg: values.weightKg ?? null,
           maxStackUnits: values.maxStackUnits ?? 1,
           dimensionsCm: values.dimensionsCm || null,
+          description: values.description?.trim() || null,
           ...(retailPriceOverride !== undefined && { retailPrice: values.retailPrice }),
           // Solo si se tocó (guardar otros datos no reescribe precios) y solo
           // quien ve precios: el backend rechaza el campo para OPERATOR.
@@ -112,6 +115,7 @@ export function VariantFormDialog({
           weightKg: values.weightKg,
           maxStackUnits: values.maxStackUnits ?? 1,
           dimensionsCm: values.dimensionsCm || undefined,
+          description: values.description?.trim() || undefined,
           ...(canSeePricing && values.wholesalePrice !== undefined && { wholesalePrice: values.wholesalePrice }),
           force: values.force,
         };
@@ -222,6 +226,23 @@ export function VariantFormDialog({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descripción de esta variante</FormLabel>
+                  <FormControl>
+                    <Textarea rows={5} placeholder="Opcional" {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormDescription>
+                    Úsala cuando esta variante es un modelo con características propias. Si queda vacía, Kestore muestra la descripción del producto.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField control={form.control} name="maxStackUnits" render={({ field }) => <FormItem><FormLabel>Máximo de unidades por pila (incluye la base)</FormLabel><FormControl><Input type="number" min={1} max={1000} step={1} {...field} value={field.value ?? 1} /></FormControl><p className="text-xs text-muted-foreground">1 = no apilable. Dimensiones del empaque por unidad: largo × ancho × alto.</p><FormMessage /></FormItem>} />
 

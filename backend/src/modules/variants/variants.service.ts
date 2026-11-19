@@ -32,6 +32,7 @@ interface CreateVariantInput {
   weightKg?: number;
   maxStackUnits?: number;
   dimensionsCm?: string;
+  description?: string;
   costPriceUSD?: number;
   wholesalePrice?: number;
   wholesaleDiscountPct?: number;
@@ -75,6 +76,7 @@ interface UpdateVariantInput {
   weightKg?: number | null;
   maxStackUnits?: number;
   dimensionsCm?: string | null;
+  description?: string | null;
   costPriceUSD?: number | null;
   wholesalePrice?: number | null;
   wholesaleDiscountPct?: number | null;
